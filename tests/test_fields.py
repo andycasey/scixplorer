@@ -165,11 +165,46 @@ def test_to_python_is_element_wise_for_multivalued_fields():
     assert field.to_python(["1", "2", None]) == [1, 2, None]
 
 
-def test_to_python_rejects_garbage_dates():
-    with pytest.raises(ValueError):
-        F["entry_date"].to_python("yesterday")
-    with pytest.raises(ValueError):
-        F["pubdate"].to_python("July 2013")
+def test_to_python_returns_unconvertible_values_unchanged():
+    """Irregular API data must never fail a whole result set."""
+    assert F["entry_date"].to_python("yesterday") == "yesterday"
+    assert F["pubdate"].to_python("July 2013") == "July 2013"
+    assert F["year"].to_python("508A") == "508A"
+    assert IntegerField(multivalued=True).to_python(["1", "x", None]) == [1, "x", None]
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "2021-03-12T04:19:06.469872Z",
+        "2021-03-12T04:19:06.469872",
+        "2021-03-12T04:19:06Z",
+        "2021-03-12T04:19:06",
+    ],
+)
+def test_datetime_to_python_accepts_timestamps_with_or_without_z_and_fraction(raw):
+    value = F["entry_date"].to_python(raw)
+    assert (value.year, value.month, value.day, value.hour, value.second) == (2021, 3, 12, 4, 6)
+    assert value.tzinfo is timezone.utc
+
+
+@pytest.mark.parametrize("value", ["", "   "])
+def test_string_fields_reject_empty_values(value):
+    with pytest.raises(QueryError):
+        Rec.title == value
+    with pytest.raises(QueryError):
+        Rec.bibcode.in_(["2020A", value])
+
+
+def test_step_gives_the_adjacent_value_of_discrete_fields():
+    assert F["year"].step(2020, 1) == 2021
+    assert F["year"].step(2020, -1) == 2019
+    assert F["pubdate"].step(date(2020, 12, 15), 1) == date(2021, 1, 1)
+    assert F["pubdate"].step("2020-01", -1) == date(2019, 12, 1)
+    assert F["norm"].step(0.5, 1) is None
+    assert F["entry_date"].step(datetime(2020, 1, 1), 1) is None
+    assert F["year"].step(SolrLiteral("X"), 1) is None
+    assert F["pubdate"].step(SolrLiteral("NOW"), 1) is None
 
 
 # --- to_solr ----------------------------------------------------------------

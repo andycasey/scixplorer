@@ -270,15 +270,35 @@ class Field:
         instance._set_value(self, value)
 
     def to_python(self, raw: Any) -> Any:
-        """Convert a value from the API to Python, element-wise for lists."""
+        """Convert a value from the API to Python, element-wise for lists.
+
+        ADS data is not perfectly regular, so a value that cannot be converted
+        is returned unchanged rather than failing the whole result set.
+        """
         if raw is None:
             return None
         if self.multivalued and isinstance(raw, (list, tuple)):
-            return [None if item is None else self._to_python(item) for item in raw]
-        return self._to_python(raw)
+            return [self._convert(item) for item in raw]
+        return self._convert(raw)
+
+    def _convert(self, raw: Any) -> Any:
+        if raw is None:
+            return None
+        try:
+            return self._to_python(raw)
+        except (ValueError, TypeError):
+            return raw
 
     def _to_python(self, raw: Any) -> Any:
         return raw
+
+    def step(self, value: Any, direction: int) -> Any:
+        """The adjacent value above (``direction=1``) or below (``-1``) ``value``.
+
+        Returns ``None`` for fields whose values are not discrete; discrete
+        fields override this so exclusive range bounds can be made inclusive.
+        """
+        return None
 
     def to_solr(self, value: Any) -> str:
         """Format one value as bare Solr text (unquoted, unescaped).
@@ -312,6 +332,8 @@ class _StringLikeField(Field):
     def _to_solr(self, value: Any) -> str:
         if not isinstance(value, str):
             raise self._reject(value, "a str")
+        if not value.strip():
+            raise self._reject(value, "a non-empty str")
         return value
 
 
@@ -350,6 +372,11 @@ class IntegerField(Field):
         if isinstance(value, bool) or not isinstance(value, int):
             raise self._reject(value, "an int")
         return str(value)
+
+    def step(self, value: Any, direction: int) -> Any:
+        if isinstance(value, bool) or not isinstance(value, int):
+            return None
+        return value + direction
 
 
 class FloatField(Field):
@@ -397,9 +424,10 @@ class DateTimeField(Field):
     def _to_python(self, raw: Any) -> Any:
         if isinstance(raw, date):
             return as_utc(raw)
-        for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ"):
+        text = raw[:-1] if raw.endswith("Z") else raw
+        for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
             try:
-                return datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc)
+                return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc)
             except ValueError:
                 pass
         raise ValueError(f"{self._label()}: unrecognised timestamp {raw!r}")
@@ -439,3 +467,10 @@ class DateField(Field):
             if match and match.group(3) is None and 1 <= int(match.group(2)) <= 12:
                 return value
         raise self._reject(value, "a date, a datetime or a 'YYYY-MM' string")
+
+    def step(self, value: Any, direction: int) -> Any:
+        if isinstance(value, SolrLiteral):
+            return None
+        year, month = (int(part) for part in self.to_solr(value).split("-"))
+        months = year * 12 + (month - 1) + direction
+        return date(months // 12, months % 12 + 1, 1)

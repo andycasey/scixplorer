@@ -30,7 +30,7 @@ from .expr import (
     Wildcard,
     parse_pattern,
 )
-from .fields import DateTimeField, Field, IntegerField, StringField, TextField, VirtualField
+from .fields import DateTimeField, Field, StringField, TextField, VirtualField
 
 __all__ = ["QUOTED_FIELD_TYPES", "compile", "compile_order", "format_value", "quote"]
 
@@ -157,7 +157,8 @@ def _compile_in(expr: In) -> _Fragment:
 def _compile_range(expr: Range) -> _Fragment:
     """Compile a range. Solr ranges here are inclusive, so exclusive bounds are lowered.
 
-    Integer bounds of an ``IntegerField`` move by one; any other exclusive bound
+    Discrete fields (see ``Field.step``) move the bound to the adjacent value: an
+    integer by one, a month-precision date by a month. Any other exclusive bound
     becomes an inclusive range that excludes the bound value, compiled as
     ``And(inclusive range, Not(Match(field, bound)))``.
     """
@@ -165,25 +166,22 @@ def _compile_range(expr: Range) -> _Fragment:
     lo, hi = expr.lo, expr.hi
     excluded: list[Any] = []
     if lo is not None and not expr.include_lo:
-        if _steps_by_one(field, lo):
-            lo += 1
-        else:
+        stepped = field.step(lo, 1)
+        if stepped is None:
             excluded.append(lo)
-    if hi is not None and not expr.include_hi:
-        if _steps_by_one(field, hi):
-            hi -= 1
         else:
+            lo = stepped
+    if hi is not None and not expr.include_hi:
+        stepped = field.step(hi, -1)
+        if stepped is None:
             excluded.append(hi)
+        else:
+            hi = stepped
     if excluded:
         return _compile_and((Range(field, lo, hi), *(Not(Match(field, v)) for v in excluded)))
     lo_text = "*" if lo is None else format_value(field, lo)
     hi_text = "*" if hi is None else format_value(field, hi)
     return _Fragment(f"{field.solr_name}:[{lo_text} TO {hi_text}]")
-
-
-def _steps_by_one(field: Field, value: Any) -> bool:
-    """Whether an exclusive bound can become inclusive by moving it by one."""
-    return isinstance(field, IntegerField) and isinstance(value, int) and not isinstance(value, bool)
 
 
 def _compile_func(expr: Func) -> _Fragment:
