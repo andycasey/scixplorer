@@ -20,6 +20,7 @@ from ads.fields import (
     FloatField,
     IntegerField,
     NameField,
+    NumericStringField,
     StringField,
     TextField,
     VirtualField,
@@ -28,6 +29,7 @@ from ads.models.affiliation import Affiliation
 from ads.models.document import Document
 from ads.models.journal import Journal
 from ads.models.library import Library
+from ads.evaluate import matches
 from ads.search import to_solr
 from ads.utils import flatten
 
@@ -44,7 +46,7 @@ from ads.utils import flatten
         ("abstract", TextField, False),
         ("keyword", TextField, True),
         ("bibcode", StringField, False),
-        ("id", StringField, False),
+        ("id", NumericStringField, False),
         ("volume", StringField, False),
         ("bibstem", StringField, True),
         ("aff_id", StringField, True),
@@ -543,3 +545,63 @@ def test_lazy_loading_inside_get(monkeypatch: pytest.MonkeyPatch) -> None:
     document: Any = Document.select(Document.year).where(Document.bibcode == bibcodes(1)[0]).get()
     with pytest.warns(LazyLoadWarning):
         assert document.citation_count == 0
+
+
+# Integer ids.
+
+
+@pytest.mark.parametrize(
+    ("as_int", "as_str"),
+    [
+        (Document.id == 12312494, Document.id == "12312494"),
+        (Document.id.exact(12312494), Document.id.exact("12312494")),  # type: ignore[arg-type]
+        (Document.id.in_([12312494]), Document.id.in_(["12312494"])),
+    ],
+)
+def test_int_id_is_its_decimal_string(as_int: Any, as_str: Any) -> None:
+    assert as_int == as_str
+    assert to_solr(as_int) == to_solr(as_str) == 'id:"12312494"'
+    assert matches(as_int, Document(id="12312494")) and matches(as_str, Document(id="12312494"))
+    assert not matches(as_int, Document(id="1231249"))
+
+
+def test_int_ids_in_a_set() -> None:
+    assert to_solr(Document.id.in_([1, "2"])) == 'id:("1" OR "2")'
+    assert to_solr(Document.id.not_in([1, 2])) == '*:* AND -id:("1" OR "2")'
+    assert matches(Document.id.in_([1, "2"]), Document(id="2"))
+
+
+@pytest.mark.parametrize("value", [-1, True, False, 1.0, 12312494.0, None, [1], ""])
+def test_id_rejects_other_values(value: Any) -> None:
+    with pytest.raises(QueryError):
+        Document.id == value  # noqa: B015
+
+
+@pytest.mark.parametrize("build", [lambda: Document.title == 5, lambda: Document.bibcode == 5, lambda: Document.scix_id == 5])
+def test_other_string_fields_still_reject_ints(build: Any) -> None:
+    with pytest.raises(QueryError, match="needs a str"):
+        build()
+
+
+def test_int_id_on_an_instance_is_held_as_a_string() -> None:
+    document = Document(id=12312494)  # type: ignore[arg-type]
+    assert document.id == "12312494"
+    assert document == Document(id="12312494") and hash(document) == hash(Document(id="12312494"))
+    assert repr(document) == "<Document: id='12312494'>"
+
+
+def test_get_by_int_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeSearch(make_docs(3))
+    monkeypatch.setattr("ads.client._default_client", fake.client())
+    document = Document.get(id=1001)
+    assert document.bibcode == bibcodes(3)[1] and document.id == "1001"
+    assert fake.params()["q"] == 'id:"1001"'
+
+
+def test_lazy_loading_by_int_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeSearch([{"id": "1001", "title": ["No bibcode"]}])
+    monkeypatch.setattr("ads.client._default_client", fake.client())
+    document = Document(id=1001)  # type: ignore[arg-type]
+    with pytest.warns(LazyLoadWarning, match="1 document"):
+        assert document.title == ["No bibcode"]
+    assert fake.params()["q"] == 'id:"1001"'

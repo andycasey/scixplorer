@@ -18,6 +18,9 @@ classified:
 - strings, and text types that keep the whole value as one token or split it
   only on list separators (``;``, ``:``, ``/``, ``|``): ``StringField``;
 - other tokenized text types: ``TextField``.
+
+A subclass of the expected class also matches (``NumericStringField`` is a
+``StringField``).
 """
 
 from __future__ import annotations
@@ -27,6 +30,7 @@ import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
+from ads import fields
 from ads.models.document import Document
 
 #: Model fields that are deliberately classified differently from the rule above.
@@ -148,7 +152,8 @@ def report(path: str) -> list[str]:
         if known is None:
             continue
         problems = []
-        if class_name != "VirtualField" and known.expected != class_name:
+        field = Document._fields[info.name]
+        if class_name != "VirtualField" and not isinstance(field, getattr(fields, known.expected)):
             problems.append(f"class {known.expected} -> {class_name}")
         if known.multivalued != info.multivalued and class_name != "VirtualField":
             problems.append(f"multivalued {known.multivalued} -> {info.multivalued}")

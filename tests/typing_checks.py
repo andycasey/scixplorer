@@ -24,6 +24,7 @@ from ads.fields import (
     IntegerField,
     NameField,
     NumericExpr,
+    NumericStringField,
     StringField,
     TextExpr,
     TextField,
@@ -58,6 +59,7 @@ def resolve_journals(paper: Paper) -> list[Journal]:
 class Paper(Model):
     _key = "bibcode"
     bibcode = StringField("Bibcode")
+    recid = NumericStringField("Record id")
     title = TextField("Title", multivalued=True)
     author = NameField("Authors", multivalued=True)
     editor = NameField()
@@ -78,6 +80,7 @@ def instance_access(paper: Paper) -> None:
     assert_type(paper.title, list[str] | None)
     assert_type(paper.author, list[str] | None)
     assert_type(paper.editor, str | None)
+    assert_type(paper.recid, str | None)
     assert_type(paper.year, int | None)
     assert_type(paper.years, list[int] | None)
     assert_type(paper.norm, float | None)
@@ -94,6 +97,7 @@ def class_access() -> None:
     assert_type(Paper.title, TextExpr)
     assert_type(Paper.author, TextExpr)
     assert_type(Paper.full, TextExpr)
+    assert_type(Paper.recid, TextExpr)
     assert_type(Paper.year, NumericExpr)
     assert_type(Paper.norm, NumericExpr)
     assert_type(Paper.entry_date, NumericExpr)
@@ -107,6 +111,8 @@ def class_access() -> None:
 def expressions() -> None:
     assert_type(Paper.year == 2020, Expr)
     assert_type(Paper.year != 2020, Expr)
+    assert_type(Paper.recid == 12312494, Expr)
+    assert_type(Paper.recid.in_([1, "2"]), Expr)
     assert_type(Paper.year > 2020, Expr)
     assert_type(Paper.year.between(1, 2), Expr)
     assert_type(Paper.year.in_([2019, 2020]), Expr)
@@ -155,6 +161,8 @@ def must_not_type_check(paper: Paper) -> None:
     TextField(multivalued=True, stord=False)  # type: ignore[call-overload]
     IntegerField(multivalued=1)  # type: ignore[call-overload]
     StringField(indexed="no")  # type: ignore[call-overload]
+    NumericStringField(multivalued=True)  # type: ignore[call-arg]
+    paper.recid = 5  # type: ignore[assignment]
 
 
 async def query_layer(aff: Affiliation) -> None:

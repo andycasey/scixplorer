@@ -22,6 +22,7 @@ from ..fields import (
     FloatField,
     IntegerField,
     NameField,
+    NumericStringField,
     StringField,
     TextField,
     VirtualField,
@@ -258,7 +259,10 @@ class Document(Model):
         "The names of the fields this record has values for; e.g. has == 'body' finds records with full text.",
         multivalued=True,
     )
-    id = StringField("A unique identifier for the document, curated by ADS.")
+    id = NumericStringField(
+        "A unique identifier for the document, curated by ADS: a string of digits. Queries also accept an "
+        "int, e.g. Document.id == 12312494."
+    )
     identifier = StringField(
         "Search by an array of alternative identifiers for a record. May contain alternative bibcodes, "
         "DOIs, and/or arXiv identifiers.",

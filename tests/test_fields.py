@@ -21,6 +21,7 @@ from ads.fields import (
     IntegerField,
     NameField,
     NumericExpr,
+    NumericStringField,
     StringField,
     TextExpr,
     TextField,
@@ -748,3 +749,41 @@ def test_handles_on_fields_that_are_not_indexed_can_still_be_made():
     assert isinstance(Returned.pages, TextExpr)
     assert Returned.links[0].position == (1, 1)
     assert (Returned.kept == "x") == Match(Returned.__dict__["kept"], "x")
+
+
+# --- strings of digits --------------------------------------------------------
+
+
+class Numbered:
+    """An owner of a string-of-digits field."""
+
+    recid = NumericStringField("Record id")
+
+
+def test_numeric_string_field_normalises_non_negative_ints():
+    field = Numbered.__dict__["recid"]
+    assert isinstance(field, StringField) and field.python_type is str and not field.multivalued
+    assert field.normalise(12) == "12" and field.normalise(0) == "0"
+    assert field.normalise("12") == "12"
+    assert field.normalise(-1) == -1 and field.normalise(True) is True
+    assert field.to_solr(12) == field.to_solr("12") == "12"
+    assert field.to_python(12) == "12"
+
+
+@pytest.mark.parametrize("value", [-1, True, 1.5, 2.0, b"1", ""])
+def test_numeric_string_field_rejects_other_values(value):
+    with pytest.raises(QueryError, match="needs a"):
+        Numbered.__dict__["recid"].to_solr(value)
+
+
+def test_numeric_string_handles_store_the_string():
+    field = Numbered.__dict__["recid"]
+    assert (Numbered.recid == 7) == Match(field, "7")
+    assert Numbered.recid.in_([7, "8"]) == In(field, ("7", "8"))
+    assert Numbered.recid.exact(7) == Match(field, "7", exact=True)  # type: ignore[arg-type]
+
+
+def test_other_fields_hold_values_as_given():
+    assert F["bibcode"].normalise(5) == 5
+    with pytest.raises(QueryError):
+        Rec.bibcode == 5  # noqa: B015

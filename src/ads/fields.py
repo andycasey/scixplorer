@@ -68,6 +68,7 @@ __all__ = [
     "IntegerField",
     "NameField",
     "NumericExpr",
+    "NumericStringField",
     "StringField",
     "TextExpr",
     "TextField",
@@ -126,7 +127,7 @@ class FieldExpr:
         if isinstance(value, (FieldExpr, Expr)):
             raise TypeError(f"{self!r} can only be compared with values, not with {value!r}")
         self.field.to_solr(value)
-        return value
+        return self.field.normalise(value)
 
     def __eq__(self, value: object) -> Expr:  # type: ignore[override]  # builds an Expr, not a bool
         return self._wrap(Match(self.field, self._check(value)))
@@ -454,6 +455,14 @@ class Field(Generic[T, H]):
     def _to_python(self, raw: Any) -> Any:
         return raw
 
+    def normalise(self, value: Any) -> Any:
+        """The form in which this field holds ``value``, in expressions and on instances.
+
+        Most fields hold values exactly as given; a field accepting several
+        spellings of one value (:class:`NumericStringField`) returns its canonical form.
+        """
+        return value
+
     def step(self, value: Any, direction: int) -> Any:
         """The adjacent value above (``direction=1``) or below (``-1``) ``value``.
 
@@ -585,6 +594,37 @@ class StringField(_StringLikeField[T]):
         ) -> None: ...
 
         def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+
+class NumericStringField(StringField[str]):
+    """A string of digits, such as ``Document.id``; queries also accept a non-negative int.
+
+    The value is a ``str`` (as the API returns it), and an int given in a query
+    or set on an instance is held as its decimal string, so
+    ``Document.id == 12312494`` is the same condition as ``Document.id == "12312494"``.
+    Bools, floats and negative ints are refused.
+    """
+
+    def __init__(
+        self,
+        doc: str = "",
+        *,
+        stored: bool = True,
+        indexed: bool = True,
+        solr_name: str | None = None,
+    ) -> None:
+        super().__init__(doc, stored=stored, indexed=indexed, solr_name=solr_name)
+
+    def normalise(self, value: Any) -> Any:
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+            return str(value)
+        return value
+
+    def _to_solr(self, value: Any) -> str:
+        value = self.normalise(value)
+        if not isinstance(value, str):
+            raise self._reject(value, "a str or a non-negative int")
+        return super()._to_solr(value)
 
 
 class NameField(_StringLikeField[T]):
