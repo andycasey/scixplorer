@@ -13,12 +13,18 @@ which endpoint to use. It is pure (no I/O) and runs these passes in order:
 3. Library membership: left to ADS as ``docs(library/<id>)``, or (with
    ``config.library_membership = "bibcodes"``) replaced by the library's bibcodes.
 4. Simplify; a filter that can never match needs no request at all.
+   Then per-record conditions (``Document.authors.any(...)``, see
+   :func:`_per_record`): each is translated into a condition on the
+   document's arrays. One that this expresses exactly is replaced by it,
+   wherever it is; any other must be a top-level ``&`` condition (optionally
+   negated), sends only its necessary condition, and is checked client-side
+   on each returned document (a *refinement*).
 5. The default collection (``config.collection``): an open search is limited
    to it by a final top-level ``database:`` condition, unless the filter names
    the collection itself or names specific documents (see :func:`_collection_scope`).
 6. Move large bibcode sets out of the query string: a top-level positive set is
    sent to ``/search/bigquery`` and a top-level negated set is excluded while
-   streaming.
+   streaming (with offset and limit then applied locally, as for a refinement).
 7. Compile, adding a final sort key so that pages are stable.
 
 :class:`SearchBackend` executes plans in the sans-IO protocol of :mod:`ads.query`.
@@ -28,16 +34,17 @@ from __future__ import annotations
 
 import weakref
 from collections.abc import Generator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
-from . import _config, solr
+from . import _config, evaluate, solr
 from .client import Request, Response
 from .exceptions import APIError, NotLocallyEvaluable, QueryError, UnsupportedQueryError
 from .expr import (
     EVERYTHING,
     NOTHING,
     And,
+    Constant,
     Expr,
     Func,
     In,
@@ -47,6 +54,7 @@ from .expr import (
     Not,
     Or,
     Order,
+    Quantified,
     Range,
     Raw,
     Related,
@@ -63,6 +71,7 @@ __all__ = [
     "BIGQUERY_PATH",
     "MAX_PAGE_SIZE",
     "MAX_RELATED_VALUES",
+    "POSITIONAL_FIELDS",
     "QUERY_PATH",
     "ResultPage",
     "SearchBackend",
@@ -76,6 +85,13 @@ MAX_RELATED_VALUES = 1000
 
 #: Most rows ADS returns per search request.
 MAX_PAGE_SIZE = 2000
+
+#: Document fields that ADS searches by position with ``pos()``, so that a
+#: per-author condition on one of them at given positions
+#: (``Document.authors[0].aff == ...``) is sent as ``pos(aff:..., 1)``. A
+#: positional condition on any other field is sent without ``pos()`` and checked
+#: client-side. Read at planning time. To be confirmed against the live API.
+POSITIONAL_FIELDS = frozenset({"author", "aff", "aff_id"})
 
 QUERY_PATH = "/search/query"
 BIGQUERY_PATH = "/search/bigquery"
@@ -102,10 +118,12 @@ class SearchPlan:
 
     ``q``, ``fl`` (Solr field names) and ``sort`` are the search parameters.
     ``bigquery_bibcodes`` is set when the search goes to ``/search/bigquery``
-    with those bibcodes; ``exclude_bibcodes`` are dropped from the results
-    while streaming (offset and limit are then applied locally). An ``empty``
-    plan sends no request: nothing can match. ``notes`` explain the planner's
-    decisions.
+    with those bibcodes. Results are filtered locally while streaming (and
+    offset and limit then applied locally) when ``exclude_bibcodes`` are to be
+    dropped or a ``refinement`` (a condition ``q`` only approximates) must
+    hold for each document; ``refinement_fl`` are the fields it reads. An
+    ``empty`` plan sends no request: nothing can match. ``notes`` explain the
+    planner's decisions.
     """
 
     q: str
@@ -115,6 +133,13 @@ class SearchPlan:
     exclude_bibcodes: frozenset[str] | None = None
     empty: bool = False
     notes: tuple[str, ...] = ()
+    refinement: Expr | None = None
+    refinement_fl: tuple[str, ...] = ()
+
+    @property
+    def filters_locally(self) -> bool:
+        """Whether results are filtered while streaming, so offset and limit are applied locally."""
+        return self.exclude_bibcodes is not None or self.refinement is not None
 
     @property
     def path(self) -> str:
@@ -195,7 +220,8 @@ def to_solr(query_or_expr: Query[Any] | Expr) -> str:
     """The Solr ``q`` string that a document query (or a filter expression) sends.
 
     For a search sent to ``/search/bigquery`` this is the query applied to the
-    uploaded bibcodes, without them. A filter that can never match gives the
+    uploaded bibcodes, without them; for one with a per-record condition
+    checked client-side, it holds only that condition's necessary part. A filter that can never match gives the
     query matching nothing. Raises :class:`~ads.exceptions.UnsupportedQueryError`
     if the query needs the bibcodes of a library (``library_membership="bibcodes"``).
     """
@@ -266,10 +292,17 @@ def _wrap_implicit(expr: Expr, model: type[Model]) -> Expr:
         if len(relations) == 1:
             return Related(relations[0], expr)
         if not relations:
-            raise QueryError(
+            message = (
                 f"{owner.__name__}.{expr.field.name} is not a field of {model.__name__}, and "
                 f"{model.__name__} has no relation to {owner.__name__}"
             )
+            for collection in model._collections.values():
+                if collection.record_model is owner:
+                    message += (
+                        f"; {owner.__name__} fields are used inside {collection.label()}.any(...) or "
+                        f".all(...), e.g. {collection.label()}.any({owner.__name__}.{expr.field.name} == ...)"
+                    )
+            raise QueryError(message)
         names = ", ".join(f"{model.__name__}.{rel.name}" for rel in relations)
         raise QueryError(
             f"{owner.__name__}.{expr.field.name} is ambiguous: say which relation it is "
@@ -283,16 +316,25 @@ def _resolve_related(node: Expr, model: type[Model], notes: list[str]) -> Expr:
     if not isinstance(node, Related) or model._relations.get(node.relation.name) is not node.relation:
         return node
     relation = node.relation
-    label = f"{model.__name__}.{relation.name}"
-    keys, how = _related_keys(relation, node.predicate, label)
-    key_field = model._fields[relation.key]
+    return _keys_condition(relation, node.predicate, model._fields[relation.key], f"{model.__name__}.{relation.name}", notes)
+
+
+def _keys_condition(
+    relation: Relation[Any], predicate: Expr, key_field: Field[Any, Any], label: str, notes: list[str]
+) -> Expr:
+    """``In(key_field, keys)`` for the related rows matching ``predicate`` (``NOTHING`` if none), with a note.
+
+    Shared by document relations and relations of a collection's records
+    (``Author.affiliation``), so both resolve and are limited alike.
+    """
+    keys, how = _related_keys(relation, predicate, label)
     if not keys:
         notes.append(f"{label}: {how}; no {relation.related_model.__name__} matched, so this condition matches nothing")
         return NOTHING
     if len(keys) > MAX_RELATED_VALUES:
         raise UnsupportedQueryError(
             f"{label}: {len(keys)} {relation.related_model.__name__} rows matched "
-            f"{_describe(node.predicate)}, but at most {MAX_RELATED_VALUES} {relation.key} values fit in "
+            f"{_describe(predicate)}, but at most {MAX_RELATED_VALUES} {relation.key} values fit in "
             f"one search request. Narrow the {relation.related_model.__name__} condition."
         )
     notes.append(f"{label}: {how}; matched as {relation.key} in {len(keys)} value(s)")
@@ -387,9 +429,14 @@ def _finish(query: Query[Any], resolved: _Resolved, library_bibcodes: Mapping[st
         expr = simplify(transform(expr, replace))
     elif any(isinstance(node, InLibrary) for node in walk(expr)):
         notes.append("library membership is tested by ADS with docs(library/<id>)")
+    expr, refinements, read = _per_record(expr, model, notes)
     fl, fl_note = _field_list(query)
     sort, sort_note = _sort(query)
     notes.append(fl_note)
+    added = [name for name in read if model._fields[name].solr_name not in fl]
+    if added:
+        fl = tuple(f.solr_name for name, f in model._fields.items() if f.solr_name in fl or name in added)
+        notes.append(f"also fetching {', '.join(added)} for the client-side check")
     notes.append(sort_note)
     if expr == NOTHING:
         notes.append("the filter can never match, so no request is made")
@@ -446,6 +493,7 @@ def _finish(query: Query[Any], resolved: _Resolved, library_bibcodes: Mapping[st
     remaining = rest[0] if len(rest) == 1 else And(tuple(rest)) if rest else EVERYTHING
     if scope is not None:
         remaining = simplify(And((remaining, scope)))
+    refinement = refinements[0] if len(refinements) == 1 else And(refinements) if refinements else None
     return SearchPlan(
         q=solr.compile(remaining),
         fl=fl,
@@ -453,7 +501,177 @@ def _finish(query: Query[Any], resolved: _Resolved, library_bibcodes: Mapping[st
         bigquery_bibcodes=bigquery,
         exclude_bibcodes=exclude,
         notes=tuple(notes),
+        refinement=refinement,
+        refinement_fl=tuple(f.solr_name for name, f in model._fields.items() if name in read),
     )
+
+
+# Per-record conditions.
+
+
+@dataclass(frozen=True)
+class _Server:
+    """What ADS is sent for (part of) a per-record condition.
+
+    ``expr`` is a condition on the owner's fields; it decides the condition
+    exactly if ``exact``, else it is only necessary and ``reason`` says why.
+    """
+
+    expr: Expr
+    exact: bool
+    reason: str = ""
+
+
+def _per_record(expr: Expr, model: type[Model], notes: list[str]) -> tuple[Expr, tuple[Expr, ...], tuple[str, ...]]:
+    """Pass 4b: translate per-record conditions (:class:`~ads.expr.Quantified`) for ADS.
+
+    Returns the filter to send, the refinements (top-level conditions to check
+    client-side on each returned document) and the owner fields they read.
+
+    Each condition is translated with :func:`_translate`. One translated
+    exactly is replaced in place, anywhere in the filter. Any other must be a
+    top-level ``&`` condition, optionally negated: its necessary condition (or
+    nothing, when negated) stays in the filter and the condition itself
+    becomes a refinement; elsewhere it raises ``UnsupportedQueryError``.
+    ``expr`` is simplified (so ``~~c`` and nested groups are already flat);
+    the result is simplified again.
+    """
+    if not any(isinstance(node, Quantified) for node in walk(expr)):
+        return expr, (), ()
+    kept: list[Expr] = []
+    refinements: list[Expr] = []
+    read: dict[str, None] = {}
+    for conjunct in expr.operands if isinstance(expr, And) else (expr,):
+        negated = isinstance(conjunct, Not) and isinstance(conjunct.operand, Quantified)
+        node = conjunct.operand if isinstance(conjunct, Not) else conjunct
+        if not isinstance(node, Quantified):
+            kept.append(transform(conjunct, lambda n: _replace_exact(n, model, notes)))
+            continue
+        server = _translate(node, model, notes)
+        label = _label(node)
+        if server.exact:
+            kept.append(~server.expr if negated else server.expr)
+            notes.append(f"{label}: expressed exactly in the query as {solr.compile(server.expr)}")
+            continue
+        try:
+            evaluate.predicate(conjunct)
+        except NotLocallyEvaluable as exc:
+            raise NotLocallyEvaluable(
+                f"{label} needs a client-side check ({server.reason}), but cannot be evaluated in Python: {exc}"
+            ) from exc
+        collection = node.collection
+        fields = collection.owner_fields(collection.fields_read(node.predicate))
+        read.update(dict.fromkeys(fields))
+        refinements.append(conjunct)
+        if negated:
+            sent = "nothing is sent to ADS for it (it is negated)"
+        else:
+            kept.append(server.expr)
+            sent = f"ADS is sent the necessary condition {solr.compile(server.expr)}"
+        notes.append(
+            f"{'~' if negated else ''}{label}: checked client-side on each returned document "
+            f"({server.reason}), reading {', '.join(fields)}; {sent}. Values are compared in Python: "
+            f"names with the documented initial/full-name rule and text by its words, without the "
+            f"curated synonyms known only to ADS. Offset and limit are then applied locally"
+        )
+    return simplify(And(tuple(kept))), tuple(refinements), tuple(read)
+
+
+def _replace_exact(node: Expr, model: type[Model], notes: list[str]) -> Expr:
+    """A per-record condition below the top level: its exact translation, or ``UnsupportedQueryError``."""
+    if not isinstance(node, Quantified):
+        return node
+    server = _translate(node, model, notes)
+    label = _label(node)
+    if not server.exact:
+        raise UnsupportedQueryError(
+            f"{label} needs a client-side check ({server.reason}), so it must be a top-level & condition "
+            f"of the query, optionally negated with ~, e.g. .where({label} & (...)); here it is inside "
+            f"an |, a nested ~ or an operator. Restructure the query so that it is a top-level & "
+            f"condition, or make it exact: a single condition on {node.collection.record_model.__name__} "
+            f"fields, several joined with |, or conditions on one position ({node.collection.label()}[0].any(...))."
+        )
+    notes.append(f"{label}: expressed exactly in the query as {solr.compile(server.expr)}")
+    return server.expr
+
+
+def _label(node: Quantified) -> str:
+    return f"{node.collection.label(node.positions)}.{node.quantifier}(...)"
+
+
+def _translate(node: Quantified, model: type[Model], notes: list[str]) -> _Server:
+    """The condition on ``model``'s fields that ADS is sent for ``node``, and whether it is exact.
+
+    Leaves on record fields are moved to the owner field each is searched
+    through (the collection's sources); a relation of the record model resolves
+    to its keys as a document relation does. With positions, a leaf on a field in
+    :data:`POSITIONAL_FIELDS` is wrapped in ``pos()``, any other is sent without
+    it (not exact). ``|`` is exact if every part is; ``&`` only if one record is
+    selected and every part is exact (otherwise different records could
+    satisfy different parts); ``~`` and record fields ADS cannot search send
+    nothing; ``all(...)`` is never exact. A condition that can never match is
+    ``NOTHING``, exactly.
+    """
+    collection = node.collection
+    if not issubclass(model, collection.owner):
+        raise QueryError(f"{_label(node)} is a condition on {collection.owner.__name__}, not on {model.__name__}")
+    server = _server(node.predicate, node, model, notes)
+    record = collection.record_model.__name__.lower()
+    if node.quantifier == "all" and server.exact:
+        server = _Server(server.expr, False, f"all(...) needs every {record} checked")
+    expr = simplify(server.expr)
+    if expr == NOTHING:
+        return _Server(NOTHING, True)
+    return _Server(expr, server.exact, server.reason)
+
+
+def _server(predicate: Expr, node: Quantified, model: type[Model], notes: list[str]) -> _Server:
+    """Translate one part of ``node``'s predicate (see :func:`_translate`)."""
+    collection, positions = node.collection, node.positions
+    record = collection.record_model
+    if isinstance(predicate, Constant):
+        where = "" if positions is None else " at those positions"
+        return _Server(predicate, predicate == NOTHING, f"whether there is any {record.__name__.lower()}{where}")
+    if isinstance(predicate, (Or, And)):
+        parts = [_server(operand, node, model, notes) for operand in predicate.operands]
+        reasons = [part.reason for part in parts if not part.exact]
+        if isinstance(predicate, Or):
+            return _Server(Or(tuple(p.expr for p in parts)), not reasons, reasons[0] if reasons else "")
+        single = positions is not None and positions[0] == positions[1]
+        if not single:
+            reasons.insert(0, f"conditions joined with & may be met by different {record.__name__.lower()}s")
+        return _Server(And(tuple(p.expr for p in parts)), not reasons, reasons[0] if reasons else "")
+    if isinstance(predicate, Not):
+        return _Server(EVERYTHING, False, "a ~ inside it")
+    if isinstance(predicate, Related):
+        relation = predicate.relation
+        source = collection.sources.get(relation.key)
+        if source is None or source.search is None:
+            return _Server(EVERYTHING, False, f"{record.__name__}.{relation.name} cannot be searched by ADS")
+        label = f"{_label(node)}: {record.__name__}.{relation.name}"
+        condition = _keys_condition(relation, predicate.predicate, model._fields[source.search], label, notes)
+        if condition == NOTHING:
+            return _Server(NOTHING, True)
+        return _position(simplify(condition), source.search, positions)
+    if isinstance(predicate, (Match, In, Like, Range)):
+        field = predicate.field
+        source = collection.sources.get(field.name)
+        if source is None or source.search is None:
+            return _Server(EVERYTHING, False, f"{record.__name__}.{field.name} cannot be searched by ADS")
+        leaf: Expr = replace(predicate, field=model._fields[source.search])
+        if isinstance(leaf, (Match, In)) and field.match_kind not in solr.EXPANDED_MATCH_KINDS:
+            leaf = replace(leaf, exact=False)
+        return _position(simplify(leaf), source.search, positions)
+    raise QueryError(f"{_label(node)} cannot contain {predicate!r}")
+
+
+def _position(leaf: Expr, field_name: str, positions: tuple[int, int] | None) -> _Server:
+    """``leaf`` restricted to ``positions``: in ``pos()`` if ADS searches the field by position."""
+    if positions is None:
+        return _Server(leaf, True)
+    if field_name in POSITIONAL_FIELDS:
+        return _Server(Func("pos", (leaf, *positions)), True)
+    return _Server(leaf, False, f"{field_name} is not searched by position (search.POSITIONAL_FIELDS)")
 
 
 def _collection_scope(expr: Expr, model: type[Model]) -> tuple[Expr | None, str | None]:

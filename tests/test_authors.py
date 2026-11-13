@@ -417,6 +417,14 @@ def test_values_are_checked_as_for_any_field() -> None:
         Document.authors.any(Author.orcid == None)  # noqa: E711
 
 
+# Author fields outside .any().
+
+
+def test_author_field_outside_any_points_to_authors() -> None:
+    with pytest.raises(QueryError, match=r"Author fields are used inside Document\.authors\.any\(\.\.\.\)"):
+        to_solr(Author.name == "Casey, A")
+
+
 # Evaluation.
 
 
