@@ -104,6 +104,45 @@ def test_equality_by_bibcode() -> None:
     assert len({Document(bibcode="X"), Document(bibcode="X"), Document(bibcode="Y")}) == 2
 
 
+def test_fields_returned_but_not_indexed() -> None:
+    assert {name for name, field in Document._fields.items() if not field.indexed} == {"links_data", "page_range"}
+    info = {i.name: i for i in Document.describe()}
+    assert info["page_range"].indexed is False and info["page_range"].stored is True
+    assert info["title"].indexed is True and info["full"].indexed is True
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: Document.page_range == "16-20",
+        lambda: Document.page_range.like("16*"),
+        lambda: Document.links_data.in_(["x"]),
+        lambda: Document.links_data[0] == "x",
+        lambda: Document.page_range.desc(),
+        lambda: Document.top_n(5, "star", Document.page_range),
+    ],
+)
+def test_fields_not_indexed_cannot_be_searched(build: Any) -> None:
+    with pytest.raises(QueryError, match=r"Document\.(page_range|links_data) can be returned but not searched"):
+        build()
+
+
+@pytest.mark.parametrize("key", [Document.page_range, "page_range"])
+def test_sorting_by_a_field_that_is_not_indexed_is_refused_when_planned(key: Any) -> None:
+    query = Document.select().order_by(key)
+    with pytest.raises(QueryError, match="Cannot sort by Document.page_range: it is not indexed"):
+        query.explain()
+
+
+def test_fields_not_indexed_can_be_selected_and_read() -> None:
+    fake = FakeSearch(make_docs(2, page_range="16-20", links_data=['{"url": "x"}']))
+    query = Document.select(Document.page_range, Document.links_data).using(fake.client())
+    documents = query.all()
+    assert fake.params()["fl"] == "bibcode,id,links_data,page_range"
+    assert [d.page_range for d in documents] == ["16-20", "16-20"]
+    assert documents[0].links_data == ['{"url": "x"}']
+
+
 def test_tab_completion_lists_operators() -> None:
     names = dir(Document)
     for name in ("citations", "join_citations", "top_n", "pos", "in_", "raw", "journal", "affiliation", "title"):

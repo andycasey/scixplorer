@@ -127,6 +127,8 @@ def definitions_and_models(row: dict[str, Any]) -> None:
     assert_type(IntegerField(multivalued=True), IntegerField[list[int]])
     assert_type(TextField(multivalued=True, solr_name="t"), TextField[list[str]])
     assert_type(DateField(stored=False), DateField[date])
+    assert_type(StringField("doc", indexed=False), StringField[str])
+    assert_type(IntegerField(multivalued=True, indexed=False), IntegerField[list[int]])
     assert_type(StringField().to_python("x"), str | None)
     assert_type(DateTimeField(multivalued=True).to_python([]), list[datetime] | None)
     relation = Relation(Journal, key="k", related_key="abbreviation", resolve=resolve_journal)
@@ -152,6 +154,7 @@ def must_not_type_check(paper: Paper) -> None:
     _year: int = paper.year  # type: ignore[assignment]
     TextField(multivalued=True, stord=False)  # type: ignore[call-overload]
     IntegerField(multivalued=1)  # type: ignore[call-overload]
+    StringField(indexed="no")  # type: ignore[call-overload]
 
 
 async def query_layer(aff: Affiliation) -> None:

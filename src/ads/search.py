@@ -489,9 +489,15 @@ def _sort(query: Query[Any]) -> tuple[str, str]:
     model = query.model
     for order in query.order:
         field = order.field
-        if isinstance(field, VirtualField) or field.multivalued:
-            kind = "search-only" if isinstance(field, VirtualField) else "multivalued"
-            raise QueryError(f"Cannot sort by {model.__name__}.{field.name}: it is {kind}")
+        if isinstance(field, VirtualField):
+            kind = "search-only"
+        elif field.multivalued:
+            kind = "multivalued"
+        elif not field.indexed:
+            kind = "not indexed: it can be returned but not searched or sorted by"
+        else:
+            continue
+        raise QueryError(f"Cannot sort by {model.__name__}.{field.name}: it is {kind}")
     tiebreaker = solr.compile_order((Order(model._fields["id"]),))
     given = solr.compile_order(query.order)
     if given is None:

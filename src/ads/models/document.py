@@ -273,6 +273,7 @@ class Document(Model):
     links_data = StringField(
         "Information on what linked documents are available (JSON strings). Returned, but not searchable.",
         multivalued=True,
+        indexed=False,
     )
     mention = StringField("Bibcodes of the records (e.g. software) this document mentions.", multivalued=True)
     mention_count = IntegerField("The number of records (e.g. software) this document mentions.")
@@ -288,7 +289,7 @@ class Document(Model):
     page_count = IntegerField(
         "If page_range is present, it gives the difference between the first and last page numbers in the range."
     )
-    page_range = StringField("The page range of the record. Returned, but not searchable.")
+    page_range = StringField("The page range of the record. Returned, but not searchable.", indexed=False)
     planetary_feature = TextField("Planetary features mentioned in the record.", multivalued=True)
     planetary_feature_id = IntegerField("Identifiers of those planetary features.", multivalued=True)
     property = StringField(
@@ -497,7 +498,8 @@ class Document(Model):
         if isinstance(order_by, Order):
             args.append(Order(cls._field(order_by.field), order_by.descending))
         elif isinstance(order_by, FieldExpr):
-            args.append(Order(cls._field(order_by)))
+            cls._field(order_by)
+            args.append(order_by.asc())
         elif order_by is not None:
             raise TypeError(f"top_n() order_by must be an Order or a field, not {order_by!r}")
         return Func("topn", tuple(args))

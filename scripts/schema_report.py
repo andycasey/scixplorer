@@ -8,8 +8,9 @@ The schema is ``deploy/adsabs/server/solr/collection1/conf/schema.xml`` in the
 public ``adsabs/montysolr`` repository. It is read as data only. The report
 lists the fields the model lacks, the model fields the schema lacks (virtual
 query-parser fields and Solr's ``score`` are expected there), and every
-difference in field class, multivaluedness or storage. The expected field class
-is derived from each field type the same way ``Document`` was classified:
+difference in field class, multivaluedness, storage or indexing. The expected
+field class is derived from each field type the same way ``Document`` was
+classified:
 
 - ``int``/``long`` point fields: ``IntegerField``; ``float``/``double``: ``FloatField``;
   dates: ``DateTimeField``; booleans: ``BooleanField``; the ``date_string`` type: ``DateField``;
@@ -139,7 +140,7 @@ def report(path: str) -> list[str]:
     for name, (info, class_name) in model.items():
         if name not in schema:
             kind = "virtual" if name in QUERY_PARSER else "pseudo" if name == "score" else "UNKNOWN"
-            lines.append(f"{kind:9} {name:36} {class_name}")
+            lines.append(f"{kind:9} {name:36} {class_name:14} indexed={info.indexed}")
     lines.append("")
     lines.append("# Differences (schema -> Document)")
     for name, (info, class_name) in model.items():
@@ -153,8 +154,8 @@ def report(path: str) -> list[str]:
             problems.append(f"multivalued {known.multivalued} -> {info.multivalued}")
         if known.stored != info.stored:
             problems.append(f"stored {known.stored} -> {info.stored}")
-        if info.stored and not known.indexed:
-            problems.append("not indexed: returned, but cannot be searched")
+        if known.indexed != info.indexed:
+            problems.append(f"indexed {known.indexed} -> {info.indexed}")
         if problems:
             note = f"  ({DELIBERATE[name]})" if name in DELIBERATE else ""
             lines.append(f"{name:36} {known.type:38} {'; '.join(problems)}{note}")
