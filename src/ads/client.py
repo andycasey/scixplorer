@@ -482,12 +482,21 @@ class Client:
         )
 
 
+#: Services whose second path segment is an argument (a bibcode), not an endpoint.
+_SINGLE_SEGMENT_SERVICES = frozenset({"resolver"})
+
+
 def service_for(path: str) -> str:
     """Return the rate-limit service of an API path: its first two segments.
 
     ``/search/query`` -> ``search/query``; ``/biblib/libraries/abc`` -> ``biblib/libraries``.
+    The resolver is one service whatever document is asked about:
+    ``/resolver/2015ApJ...808...16N/esource`` -> ``resolver``.
     """
-    return "/".join([segment for segment in path.split("/") if segment][:2])
+    segments = [segment for segment in path.split("/") if segment]
+    if segments and segments[0] in _SINGLE_SEGMENT_SERVICES:
+        return segments[0]
+    return "/".join(segments[:2])
 
 
 def _join_url(base: str, path: str) -> str:

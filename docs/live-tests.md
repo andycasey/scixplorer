@@ -25,9 +25,9 @@ Useful additions:
 ### The token
 
 The token is found exactly as the client finds it, by `ads._config.config.resolve_tokens()`:
-the environment variable `ADS_API_TOKEN` (or `ADS_DEV_KEY`), else the first line of
-`~/.ads/token` (or `~/.ads/dev_key`). Without one, the API tests are skipped with
-the message "no ADS API token: set ADS_API_TOKEN ...". The token is never printed:
+the environment variable `SCIX_API_TOKEN` (or `ADS_API_TOKEN`, `ADS_DEV_KEY`), else the first line of
+`~/.scix/token` (or `~/.ads/token`, `~/.ads/dev_key`). Without one, the API tests are skipped with
+the message "no API token: set SCIX_API_TOKEN ...". The token is never printed:
 the transport records no request headers, error texts are redacted where the
 suite builds them, and a report hook replaces the token in every failure text
 and captured output with `[REDACTED]`.

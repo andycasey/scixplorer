@@ -35,8 +35,8 @@ from .support import BudgetExhausted, Findings, LiveTransport, scrub_report
 LIBRARY_ENV = "SCIX_LIVE_LIBRARY"
 
 NO_TOKEN = (
-    "no ADS API token: set ADS_API_TOKEN (or ADS_DEV_KEY), or put the token on the first line "
-    "of ~/.ads/token (see docs/live-tests.md)"
+    "no API token: set SCIX_API_TOKEN (or ADS_API_TOKEN), or put the token on the first line "
+    "of ~/.scix/token (see docs/live-tests.md)"
 )
 
 TRANSPORT = pytest.StashKey[LiveTransport]()

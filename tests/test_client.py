@@ -149,6 +149,8 @@ def test_service_for():
     assert service_for("/search/query") == "search/query"
     assert service_for("search/bigquery") == "search/bigquery"
     assert service_for("/biblib/libraries/abc123") == "biblib/libraries"
+    assert service_for("/resolver/2015ApJ...808...16N") == "resolver"
+    assert service_for("/resolver/2015ApJ...808...16N/esource") == "resolver"
     assert service_for("/biblib/") == "biblib"
 
 

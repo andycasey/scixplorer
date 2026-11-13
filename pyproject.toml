@@ -28,7 +28,7 @@ packages = ["src/ads"]
 testpaths = ["tests"]
 addopts = "-q"
 markers = [
-    "live: runs against the real ADS API (needs ADS_API_TOKEN; enable with --live)",
+    "live: runs against the real SciX API (needs SCIX_API_TOKEN; enable with --live)",
 ]
 
 [tool.mypy]
