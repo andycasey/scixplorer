@@ -32,6 +32,7 @@ from ..query import Query
 from ..search import ResultPage, SearchBackend
 from ..utils import parse_bibcode, to_bibcodes
 from .affiliation import Affiliation
+from .author import document_authors
 from .journal import Journal
 from .library import Library
 
@@ -585,6 +586,10 @@ class Document(Model):
         """Documents not in ``source`` (see :meth:`in_`)."""
         return ~cls.in_(source)
 
+    # Authors.
+
+    authors = document_authors()
+
     # Lazy loading.
 
     def _load_missing(self, field: Field[Any, Any]) -> Any:
@@ -595,15 +600,32 @@ class Document(Model):
         """
         if not field.stored:
             raise AttributeError(f"Document.{field.name} is search-only and has no value on an instance")
-        if field.name in self._not_lazy or self._key_value() is None:
-            return None
+        self._load_fields((field,))
+        return self._data.get(field.name)
+
+    def _load_fields(self, fields: Iterable[Field[Any, Any]]) -> None:
+        """Load those of ``fields`` this document lacks, for it and the documents of its page lacking any of them.
+
+        One search request fetches them all (one per identifier field in use;
+        in practice only ``bibcode``), with one ``LazyLoadWarning`` naming them.
+        Search-only fields, identifiers and ``score`` are never loaded, and a
+        document with no identifier loads nothing.
+        """
+        order = list(self._fields)
+        missing = sorted(
+            (field for field in fields if field.stored and field.name not in self._data and field.name not in self._not_lazy),
+            key=lambda field: order.index(field.name),
+        )
+        if not missing or self._key_value() is None:
+            return
+        names = {field.name for field in missing}
         page = self._page
         candidates: list[Document] = [self]
         if page is not None:
             candidates += [
                 member
                 for member in page.members()
-                if isinstance(member, Document) and member is not self and field.name not in member._data
+                if isinstance(member, Document) and member is not self and not names <= member._data.keys()
             ]
         groups: dict[str, list[Document]] = {}
         for document in candidates:
@@ -612,23 +634,26 @@ class Document(Model):
                 groups.setdefault(identity[0], []).append(document)
         count = sum(len(group) for group in groups.values())
         requests = "another search request" if len(groups) == 1 else f"{len(groups)} more search requests"
+        labels = ", ".join(f"Document.{field.name}" for field in missing)
+        verb, them = ("was", "it") if len(missing) == 1 else ("were", "them")
         warnings.warn(
-            f"Document.{field.name} was not fetched; loading it for {count} document(s) with "
+            f"{labels} {verb} not fetched; loading {them} for {count} document(s) with "
             f"{requests}. Select the fields you need, e.g. "
-            f"Document.select(Document.{field.name}, ...), to avoid this.",
+            f"Document.select({labels}, ...), to avoid this.",
             LazyLoadWarning,
             stacklevel=_outside_package_stacklevel(),
         )
         client = None if page is None else page.client
         for name, group in groups.items():
             identifier: FieldExpr = getattr(Document, name)
-            query = Document.select(field).where(identifier.in_([document._data[name] for document in group]))
+            query = Document.select(*missing).where(identifier.in_([document._data[name] for document in group]))
             loaded = {row._data.get(name): row for row in query.using(client)}
             for document in group:
                 row = loaded.get(document._data[name])
-                document._data[field.name] = None if row is None else row._data.get(field.name)
+                for field in missing:
+                    if field.name not in document._data:
+                        document._data[field.name] = None if row is None else row._data.get(field.name)
                 document._related.clear()
-        return self._data[field.name]
 
 
 def SearchQuery(
