@@ -14,12 +14,12 @@ Search with Python expressions on the model classes::
 
 __version__ = "1.0.0.dev0"
 
-# The version is defined before these imports because the client reads it.
-from . import exceptions
+# The version is defined before these imports because the client and ads.data read it.
+from . import data, exceptions
 from ._config import Config, config
 from .client import Client, get_default_client, set_default_client
 from .expr import days_ago, now
-from .models import Affiliation, Document, Journal, Library, SearchQuery
+from .models import Affiliation, Document, Journal, Library, PlanetaryFeature, SearchQuery, UATConcept
 from .services import citation_helper, export, resolver, vis
 
 __all__ = [
@@ -29,9 +29,12 @@ __all__ = [
     "Document",
     "Journal",
     "Library",
+    "PlanetaryFeature",
     "SearchQuery",
+    "UATConcept",
     "citation_helper",
     "config",
+    "data",
     "days_ago",
     "exceptions",
     "export",
