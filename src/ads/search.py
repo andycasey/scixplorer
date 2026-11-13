@@ -278,7 +278,7 @@ def _resolve_related(node: Expr, model: type[Model], notes: list[str]) -> Expr:
     if len(keys) > MAX_RELATED_VALUES:
         raise UnsupportedQueryError(
             f"{label}: {len(keys)} {relation.related_model.__name__} rows matched "
-            f"{node.predicate!r}, but at most {MAX_RELATED_VALUES} {relation.key} values fit in "
+            f"{_describe(node.predicate)}, but at most {MAX_RELATED_VALUES} {relation.key} values fit in "
             f"one search request. Narrow the {relation.related_model.__name__} condition."
         )
     notes.append(f"{label}: {how}; matched as {relation.key} in {len(keys)} value(s)")
@@ -307,7 +307,15 @@ def _related_keys(relation: Relation[Any], predicate: Expr, label: str) -> tuple
         ) from exc
     keys = (getattr(row, relation.related_key) for row in rows)
     found = list(dict.fromkeys(key for key in keys if key is not None))
-    return found, f"{len(rows)} {related.__name__} row(s) matched {predicate!r}"
+    return found, f"{len(rows)} {related.__name__} row(s) matched {_describe(predicate)}"
+
+
+def _describe(predicate: Expr) -> str:
+    """A predicate over a related model, written in Solr syntax for notes (its repr if that fails)."""
+    try:
+        return solr.compile(predicate)
+    except (QueryError, TypeError):
+        return repr(predicate)
 
 
 def _local_rows(model: type[Model], query: Query[Any]) -> list[Any]:
@@ -597,16 +605,17 @@ class SearchBackend:
             return 0
         exclude = search.exclude_bibcodes
         if exclude is None:
-            request = search.request(0, 0, fl=("bibcode",))
+            request = search.request(0, 0, fl=(query.model._fields["bibcode"].solr_name,))
             response = yield request
             return _read_page(request, response)[1]
         page_size = _page_size()
+        bibcode_name = query.model._fields["bibcode"].solr_name
         total = start = 0
         while True:
-            request = search.request(start, page_size, fl=("bibcode",))
+            request = search.request(start, page_size, fl=(bibcode_name,))
             response = yield request
             docs, found = _read_page(request, response)
-            total += sum(1 for doc in docs if doc.get("bibcode") not in exclude)
+            total += sum(1 for doc in docs if doc.get(bibcode_name) not in exclude)
             start += len(docs)
             if not docs or start >= found:
                 return total
