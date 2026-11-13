@@ -4,7 +4,6 @@ import subprocess
 import sys
 from importlib import resources
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -45,6 +44,13 @@ def no_default_client(monkeypatch: pytest.MonkeyPatch) -> None:
         raise AssertionError("affiliation queries must not need a client")
 
     monkeypatch.setattr(ads.client, "get_default_client", fail)
+
+
+@pytest.fixture(autouse=True)
+def empty_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Read the packaged snapshot even if the user has downloaded fresher data."""
+    monkeypatch.setenv("SCIX_CACHE_DIR", str(tmp_path / "cache"))
+    affiliation_module._reset()
 
 
 def test_one_affiliation_per_child_id() -> None:
@@ -162,10 +168,9 @@ def test_str_and_repr() -> None:
     assert repr(Affiliation()) == "<Affiliation>"
 
 
-def test_loader_merges_and_resolves_countries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    data = tmp_path / "data"
-    data.mkdir()
-    (data / "affiliations.tsv").write_bytes(
+def test_loader_merges_and_resolves_countries() -> None:
+    files: dict[str, str] = {}
+    files["affiliations.tsv"] = (
         b"Parent\tChild\tAbbrev\tCanonical Name\r\n"
         b"0\tA1\tOne \tFirst One\r\n"
         b"A1\tA2\tTwo\tSecond\r\n"
@@ -174,16 +179,15 @@ def test_loader_merges_and_resolves_countries(tmp_path: Path, monkeypatch: pytes
         b"0\tA3\tThree\tThird\r\n"
         b"A3\tA4\tFour\tFourth\r\n"
         b"\r\n"
-    )
-    (data / "affiliations_country.tsv").write_bytes(
+    ).decode()
+    files["affiliations_country.tsv"] = (
         b"Country\t[Aff_id_parent]\tAff_id_child\tInst\tAffiliation\r\n"
         b"Narnia\t\tA1\tOne\tFirst One\r\n"
         b"\tA1\tA2\tTwo\tSecond\r\n"
         b"Gondor\tA3\tA2\tTwo-b\tSecond (b)\r\n"
         b"Rohan \tA3\t\tThree\tThird\r\n"
-    )
-    monkeypatch.setattr(affiliation_module, "resources", SimpleNamespace(files=lambda package: tmp_path))
-    loaded = {a.id: a for a in affiliation_module._load.__wrapped__()}
+    ).decode()
+    loaded = {a.id: a for a in affiliation_module._parse(files.__getitem__)}
     assert list(loaded) == ["A1", "A2", "A3", "A4"]
     assert (loaded["A1"].abbreviation, loaded["A1"].country, loaded["A1"].parent_ids) == ("One", "Narnia", ())
     # Empty country for (A1, A2): the later (A3, A2) row supplies one; names come from the first row.
