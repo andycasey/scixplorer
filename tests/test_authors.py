@@ -309,6 +309,14 @@ def test_only_missing_fields_are_loaded() -> None:
     assert fake.params()["fl"] == "bibcode,id,orcid_other,orcid_pub,orcid_user,scix_id"
 
 
+def test_evaluating_loads_only_what_the_condition_reads() -> None:
+    fake = FakeSearch(rows(2))
+    documents = narrow_page(fake)
+    with pytest.warns(LazyLoadWarning, match=r"^Document\.aff_id, Document\.author were not fetched"):
+        assert matches(Document.authors.any(Author.affiliation.country == "Australia"), documents[0])
+    assert fake.params()["fl"] == "aff_id,author,bibcode,id,scix_id"
+
+
 def test_hand_built_document_without_identifier_loads_nothing() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
@@ -407,3 +415,71 @@ def test_values_are_checked_as_for_any_field() -> None:
         Document.authors[0].name == 3  # noqa: B015
     with pytest.raises(QueryError, match="None"):
         Document.authors.any(Author.orcid == None)  # noqa: E711
+
+
+# Evaluation.
+
+
+@pytest.mark.parametrize(
+    ("expr", "expected"),
+    [
+        (Document.authors.any(Author.name == "Casey, A"), True),
+        (Document.authors.any(Author.name.exact("Casey, A")), False),
+        (Document.authors.any((Author.name == "Casey, A") & (Author.affiliation.country == "Australia")), True),
+        (Document.authors.any((Author.name == "Ness, M") & (Author.affiliation.country == "Australia")), False),
+        (Document.authors.any((Author.name == "Ness, M") | (Author.affiliation.country == "Chile")), True),
+        (Document.authors.any(Author.affiliation.country == "New Zealand"), True),
+        (Document.authors.all(Author.affiliation.country == "New Zealand"), False),
+        (Document.authors[0:1].all(Author.affiliation.country == "New Zealand"), True),
+        (Document.authors.all(Author.name.like("*, *")), True),
+        (Document.authors.all(Author.orcid.like("0000-*")), False),
+        (Document.authors[0:2].all(Author.orcid.like("0000-*")), True),
+        (Document.authors.any(~(Author.aff_id == UNKNOWN) & (Author.aff == "New York University")), False),
+        (Document.authors[0].name == "Casey, A", True),
+        (Document.authors[1].name == "Casey, A", False),
+        (Document.authors[1].orcid == "0000-0001-5082-6693", True),
+        (Document.authors[1:3].any(Author.email.like("*@example.org")), False),
+        (Document.authors[2].affiliation == UNKNOWN, False),
+        (Document.authors[2].aff_id == UNKNOWN, True),
+        (Document.authors[5].name == "Casey, A", False),
+        (Document.authors[5].any(EVERYTHING), False),
+        (Document.authors[2].any(EVERYTHING), True),
+        (Document.authors.any(Author.position == 1), True),
+    ],
+)
+def test_matches_a_loaded_document(expr: Any, expected: bool) -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert matches(expr, loaded()) is expected
+
+
+def test_all_needs_an_author() -> None:
+    document = loaded({"bibcode": "X", "author": []})
+    assert not matches(Document.authors.all(EVERYTHING), document)
+    assert not matches(Document.authors.all(~(Author.name == "x")), document)
+    assert not matches(Document.authors.any(EVERYTHING), document)
+
+
+def test_matches_through_the_document_relation_and_the_author_relation_agree() -> None:
+    document = loaded()
+    for country in ("Australia", "New Zealand", "Chile"):
+        assert matches(Document.affiliation.country == country, document) == matches(
+            Document.authors.any(Author.affiliation.country == country), document
+        )
+
+
+def test_not_locally_evaluable_propagates() -> None:
+    with pytest.raises(NotLocallyEvaluable):
+        matches(Document.authors.any(Author.name == SolrLiteral("x")), loaded())
+
+
+def test_matches_needs_a_document() -> None:
+    with pytest.raises(TypeError, match="holds records of Document objects"):
+        matches(Document.authors.any(Author.name == "x"), Author(name="x"))
+
+
+def test_predicates_are_ordinary_author_predicates() -> None:
+    casey = loaded().authors[0]
+    assert matches((Author.name == "Casey, A") & (Author.affiliation.country == "New Zealand"), casey)
+    assert matches(Related(Author._relations["affiliation"], Match(Affiliation._fields["id"], AU[0])), casey)
+    assert not matches(Not(Author.email.like("*@example.org")), casey)

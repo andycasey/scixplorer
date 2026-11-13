@@ -4,7 +4,9 @@ Used for models held in memory (journals, affiliations, libraries). The
 semantics follow Solr where that makes sense: logic is two-valued, and a
 missing (``None``) value never satisfies a positive predicate, so its negation
 is true. Multivalued values (lists/tuples, flattened recursively) satisfy a
-predicate if any element does.
+predicate if any element does. A per-record condition (``Document.authors.any(...)``)
+is evaluated over the records built from the object's arrays, which is also
+how document searches check such conditions client-side.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ from .expr import (
     Not,
     Or,
     Order,
+    Quantified,
     Range,
     Raw,
     Related,
@@ -73,6 +76,8 @@ def predicate(expr: Expr) -> Predicate:
         return lambda obj: value
     if isinstance(expr, Related):
         return _related(expr)
+    if isinstance(expr, Quantified):
+        return _quantified(expr)
     if isinstance(expr, (Match, In, Like, Range)):
         field = expr.field
         if not field.stored:
@@ -98,6 +103,26 @@ def _related(expr: Related) -> Predicate:
     inner = predicate(expr.predicate)
     name = expr.relation.name
     return lambda obj: any(inner(related) for related in _flatten(getattr(obj, name)))
+
+
+def _quantified(expr: Quantified) -> Predicate:
+    """True if any (or every, and at least one) selected record of the object satisfies the predicate.
+
+    Records are built from the object's arrays, reading only the fields the
+    predicate needs (an object of the right model is required).
+    """
+    inner = predicate(expr.predicate)
+    collection, every = expr.collection, expr.quantifier == "all"
+    names = collection.fields_read(expr.predicate)
+    start, end = (1, None) if expr.positions is None else expr.positions
+
+    def test(obj: Any) -> bool:
+        records = collection.records(obj, names)[start - 1 : end]
+        if every:
+            return bool(records) and all(inner(record) for record in records)
+        return any(inner(record) for record in records)
+
+    return test
 
 
 def _value_test(expr: Match | In | Like | Range) -> Predicate:
