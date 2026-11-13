@@ -5,17 +5,39 @@ values to and from the API, and is what expression nodes refer to. Accessing a
 field on the model class (``Document.year``) returns a :class:`FieldExpr`
 handle, whose overloaded operators build expressions. The two are kept separate
 so that fields keep plain identity equality while handles overload ``==``.
+
+Fields are generic in their value type, so type checkers know that
+``paper.year`` is ``int | None`` and ``paper.title`` (multivalued) is
+``list[str] | None``. Values read from the API are converted to exactly that
+type or to ``None`` (see :meth:`Field.to_python`).
+
+Matching. Each field class declares how ADS matches its values
+(``Field.match_kind``):
+
+- ``"keyword"`` (:class:`StringField` and all numeric, boolean and date fields):
+  the value is matched literally; there is nothing to expand.
+- ``"text"`` (:class:`TextField`, :class:`VirtualField`): tokenized; ``==``
+  matches the phrase, and ADS also matches its synonyms and acronyms.
+- ``"name"`` (:class:`NameField`): personal names, ``"Last, First M"``; ``==``
+  also matches name variants, so ``author == "Murray, S"`` matches
+  ``"Murray, Stephen S."`` and ``"Murray, Sarah"``.
+
+``.exact(value)`` and ``.in_(values, exact=True)`` mean "match this value with
+no expansion" (Solr ``=field:``). On a keyword field that is the same as ``==``.
 """
 
 from __future__ import annotations
 
 import math
 import re
+import warnings
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
-from typing import TYPE_CHECKING, Any, ClassVar
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, NoReturn, Protocol, TypeVar, cast, overload
 
-from .exceptions import QueryError
+from .exceptions import DataWarning, QueryError
 from .expr import (
     BOOL_ERROR,
     Expr,
@@ -41,8 +63,10 @@ __all__ = [
     "DateTimeField",
     "Field",
     "FieldExpr",
+    "FieldInfo",
     "FloatField",
     "IntegerField",
+    "NameField",
     "NumericExpr",
     "StringField",
     "TextExpr",
@@ -63,9 +87,9 @@ class FieldExpr:
 
     def __init__(
         self,
-        field: Field,
+        field: Field[Any, Any],
         *,
-        via: Relation | None = None,
+        via: Relation[Any] | None = None,
         position: tuple[int, int] | None = None,
     ):
         self.field = field
@@ -98,8 +122,8 @@ class FieldExpr:
 
     __hash__ = object.__hash__
 
-    def in_(self, values: Iterable[Any]) -> Expr:
-        """Match any of ``values``."""
+    def _values(self, values: Iterable[Any]) -> tuple[Any, ...]:
+        """Validate the collection given to ``in_`` and return its values."""
         if isinstance(values, (str, bytes)):
             raise TypeError(
                 f"{self!r}.in_() needs a collection of values, not a single string; "
@@ -107,7 +131,11 @@ class FieldExpr:
             )
         if isinstance(values, (FieldExpr, Expr)) or not isinstance(values, Iterable):
             raise TypeError(f"{self!r}.in_() needs a collection of values, not {values!r}")
-        return self._wrap(In(self.field, tuple(self._check(v) for v in values)))
+        return tuple(self._check(v) for v in values)
+
+    def in_(self, values: Iterable[Any]) -> Expr:
+        """Match any of ``values``."""
+        return self._wrap(In(self.field, self._values(values)))
 
     def not_in(self, values: Iterable[Any]) -> Expr:
         """Match none of ``values``."""
@@ -142,11 +170,37 @@ class FieldExpr:
 
 
 class TextExpr(FieldExpr):
-    """Handle on a text or string field: equality, phrase, wildcard and position queries."""
+    """Handle on a text, name or string field: equality, wildcard and position queries."""
+
+    def __eq__(self, value: object) -> Expr:  # type: ignore[override]
+        """Match ``value`` with ADS's default expansion for the field's kind.
+
+        A text field matches the phrase and its synonyms; a name field also
+        matches name variants (``author == "Murray, S"`` matches
+        ``"Murray, Stephen S."`` and ``"Murray, Sarah"``); a string field
+        matches the whole value literally.
+        """
+        return super().__eq__(value)
+
+    __hash__ = FieldExpr.__hash__
 
     def exact(self, value: str) -> Expr:
-        """Match ``value`` exactly (Solr ``=field:"value"``)."""
+        """Match ``value`` with no expansion (Solr ``=field:"value"``).
+
+        A text field then matches the phrase without synonyms; a name field
+        matches only that form of the name, ignoring case and the periods after
+        initials (``author.exact("Murray, S")`` matches ``"Murray, S."`` but not
+        ``"Murray, Stephen"``). On a string field this is the same as ``==``.
+        """
         return self._wrap(Match(self.field, self._check(value), exact=True))
+
+    def in_(self, values: Iterable[Any], *, exact: bool = False) -> Expr:
+        """Match any of ``values``: each as ``==`` would, or as :meth:`exact` would if ``exact``."""
+        return self._wrap(In(self.field, self._values(values), exact=exact))
+
+    def not_in(self, values: Iterable[Any], *, exact: bool = False) -> Expr:
+        """Match none of ``values`` (compared as by :meth:`in_`)."""
+        return ~self.in_(values, exact=exact)
 
     def like(self, pattern: str) -> Expr:
         """Wildcard match: ``*`` (or ``%``) is any run of characters, ``?`` is one character.
@@ -216,13 +270,42 @@ class NumericExpr(FieldExpr):
         return self._wrap(Range(self.field, self._check(lo), self._check(hi)))
 
 
-def _model_name(field: Field) -> str:
+def _model_name(field: Field[Any, Any]) -> str:
     model = getattr(field, "model", None)
     return model.__name__ if model is not None else "?"
 
 
-class Field:
+T = TypeVar("T")
+H = TypeVar("H", bound=FieldExpr)
+
+_UNCONVERTIBLE = (ValueError, TypeError, ArithmeticError)
+
+
+class _Record(Protocol):
+    """What a field's owner instances provide (``Model`` does)."""
+
+    def _get_value(self, field: Field[Any, Any], /) -> Any: ...
+
+
+@dataclass(frozen=True)
+class FieldInfo:
+    """A readable description of one field of a model (see ``Model.describe()``)."""
+
+    name: str
+    type: str
+    multivalued: bool
+    stored: bool
+    solr_name: str
+    doc: str
+    match_kind: str
+
+
+class Field(Generic[T, H]):
     """A field of a model: a data descriptor and the definition used in expressions.
+
+    ``T`` is the type of the value on an instance (``list[...]`` for a
+    multivalued field) and ``H`` the type of handle returned by class access.
+    Instance access gives ``T | None``; class access gives an ``H``.
 
     :param doc: help text, shown by ``help()``.
     :param multivalued: the field holds a list of values.
@@ -231,6 +314,11 @@ class Field:
     """
 
     expr_class: ClassVar[type[FieldExpr]] = FieldExpr
+    #: The Python type of one value (one element, for a multivalued field).
+    python_type: ClassVar[type] = object
+    #: How ADS matches values: ``"keyword"`` (literally), ``"text"`` (tokenized,
+    #: with synonyms) or ``"name"`` (with name variants). See the module docstring.
+    match_kind: ClassVar[str] = "keyword"
     name: str
     model: type
 
@@ -241,7 +329,7 @@ class Field:
         multivalued: bool = False,
         stored: bool = True,
         solr_name: str | None = None,
-    ):
+    ) -> None:
         self.__doc__ = doc
         self.multivalued = multivalued
         self.stored = stored
@@ -261,33 +349,85 @@ class Field:
         """The field's name in Solr queries and API responses."""
         return self._solr_name or self.name
 
-    def __get__(self, instance: Any, owner: type | None = None) -> Any:
-        if instance is None:
-            return self.expr_class(self)
-        return instance._get_value(self)
+    @property
+    def type_name(self) -> str:
+        """The value type as text, e.g. ``"int"`` or ``"list[str]"``."""
+        name = self.python_type.__name__
+        return f"list[{name}]" if self.multivalued else name
 
-    def __set__(self, instance: Any, value: Any) -> None:
+    def info(self) -> FieldInfo:
+        """Describe this field."""
+        return FieldInfo(
+            name=self.name,
+            type=self.type_name,
+            multivalued=self.multivalued,
+            stored=self.stored,
+            solr_name=self.solr_name,
+            doc=self.__doc__ or "",
+            match_kind=self.match_kind,
+        )
+
+    @overload
+    def __get__(self, instance: None, owner: type | None = None) -> H: ...
+
+    @overload
+    def __get__(self, instance: _Record, owner: type | None = None) -> T | None: ...
+
+    # Only for type checkers: mypy applies ``__get__`` to the value of a property
+    # that returns a field (e.g. ``Relation.related_field``); this keeps that a field.
+    @overload
+    def __get__(self, instance: object, owner: type | None = None) -> Field[T, H]: ...
+
+    def __get__(self, instance: Any, owner: type | None = None) -> H | T | None | Field[T, H]:
+        if instance is None:
+            return cast(H, self.expr_class(self))
+        return cast("T | None", instance._get_value(self))
+
+    def __set__(self, instance: Any, value: T | None) -> None:
         instance._set_value(self, value)
 
-    def to_python(self, raw: Any) -> Any:
-        """Convert a value from the API to Python, element-wise for lists.
+    def to_python(self, raw: Any) -> T | None:
+        """Convert a value from the API to ``T | None``; never returns anything else.
 
-        ADS data is not perfectly regular, so a value that cannot be converted
-        is returned unchanged rather than failing the whole result set.
+        Safe, lossless coercions are applied (see each field class). A scalar
+        given for a multivalued field becomes a one-element list, and a
+        one-element list given for a scalar field becomes its element. A value
+        that still cannot be converted, including a list with any unconvertible
+        or ``None`` element, becomes ``None`` with a
+        :class:`~ads.exceptions.DataWarning`.
         """
         if raw is None:
             return None
-        if self.multivalued and isinstance(raw, (list, tuple)):
-            return [self._convert(item) for item in raw]
-        return self._convert(raw)
+        try:
+            if self.multivalued:
+                items = raw if isinstance(raw, (list, tuple)) else [raw]
+                return cast(T, [self._convert(item) for item in items])
+            if isinstance(raw, (list, tuple)):
+                if len(raw) != 1:
+                    raise ValueError("expected a single value")
+                if raw[0] is None:
+                    return None
+                raw = raw[0]
+            return cast(T, self._convert(raw))
+        except _UNCONVERTIBLE:
+            text = repr(raw)
+            if len(text) > 80:
+                text = text[:77] + "..."
+            warnings.warn(
+                f"{self._label()}: cannot convert {text} to {self.type_name}; using None",
+                DataWarning,
+                stacklevel=2,
+            )
+            return None
 
     def _convert(self, raw: Any) -> Any:
+        """Convert one non-list value, raising ValueError/TypeError if it cannot be."""
         if raw is None:
-            return None
-        try:
-            return self._to_python(raw)
-        except (ValueError, TypeError):
-            return raw
+            raise TypeError("None is not a value")
+        value = self._to_python(raw)
+        if not isinstance(value, self.python_type):
+            raise TypeError(f"converted to {type(value).__name__}")
+        return value
 
     def _to_python(self, raw: Any) -> Any:
         return raw
@@ -324,10 +464,25 @@ class Field:
         return f"<{type(self).__name__} {self._label()}>"
 
 
-class _StringLikeField(Field):
+# Each concrete field class repeats two ``__init__`` overloads for the type
+# checker only: ``multivalued=True`` makes the value type ``list[...]``. The
+# overloads must name the concrete class, because type checkers cannot infer a
+# subclass's type parameter from self-typed overloads inherited from a base.
+
+
+class _StringLikeField(Field[T, TextExpr]):
     """Shared behaviour of fields holding strings."""
 
     expr_class = TextExpr
+    python_type = str
+
+    def _to_python(self, raw: Any) -> Any:
+        """Accept a str, or an int/float (ADS sometimes returns numbers for string fields)."""
+        if isinstance(raw, str):
+            return raw
+        if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+            return str(raw)
+        raise TypeError("not a string")
 
     def _to_solr(self, value: Any) -> str:
         if not isinstance(value, str):
@@ -337,21 +492,130 @@ class _StringLikeField(Field):
         return value
 
 
-class TextField(_StringLikeField):
-    """Tokenized full text (title, abstract, ...): ``==`` is a phrase match."""
+class TextField(_StringLikeField[T]):
+    """Tokenized full text (title, abstract, ...); match kind ``"text"``.
+
+    ``==`` matches the phrase, and ADS also matches its synonyms and acronyms
+    (``title == "star"`` also finds synonyms of "star"); ``exact`` turns that
+    expansion off.
+    """
+
+    match_kind = "text"
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: TextField[str],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: TextField[list[str]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
 
-class StringField(_StringLikeField):
-    """An untokenized keyword (bibcode, doctype, ...): ``==`` is an exact value match."""
+class StringField(_StringLikeField[T]):
+    """An untokenized keyword (bibcode, doctype, ...); match kind ``"keyword"``.
+
+    ``==`` matches the whole value literally, so ``exact`` changes nothing
+    (and no ``=`` is sent: ADS returns nothing for ``=bibcode:...``).
+    """
+
+    match_kind = "keyword"
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: StringField[str],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: StringField[list[str]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
 
-class VirtualField(_StringLikeField):
-    """A search-only field (such as ``full``); it never has a value on an instance."""
+class NameField(_StringLikeField[T]):
+    """A personal name, ``"Last, First M"`` (author, editor, ...); match kind ``"name"``.
 
-    def __init__(self, doc: str = "", *, multivalued: bool = False, solr_name: str | None = None):
+    ``==`` matches name variants as ADS does: ``"Murray, S"`` matches
+    ``"Murray, Stephen S."`` and ``"Murray, Sarah"``, while ``"Murray, Stephen"``
+    matches ``"Murray, S. D."`` but not ``"Murray, Sarah"``. ``exact`` matches
+    only that form of the name, ignoring case and the periods after initials:
+    ``exact("Murray, S")`` matches ``"Murray, S."`` and nothing else above.
+    """
+
+    match_kind = "name"
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: NameField[str],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: NameField[list[str]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+
+class VirtualField(_StringLikeField[NoReturn]):
+    """A search-only text field (such as ``full``); it never has a value on an instance.
+
+    Matched like a :class:`TextField` (match kind ``"text"``).
+    """
+
+    match_kind = "text"
+
+    def __init__(self, doc: str = "", *, multivalued: bool = False, solr_name: str | None = None) -> None:
         super().__init__(doc, multivalued=multivalued, stored=False, solr_name=solr_name)
 
-    def __get__(self, instance: Any, owner: type | None = None) -> Any:
+    @overload
+    def __get__(self, instance: None, owner: type | None = None) -> TextExpr: ...
+
+    @overload
+    def __get__(self, instance: object, owner: type | None = None) -> NoReturn: ...
+
+    def __get__(self, instance: Any, owner: type | None = None) -> TextExpr:
         if instance is None:
             return self.expr_class(self)
         raise AttributeError(f"{self._label()} is search-only and has no value on an instance")
@@ -360,13 +624,51 @@ class VirtualField(_StringLikeField):
         raise AttributeError(f"{self._label()} is search-only and cannot be set")
 
 
-class IntegerField(Field):
-    """An integer."""
+class IntegerField(Field[T, NumericExpr]):
+    """An integer. Integral floats and strings from the API (``12.0``, ``"12"``) are accepted."""
 
     expr_class = NumericExpr
+    python_type = int
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: IntegerField[int],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: IntegerField[list[int]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
-        return int(raw)
+        if isinstance(raw, bool):
+            raise TypeError("a bool is not an int")
+        if isinstance(raw, int):
+            return raw
+        if isinstance(raw, float):
+            if raw.is_integer():
+                return int(raw)
+            raise ValueError("not integral")
+        if isinstance(raw, str):
+            number = Decimal(raw)
+            if number.is_finite() and number == number.to_integral_value():
+                return int(number)
+            raise ValueError("not integral")
+        raise TypeError("not a number")
 
     def _to_solr(self, value: Any) -> str:
         if isinstance(value, bool) or not isinstance(value, int):
@@ -379,12 +681,39 @@ class IntegerField(Field):
         return value + direction
 
 
-class FloatField(Field):
-    """A floating-point number."""
+class FloatField(Field[T, NumericExpr]):
+    """A floating-point number. Ints and numeric strings from the API are accepted."""
 
     expr_class = NumericExpr
+    python_type = float
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: FloatField[float],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: FloatField[list[float]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
+        if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
+            raise TypeError("not a number")
         return float(raw)
 
     def _to_solr(self, value: Any) -> str:
@@ -393,13 +722,41 @@ class FloatField(Field):
         return repr(value)
 
 
-class BooleanField(Field):
-    """A boolean."""
+class BooleanField(Field[T, FieldExpr]):
+    """A boolean. ``"true"``/``"false"`` strings (any case) from the API are accepted."""
+
+    python_type = bool
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: BooleanField[bool],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: BooleanField[list[bool]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
-        if isinstance(raw, str):
+        if isinstance(raw, bool):
+            return raw
+        if isinstance(raw, str) and raw.lower() in ("true", "false"):
             return raw.lower() == "true"
-        return bool(raw)
+        raise TypeError("not a boolean")
 
     def _to_solr(self, value: Any) -> str:
         if not isinstance(value, bool):
@@ -416,14 +773,41 @@ def as_utc(value: date) -> datetime:
     return value.astimezone(timezone.utc)
 
 
-class DateTimeField(Field):
+class DateTimeField(Field[T, NumericExpr]):
     """A timestamp, held as an aware UTC ``datetime``."""
 
     expr_class = NumericExpr
+    python_type = datetime
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: DateTimeField[datetime],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: DateTimeField[list[datetime]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
         if isinstance(raw, date):
             return as_utc(raw)
+        if not isinstance(raw, str):
+            raise TypeError("not a timestamp")
         text = raw[:-1] if raw.endswith("Z") else raw
         for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
             try:
@@ -441,10 +825,35 @@ class DateTimeField(Field):
 _PUBDATE = re.compile(r"(\d{4})-(\d{2})(?:-(\d{2}))?")
 
 
-class DateField(Field):
+class DateField(Field[T, NumericExpr]):
     """A date with month precision in queries (ADS ``pubdate``), held as a ``date``."""
 
     expr_class = NumericExpr
+    python_type = date
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: DateField[date],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: DateField[list[date]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
         if isinstance(raw, datetime):

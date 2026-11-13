@@ -306,3 +306,16 @@ def test_simplify_inside_func_and_related():
     assert simplify(expr) == Related(REL, Or((b, c)))
     expr = And((Func("pos", (In(X, ()), 1, 1)), a))
     assert simplify(expr) == And((Func("pos", (NOTHING, 1, 1)), a))
+
+
+def test_in_exact_defaults_to_false_and_is_part_of_equality():
+    assert In(X, ("a",)).exact is False
+    assert In(X, ("a",), exact=True) != In(X, ("a",))
+    assert len({In(X, ("a",), exact=True), In(X, ("a",))}) == 2
+
+
+def test_simplify_keeps_exact_when_rewriting_in():
+    assert simplify(In(X, ("a",), exact=True)) == Match(X, "a", exact=True)
+    assert simplify(In(X, ("a",))) == Match(X, "a")
+    assert simplify(In(X, (), exact=True)) == NOTHING
+    assert simplify(In(X, ("a", "b"), exact=True)) == In(X, ("a", "b"), exact=True)

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import warnings
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import pytest
 
-from ads.exceptions import QueryError
+from ads.exceptions import DataWarning, QueryError
 from ads.expr import Expr, Func, In, Like, Match, Not, Order, Range, SolrLiteral, days_ago
 from ads.fields import (
     BooleanField,
@@ -15,8 +16,10 @@ from ads.fields import (
     DateTimeField,
     Field,
     FieldExpr,
+    FieldInfo,
     FloatField,
     IntegerField,
+    NameField,
     NumericExpr,
     StringField,
     TextExpr,
@@ -149,7 +152,7 @@ def test_virtual_field_instance_access_raises():
         (F["pubdate"], "2013-07-15", date(2013, 7, 15)),
         (F["pubdate"], "2013-07", date(2013, 7, 1)),
         (F["pubdate"], date(2013, 7, 2), date(2013, 7, 2)),
-        (F["title"], ["A", None, "B"], ["A", None, "B"]),
+        (F["title"], ["A", "B"], ["A", "B"]),
         (F["year"], None, None),
         (F["title"], None, None),
     ],
@@ -162,15 +165,19 @@ def test_to_python(field, raw, expected):
 
 def test_to_python_is_element_wise_for_multivalued_fields():
     field = IntegerField(multivalued=True)
-    assert field.to_python(["1", "2", None]) == [1, 2, None]
+    assert field.to_python(["1", "2", 3.0]) == [1, 2, 3]
 
 
-def test_to_python_returns_unconvertible_values_unchanged():
-    """Irregular API data must never fail a whole result set."""
-    assert F["entry_date"].to_python("yesterday") == "yesterday"
-    assert F["pubdate"].to_python("July 2013") == "July 2013"
-    assert F["year"].to_python("508A") == "508A"
-    assert IntegerField(multivalued=True).to_python(["1", "x", None]) == [1, "x", None]
+def test_to_python_turns_unconvertible_values_into_none_with_a_warning():
+    """Irregular API data must never fail a whole result set, nor break the value type."""
+    with pytest.warns(DataWarning, match=r"Rec\.entry_date: cannot convert 'yesterday' to datetime"):
+        assert F["entry_date"].to_python("yesterday") is None
+    with pytest.warns(DataWarning, match="to date"):
+        assert F["pubdate"].to_python("July 2013") is None
+    with pytest.warns(DataWarning, match=r"Rec\.year: cannot convert '508A' to int"):
+        assert F["year"].to_python("508A") is None
+    with pytest.warns(DataWarning, match=r"to list\[int\]"):
+        assert IntegerField(multivalued=True).to_python(["1", "x", None]) is None
 
 
 @pytest.mark.parametrize(
@@ -454,3 +461,235 @@ def test_only_multivalued_fields_can_be_indexed():
 def test_expressions_from_handles_are_exprs():
     assert isinstance(Rec.year == 1, Expr)
     assert isinstance(Rec.title.like("x"), Expr)
+
+
+# --- to_python: the value is always T | None ---------------------------------
+
+SCALAR_FIELDS = {
+    "str": StringField(),
+    "text": TextField(),
+    "int": IntegerField(),
+    "float": FloatField(),
+    "bool": BooleanField(),
+    "datetime": DateTimeField(),
+    "date": DateField(),
+}
+
+
+def test_python_type_of_each_field_class():
+    assert StringField.python_type is str
+    assert TextField.python_type is str
+    assert VirtualField.python_type is str
+    assert IntegerField.python_type is int
+    assert FloatField.python_type is float
+    assert BooleanField.python_type is bool
+    assert DateTimeField.python_type is datetime
+    assert DateField.python_type is date
+
+
+def test_type_name_and_info():
+    assert F["year"].type_name == "int"
+    assert F["title"].type_name == "list[str]"
+    assert F["entry_date"].type_name == "datetime"
+    assert F["full"].info() == FieldInfo(
+        name="full",
+        type="str",
+        multivalued=False,
+        stored=False,
+        solr_name="full",
+        doc="Full text",
+        match_kind="text",
+    )
+    assert F["norm"].info().solr_name == "citation_count_norm"
+
+
+@pytest.mark.parametrize(
+    "field, raw, expected",
+    [
+        (IntegerField(), "12", 12),
+        (IntegerField(), " 12 ", 12),
+        (IntegerField(), "12.0", 12),
+        (IntegerField(), 12.0, 12),
+        (IntegerField(), "-3", -3),
+        (FloatField(), 2, 2.0),
+        (FloatField(), "0.5", 0.5),
+        (FloatField(), "3", 3.0),
+        (StringField(), 2020, "2020"),
+        (TextField(), 0.5, "0.5"),
+        (BooleanField(), "TRUE", True),
+        (BooleanField(), "False", False),
+        (BooleanField(), False, False),
+        (DateTimeField(), "2021-12-01", datetime(2021, 12, 1, tzinfo=UTC)),
+        (DateTimeField(), date(2021, 12, 1), datetime(2021, 12, 1, tzinfo=UTC)),
+        (DateField(), datetime(2021, 12, 1, 5), date(2021, 12, 1)),
+        (StringField(multivalued=True), "A", ["A"]),
+        (IntegerField(multivalued=True), "7", [7]),
+        (IntegerField(multivalued=True), ("1", 2), [1, 2]),
+        (StringField(multivalued=True), [], []),
+        (StringField(), ["only"], "only"),
+        (IntegerField(), ("5",), 5),
+        (IntegerField(), [None], None),
+    ],
+)
+def test_safe_coercions_are_silent(field, raw, expected):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        value = field.to_python(raw)
+    assert value == expected
+    assert type(value) is type(expected)
+
+
+@pytest.mark.parametrize(
+    "field, raw",
+    [
+        (IntegerField(), "12.5"),
+        (IntegerField(), 12.5),
+        (IntegerField(), True),
+        (IntegerField(), "abc"),
+        (IntegerField(), "NaN"),
+        (IntegerField(), float("inf")),
+        (IntegerField(), {}),
+        (FloatField(), True),
+        (FloatField(), "fast"),
+        (FloatField(), {"a": 1}),
+        (FloatField(), 10**400),
+        (StringField(), True),
+        (StringField(), {"a": 1}),
+        (TextField(), b"bytes"),
+        (BooleanField(), 1),
+        (BooleanField(), "yes"),
+        (BooleanField(), "1"),
+        (DateTimeField(), "yesterday"),
+        (DateTimeField(), 1638316800),
+        (DateField(), "July 2013"),
+        (DateField(), "2013-13-00"),
+        (DateField(), 2013),
+        (StringField(), ["a", "b"]),
+        (StringField(), []),
+        (IntegerField(), [1, 2]),
+        (StringField(), [["a"]]),
+        (StringField(multivalued=True), ["a", None, "b"]),
+        (StringField(multivalued=True), [None]),
+        (IntegerField(multivalued=True), ["1", "x", "3"]),
+        (StringField(multivalued=True), ["a", ["b"]]),
+        (StringField(multivalued=True), {"a": "b"}),
+        (BooleanField(multivalued=True), [True, "maybe"]),
+    ],
+)
+def test_unconvertible_values_become_none_with_a_data_warning(field, raw):
+    with pytest.warns(DataWarning, match=f"to {field.type_name.replace('[', '.').replace(']', '.')}; using None"):
+        assert field.to_python(raw) is None
+
+
+def test_data_warning_names_model_field_value_and_type():
+    with pytest.warns(DataWarning) as record:
+        F["year"].to_python("508A")
+    (warning,) = record
+    assert str(warning.message) == "Rec.year: cannot convert '508A' to int; using None"
+
+
+def test_data_warning_truncates_long_values():
+    raw = ["x" * 50, "y" * 50, None]
+    with pytest.warns(DataWarning) as record:
+        F["title"].to_python(raw)
+    message = str(record[0].message)
+    shown = message.split("cannot convert ")[1].split(" to list[str]")[0]
+    assert len(shown) == 80
+    assert shown.endswith("...")
+    assert shown.startswith("['xxxx")
+
+
+JSON_SHAPES = [
+    None,
+    True,
+    False,
+    0,
+    -7,
+    12.0,
+    12.5,
+    float("nan"),
+    "",
+    "12",
+    "true",
+    "2021-12-01T00:00:00Z",
+    "2013-07-00",
+    "garbage",
+    [],
+    [None],
+    ["12"],
+    [1, 2],
+    ["a", None],
+    [[1]],
+    {},
+    {"a": 1},
+]
+
+
+@pytest.mark.parametrize("name", SCALAR_FIELDS)
+@pytest.mark.parametrize("multivalued", [False, True])
+def test_any_json_value_converts_to_the_declared_type_or_none(name, multivalued):
+    field = type(SCALAR_FIELDS[name])(multivalued=multivalued)
+    for raw in JSON_SHAPES:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DataWarning)
+            value = field.to_python(raw)
+        if value is None:
+            continue
+        if multivalued:
+            assert isinstance(value, list), raw
+            assert all(type(item) is field.python_type for item in value), raw
+        else:
+            assert type(value) is field.python_type, raw
+
+
+# --- match kinds and exact matching -------------------------------------------
+
+
+class People:
+    author = NameField("Authors", multivalued=True)
+    editor = NameField()
+
+
+def test_match_kind_of_each_field_class():
+    assert TextField.match_kind == "text"
+    assert VirtualField.match_kind == "text"
+    assert NameField.match_kind == "name"
+    assert StringField.match_kind == "keyword"
+    for cls in (IntegerField, FloatField, BooleanField, DateTimeField, DateField):
+        assert cls.match_kind == "keyword"
+    assert People.__dict__["author"].info().match_kind == "name"
+
+
+def test_name_field_is_a_string_field_with_a_text_handle():
+    author = People.__dict__["author"]
+    assert type(People.author) is TextExpr
+    assert NameField.python_type is str
+    assert author.type_name == "list[str]"
+    assert author.to_python("Casey, A") == ["Casey, A"]
+    assert People.__dict__["editor"].to_python(["Ness, M"]) == "Ness, M"
+    with pytest.raises(QueryError, match="needs a str"):
+        People.editor == 3  # noqa: B015
+
+
+def test_in_and_not_in_take_exact_on_text_handles():
+    author = People.__dict__["author"]
+    assert People.author.in_(["A", "B"], exact=True) == In(author, ("A", "B"), exact=True)
+    assert People.author.in_(["A", "B"]) == In(author, ("A", "B"))
+    assert People.author.not_in(["A"], exact=True) == Not(In(author, ("A",), exact=True))
+    assert (People.author.in_(["A"], exact=True) == People.author.in_(["A"])) is False
+    with pytest.raises(TypeError, match="single string"):
+        People.author.in_("A", exact=True)
+    with pytest.raises(TypeError):
+        Rec.year.in_([2020], exact=True)  # type: ignore[call-arg]
+
+
+def test_exact_composes_with_positions():
+    author = People.__dict__["author"]
+    assert People.author[1].exact("Casey, A") == Func("pos", (Match(author, "Casey, A", exact=True), 2, 2))
+    assert People.author[0].in_(["A"], exact=True) == Func("pos", (In(author, ("A",), exact=True), 1, 1))
+
+
+def test_text_handles_still_hash_by_identity():
+    handle = People.author
+    assert hash(handle) == object.__hash__(handle)
+    assert TextExpr.__eq__.__doc__ and "name variants" in TextExpr.__eq__.__doc__

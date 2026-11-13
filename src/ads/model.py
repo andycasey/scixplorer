@@ -3,22 +3,27 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
-from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast, overload
 
 from . import exceptions
 from .expr import BOOL_ERROR, Expr
-from .fields import Field, FieldExpr
+from .fields import Field, FieldExpr, FieldInfo
 
 if TYPE_CHECKING:
-    from .query import Query
+    # ``ads.query`` is written separately; until it exists ``Query`` is ``Any`` here.
+    from .query import Query  # type: ignore[import-not-found, import-untyped, unused-ignore]
 
 __all__ = ["Model", "ModelMeta", "Relation", "RelationExpr"]
 
 M = TypeVar("M", bound="Model")
+R = TypeVar("R")
 
 
-class Relation:
+class Relation(Generic[R]):
     """A link from one model (the owner) to another (the related model).
+
+    ``R`` is what ``resolve`` returns: instance access gives an ``R``, class
+    access gives a :class:`RelationExpr`.
 
     :param model: the related model, or a zero-argument callable returning it
         (for models defined later).
@@ -38,9 +43,9 @@ class Relation:
         *,
         key: str,
         related_key: str,
-        resolve: Callable[[Any], Any],
+        resolve: Callable[[Any], R],
         doc: str = "",
-    ):
+    ) -> None:
         self._model = model
         self.key = key
         self.related_key = related_key
@@ -64,7 +69,7 @@ class Relation:
         return self._model
 
     @property
-    def related_field(self) -> Field:
+    def related_field(self) -> Field[Any, Any]:
         """The field of the related model that ``key`` values refer to."""
         model = self.related_model
         try:
@@ -74,13 +79,19 @@ class Relation:
                 f"{self!r}: related_key {self.related_key!r} is not a field of {model.__name__}"
             ) from None
 
-    def __get__(self, instance: Any, owner: type | None = None) -> Any:
+    @overload
+    def __get__(self, instance: None, owner: type | None = None) -> RelationExpr: ...
+
+    @overload
+    def __get__(self, instance: object, owner: type | None = None) -> R: ...
+
+    def __get__(self, instance: Any, owner: type | None = None) -> RelationExpr | R:
         if instance is None:
             return RelationExpr(self)
-        cache = instance._related
+        cache: dict[str, Any] = instance._related
         if self.name not in cache:
             cache[self.name] = self.resolve(instance)
-        return cache[self.name]
+        return cast(R, cache[self.name])
 
     def __set__(self, instance: Any, value: Any) -> None:
         raise AttributeError(f"{self!r} is derived from {self.key!r} and cannot be set")
@@ -99,11 +110,11 @@ class RelationExpr:
 
     __slots__ = ("_relation",)
 
-    def __init__(self, relation: Relation):
+    def __init__(self, relation: Relation[Any]) -> None:
         self._relation = relation
 
     @property
-    def relation(self) -> Relation:
+    def relation(self) -> Relation[Any]:
         """The relation this handle is on."""
         return self._relation
 
@@ -141,7 +152,8 @@ class RelationExpr:
         return other
 
     def __eq__(self, other: object) -> Expr:  # type: ignore[override]
-        return self._key_handle() == self._key_of(other)
+        key: object = self._key_of(other)
+        return self._key_handle() == key
 
     def __ne__(self, other: object) -> Expr:  # type: ignore[override]
         return ~(self == other)
@@ -175,10 +187,14 @@ class ModelMeta(type):
     entries first) and a per-model ``DoesNotExist`` exception class.
     """
 
-    def __init__(cls, name: str, bases: tuple[type, ...], namespace: dict[str, Any], **kwargs: Any):
+    _fields: dict[str, Field[Any, Any]]
+    _relations: dict[str, Relation[Any]]
+    DoesNotExist: type[exceptions.DoesNotExist]
+
+    def __init__(cls, name: str, bases: tuple[type, ...], namespace: dict[str, Any], **kwargs: Any) -> None:
         super().__init__(name, bases, namespace, **kwargs)
-        fields: dict[str, Field] = {}
-        relations: dict[str, Relation] = {}
+        fields: dict[str, Field[Any, Any]] = {}
+        relations: dict[str, Relation[Any]] = {}
         for base in reversed(bases):
             fields.update(getattr(base, "_fields", {}))
             relations.update(getattr(base, "_relations", {}))
@@ -215,11 +231,11 @@ class Model(metaclass=ModelMeta):
 
     _key: ClassVar[str]
     _backend: ClassVar[Any]
-    _fields: ClassVar[dict[str, Field]]
-    _relations: ClassVar[dict[str, Relation]]
+    _fields: ClassVar[dict[str, Field[Any, Any]]]
+    _relations: ClassVar[dict[str, Relation[Any]]]
     DoesNotExist: ClassVar[type[exceptions.DoesNotExist]]
 
-    def __init__(self, **values: Any):
+    def __init__(self, **values: Any) -> None:
         self._data: dict[str, Any] = {}
         self._related: dict[str, Any] = {}
         for name, value in values.items():
@@ -247,7 +263,7 @@ class Model(metaclass=ModelMeta):
         return instance
 
     @classmethod
-    def _field(cls, ref: str | Field | FieldExpr) -> Field:
+    def _field(cls, ref: str | Field[Any, Any] | FieldExpr) -> Field[Any, Any]:
         """Resolve a field name, definition or plain handle to a field of this model."""
         if isinstance(ref, FieldExpr):
             if ref.via is not None or ref.position is not None:
@@ -265,18 +281,18 @@ class Model(metaclass=ModelMeta):
             return ref
         raise TypeError(f"Expected a field of {cls.__name__} or its name, not {ref!r}")
 
-    def _get_value(self, field: Field) -> Any:
+    def _get_value(self, field: Field[Any, Any]) -> Any:
         """Return the stored value of ``field``, loading it if it is missing."""
         try:
             return self._data[field.name]
         except KeyError:
             return self._load_missing(field)
 
-    def _load_missing(self, field: Field) -> Any:
+    def _load_missing(self, field: Field[Any, Any]) -> Any:
         """Return the value of a field that was never set. The default is ``None``."""
         return None
 
-    def _set_value(self, field: Field, value: Any) -> None:
+    def _set_value(self, field: Field[Any, Any], value: Any) -> None:
         """Store ``value`` for ``field``, discarding cached related objects."""
         self._data[field.name] = value
         self._related.clear()
@@ -291,11 +307,23 @@ class Model(metaclass=ModelMeta):
         key = self._key_value()
         if key is None:
             return self is other
-        return key == other._key_value()  # type: ignore[union-attr]
+        return bool(key == other._key_value())
 
     def __hash__(self) -> int:
         key = self._key_value()
         return id(self) if key is None else hash((type(self), key))
+
+    def to_dict(self) -> dict[str, Any]:
+        """The values loaded on this instance, by field name in definition order.
+
+        Never loads missing values, and does not include relations.
+        """
+        return {name: self._data[name] for name in self._fields if name in self._data}
+
+    @classmethod
+    def describe(cls) -> list[FieldInfo]:
+        """Describe the fields of this model, in definition order."""
+        return [field.info() for field in cls._fields.values()]
 
     def __repr__(self) -> str:
         key = self._key_value()
@@ -304,9 +332,9 @@ class Model(metaclass=ModelMeta):
         return f"<{type(self).__name__}: {self._key}={key!r}>"
 
     @classmethod
-    def select(cls: type[M], *fields: str | Field | FieldExpr) -> Query[M]:
+    def select(cls: type[M], *fields: str | Field[Any, Any] | FieldExpr) -> Query[M]:
         """Start a query over this model, fetching ``fields`` (all stored fields if none)."""
-        from .query import Query
+        from .query import Query  # type: ignore[import-not-found, import-untyped, unused-ignore]
 
         return Query(cls, tuple(cls._field(field) for field in fields))
 
@@ -320,7 +348,7 @@ class Model(metaclass=ModelMeta):
             if name not in cls._fields and name not in cls._relations:
                 raise TypeError(f"{cls.__name__}.get() got an unexpected field {name!r}")
         conditions = [*exprs, *(getattr(cls, name) == value for name, value in equals.items())]
-        result = cls.select().where(*conditions).first()
+        result: M | None = cls.select().where(*conditions).first()
         if result is None:
             raise cls.DoesNotExist(f"No {cls.__name__} matched {conditions!r}")
         return result

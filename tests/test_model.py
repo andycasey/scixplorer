@@ -5,15 +5,16 @@
 
 from __future__ import annotations
 
+import warnings
 from datetime import date, datetime, timezone
 
 import pytest
 from helpers import INSTITUTES, JOURNALS, Institute, Journal, Paper
 
 from ads import exceptions
-from ads.exceptions import QueryError
+from ads.exceptions import DataWarning, QueryError
 from ads.expr import And, Func, In, Like, Match, Not, Related
-from ads.fields import Field, IntegerField, StringField, TextField
+from ads.fields import Field, FieldInfo, IntegerField, StringField, TextField
 from ads.model import Model, Relation, RelationExpr
 
 
@@ -390,3 +391,118 @@ def test_position_then_relation_wrapping():
 def test_relation_expressions_combine():
     expr = (Paper.year == 2020) & (Paper.journal == "ApJ")
     assert expr == And((Match(Paper._fields["year"], 2020), Related(journal_rel, Match(abbreviation, "ApJ"))))
+
+
+# --- values from the API have their declared type ---------------------------
+
+
+WRONG_SHAPES = {
+    "bibcode": ["2020A", "2020B"],
+    "title": {"not": "a list"},
+    "author": ["Casey, A", None],
+    "year": "508A",
+    "citation_count_norm": [0.5, 0.6],
+    "entry_date": 1638316800,
+    "pubdate": "July 2013",
+    "public": "yes",
+    "bibstem": [["ApJ"]],
+    "aff_id": [True],
+    "citation_count": 2.5,
+    "full": "never stored",
+}
+
+
+def test_from_row_never_raises_and_values_have_their_declared_type():
+    with pytest.warns(DataWarning) as record:
+        paper = Paper._from_row(WRONG_SHAPES)
+    assert len(record) == 11
+    for name, field in Paper._fields.items():
+        value = paper._data.get(name)
+        if value is None:
+            continue
+        if field.multivalued:
+            assert all(isinstance(item, field.python_type) for item in value), name
+        else:
+            assert isinstance(value, field.python_type), name
+    assert all(paper._data[name] is None for name in WRONG_SHAPES if name != "full")
+
+
+def test_from_row_coerces_shapes_silently():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        paper = Paper._from_row({"bibcode": ["2020A"], "author": "Casey, A", "year": 2020.0, "public": "TRUE"})
+    assert paper._data == {"bibcode": "2020A", "author": ["Casey, A"], "year": 2020, "public": True}
+
+
+# --- to_dict, describe -------------------------------------------------------
+
+
+def test_to_dict_returns_loaded_values_in_field_order():
+    loaded = []
+
+    class Lazy(Model):
+        a = StringField()
+        b = StringField()
+        c = IntegerField()
+
+        def _load_missing(self, field):
+            loaded.append(field.name)
+            return "loaded"
+
+    obj = Lazy(c=3, a="x")
+    assert obj.to_dict() == {"a": "x", "c": 3}
+    assert list(obj.to_dict()) == ["a", "c"]
+    assert loaded == []
+    assert Lazy().to_dict() == {}
+
+
+def test_to_dict_excludes_relations_and_is_a_copy():
+    paper = Paper(bibcode="2020ApJ...900..1C", year=2020)
+    assert paper.journal is JOURNALS["ApJ"]
+    data = paper.to_dict()
+    assert data == {"bibcode": "2020ApJ...900..1C", "year": 2020}
+    data["year"] = 1
+    assert paper.year == 2020
+
+
+def test_describe_lists_fields_in_definition_order():
+    info = Paper.describe()
+    assert [i.name for i in info] == list(Paper._fields)
+    by_name = {i.name: i for i in info}
+    assert by_name["bibcode"] == FieldInfo(
+        name="bibcode",
+        type="str",
+        multivalued=False,
+        stored=True,
+        solr_name="bibcode",
+        doc="Bibcode",
+        match_kind="keyword",
+    )
+    assert by_name["title"].type == "list[str]"
+    assert by_name["title"].multivalued is True
+    assert by_name["year"].type == "int"
+    assert by_name["citation_count_norm"].type == "float"
+    assert by_name["entry_date"].type == "datetime"
+    assert by_name["pubdate"].type == "date"
+    assert by_name["public"].type == "bool"
+    assert by_name["full"].stored is False
+    assert by_name["author"].match_kind == "name"
+    assert by_name["title"].match_kind == "text"
+    assert by_name["full"].match_kind == "text"
+    assert by_name["year"].match_kind == "keyword"
+    assert by_name["doctype"].stored is False
+    assert "journal" not in by_name
+    assert Journal.describe()[1] == FieldInfo(
+        name="title",
+        type="str",
+        multivalued=False,
+        stored=True,
+        solr_name="title",
+        doc="Title",
+        match_kind="keyword",
+    )
+
+
+def test_field_info_is_frozen():
+    with pytest.raises(AttributeError):
+        Paper.describe()[0].name = "x"  # type: ignore[misc]
