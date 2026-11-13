@@ -31,6 +31,13 @@ USER_AGENT = f"ads-python/{__version__}"
 #: Statuses that indicate a transient upstream problem worth retrying.
 RETRY_STATUSES = frozenset({502, 503, 504})
 
+#: Methods that are idempotent by definition (RFC 9110, section 9.2.2).
+IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
+
+#: Transport errors raised before the request reached the server, so a retry
+#: cannot repeat its effect. Safe to retry even for non-idempotent requests.
+_UNSENT_ERRORS = (httpx.ConnectError, httpx.ConnectTimeout)
+
 #: Longest error-body excerpt included in an exception message.
 _MAX_DETAIL = 500
 
@@ -53,6 +60,11 @@ class Request:
     the caller's ``Content-Type`` header) may be given; ``json=None`` means no
     JSON body. Construction raises ``TypeError`` for an unsupported parameter
     value and ``ValueError`` if both bodies are given.
+
+    ``idempotent`` says whether sending the request twice has the same effect as
+    sending it once, which decides how it may be retried (see :meth:`Client.send`).
+    ``None`` infers it from the method (see :attr:`is_idempotent`); set it to
+    ``True`` for a POST that only reads, such as ``/search/bigquery``.
     """
 
     method: str
@@ -61,11 +73,22 @@ class Request:
     json: Any = None
     content: str | bytes | None = None
     headers: Mapping[str, str] | None = None
+    idempotent: bool | None = None
 
     def __post_init__(self) -> None:
         if self.json is not None and self.content is not None:
             raise ValueError("a Request may have a json body or raw content, not both")
         _encode_params(self.params)
+
+    @property
+    def is_idempotent(self) -> bool:
+        """``idempotent`` if set, else whether the method is in :data:`IDEMPOTENT_METHODS`.
+
+        So GET, HEAD, PUT and DELETE are idempotent by default; POST and PATCH are not.
+        """
+        if self.idempotent is not None:
+            return self.idempotent
+        return self.method.upper() in IDEMPOTENT_METHODS
 
 
 @dataclass(frozen=True)
@@ -144,6 +167,11 @@ class Client:
 
     def send(self, request: Request) -> Response:
         """Execute ``request`` and return its response, retrying transient failures.
+
+        Idempotent requests are retried after connection errors, timeouts and
+        HTTP 502/503/504. Non-idempotent requests (see :attr:`Request.is_idempotent`)
+        are retried only if the connection could not be made, since otherwise
+        the server may already have applied them.
 
         Raises :class:`~ads.exceptions.AuthenticationError` if there is no token
         or ADS rejects it, :class:`~ads.exceptions.RateLimitExceeded` on HTTP 429,
@@ -263,14 +291,25 @@ class Client:
         Returns the :class:`Response` on success, a :class:`_Retry` if the
         attempt failed transiently and retries remain, and otherwise raises.
         ``attempt`` counts from 0.
+
+        Idempotent requests are retried after any transport error and after
+        502/503/504. Non-idempotent requests are retried only after errors in
+        :data:`_UNSENT_ERRORS`, because otherwise the server may already have
+        applied them.
         """
         retries_left = attempt < self.config.max_retries
         if isinstance(result, httpx.TransportError):
-            if retries_left:
+            retryable = request.is_idempotent or isinstance(result, _UNSENT_ERRORS)
+            if retryable and retries_left:
                 return _Retry(self._backoff(attempt))
+            outcome = (
+                f"gave up after {attempt + 1} attempts"
+                if retryable
+                else "not retried: the request is not idempotent and may or may not "
+                "have been applied"
+            )
             raise APIError(
-                f"{_describe(request)}: {type(result).__name__}: {result}"
-                f" (gave up after {attempt + 1} attempts)",
+                f"{_describe(request)}: {type(result).__name__}: {result} ({outcome})",
                 status_code=None,
             ) from result
 
@@ -278,7 +317,7 @@ class Client:
         self._record_rate_limit(request.path, response.headers)
         if 200 <= response.status_code < 300:
             return response
-        if response.status_code in RETRY_STATUSES and retries_left:
+        if response.status_code in RETRY_STATUSES and retries_left and request.is_idempotent:
             return _Retry(self._backoff(attempt))
         raise _error_for(request, response)
 
