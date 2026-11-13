@@ -255,7 +255,7 @@ def test_client_side_exclusion_count(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_config.config, "page_size", 4)
     excluded = bibcodes(30)[:20] + bibcodes(40, prefix="2021MNRAS")
     fake = FakeSearch(make_docs(30))
-    query = Document.select().where(Document.not_in(excluded)).using(fake.client())
+    query = Document.select().where(Document.not_in(excluded) & (Document.year == 2020)).using(fake.client())
     assert query.count() == 10
     assert len(fake.searches) == 8
     assert all(r.url.params["fl"] == "bibcode" for r in fake.searches)
@@ -337,7 +337,7 @@ def test_explain_bigquery_and_exclusion(page_size: None) -> None:
     explanation = Document.select().where(Document.in_(bibcodes(60))).explain()
     assert explanation.requests[0].method == "POST" and "Uploads 60 bibcodes" in explanation.summary
     assert "(body:" in str(explanation)
-    explanation = Document.select().where(Document.not_in(bibcodes(60))).offset(5).limit(3).explain()
+    explanation = Document.select().where(Document.not_in(bibcodes(60)) & (Document.year == 2020)).offset(5).limit(3).explain()
     request = explanation.requests[0]
     assert request.params is not None and (request.params["start"], request.params["rows"]) == (0, 200)
     assert any("excluding 60 bibcode(s)" in note for note in explanation.notes)

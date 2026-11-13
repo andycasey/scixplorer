@@ -16,7 +16,7 @@ import pytest
 from search_fakes import FakeSearch, bibcodes
 
 from ads import _config, search
-from ads.exceptions import LazyLoadWarning
+from ads.exceptions import LazyLoadWarning, UnsupportedQueryError
 from ads.expr import Expr
 from ads.models.affiliation import Affiliation
 from ads.models.author import Author
@@ -138,7 +138,7 @@ def test_count_and_rows_agree(monkeypatch: pytest.MonkeyPatch) -> None:
     page_size(monkeypatch, 3)
     rows, _ = casey_rows(17)
     fake = FakeSearch(rows)
-    for expr in (CASEY_AU, ~CASEY_AU, Document.authors.all(Author.name.like("Casey*"))):
+    for expr in (CASEY_AU, ~CASEY_AU & (Document.year == 2020), Document.authors.all(Author.name.like("Casey*"))):
         query = Document.select().where(expr).using(fake.client())
         assert query.count() == len(query.all())
 
@@ -311,3 +311,13 @@ def test_async_parity(monkeypatch: pytest.MonkeyPatch) -> None:
     assert bibcodes_of(async_rows) == bibcodes_of(sync_rows) == kept[2:7]
     assert async_count == sync_count == 5
     assert [(r.method, str(r.url)) for r in async_fake.requests] == [(r.method, str(r.url)) for r in sync_fake.requests]
+
+
+def test_a_search_that_would_download_the_whole_index_sends_nothing() -> None:
+    fake = FakeSearch(casey_rows(8)[0])
+    for expr in (~CASEY_AU, Document.not_in(bibcodes(60))):
+        query = Document.select().where(expr).using(fake.client())
+        for run in (query.all, query.count, query.first, query.explain):
+            with pytest.raises(UnsupportedQueryError, match="download every document in SciX"):
+                run()
+    assert fake.requests == []

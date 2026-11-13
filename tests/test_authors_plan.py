@@ -206,7 +206,8 @@ def test_negated_refinement_sends_nothing_for_it() -> None:
     assert search.refinement == Not(correlated)
     assert any(n.startswith("~Document.authors.any(...): checked client-side") for n in search.notes)
     assert any("nothing is sent to ADS for it (it is negated)" in n for n in search.notes)
-    assert plan_of(~correlated).q == "*:*"
+    with pytest.raises(UnsupportedQueryError, match="download every document"):
+        plan_of(~correlated)
 
 
 @pytest.mark.parametrize(
@@ -352,7 +353,7 @@ def test_conditions_in_branches_that_cannot_match_are_not_resolved() -> None:
     [
         (Document.authors.any(Author.name == "Casey, A"), 'author:"Casey, A" AND database:"astronomy"'),
         (CASEY_AU, f'author:"Casey, A" AND {any_of("aff_id", AU)} AND database:"astronomy"'),
-        (~CASEY_AU, 'database:"astronomy"'),
+        (~CASEY_AU & (Document.year == 2020), 'year:2020 AND database:"astronomy"'),
         (Document.authors[0].orcid == "X", 'orcid:"X" AND database:"astronomy"'),
     ],
 )
@@ -369,3 +370,50 @@ def test_default_collection_still_applies(monkeypatch: pytest.MonkeyPatch, expr:
 def test_plans_without_authors_have_no_refinement() -> None:
     search = plan_of((Document.author == "Casey, A") & (Document.affiliation.country == "Chile"))
     assert search.refinement is None and search.refinement_fl == ()
+
+
+# A search that would download the whole index.
+
+WHOLE_INDEX = [
+    (lambda: ~CASEY_AU, "~Document.authors.any(...)"),
+    (lambda: Document.authors.any(~(Author.name == "Casey, A")), "Document.authors.any(...)"),
+    (lambda: Document.authors.any(Author.position == 0), "Document.authors.any(...)"),
+    (lambda: Document.authors[0].any(EVERYTHING), "Document.authors[0].any(...)"),
+    (lambda: Document.not_in(bibcodes(60)), "excluding 60 bibcode(s)"),
+    (lambda: Document.not_in(bibcodes(60)) & ~CASEY_AU, "excluding 60 bibcode(s) and ~Document.authors.any(...)"),
+]
+
+
+@pytest.mark.parametrize(("build", "what"), WHOLE_INDEX)
+def test_filtering_the_whole_index_locally_is_refused(build: Any, what: str) -> None:
+    with pytest.raises(UnsupportedQueryError) as info:
+        plan_of(build())
+    message = str(info.value)
+    assert message.startswith(f"This query would download every document in SciX: {what} is done client-side")
+    assert "Add a condition ADS can search" in message and "Document.year.between(2015, 2020)" in message
+    with pytest.raises(UnsupportedQueryError, match="download every document"):
+        Document.select().where(build()).explain()
+    with pytest.raises(UnsupportedQueryError, match="download every document"):
+        to_solr(build())
+
+
+@pytest.mark.parametrize(("build", "what"), WHOLE_INDEX[:2])
+def test_the_default_collection_does_not_count_as_a_condition(
+    monkeypatch: pytest.MonkeyPatch, build: Any, what: str
+) -> None:
+    monkeypatch.setattr(_config.config, "collection", "astronomy")
+    with pytest.raises(UnsupportedQueryError, match="apart from the default collection"):
+        plan_of(build())
+
+
+@pytest.mark.parametrize(
+    ("expr", "q"),
+    [
+        (~CASEY_AU & Document.year.between(1000, 3000), "year:[1000 TO 3000]"),
+        (Document.not_in(bibcodes(60)) & (Document.author == "Casey, A"), 'author:"Casey, A"'),
+        (Document.in_(bibcodes(60)) & ~CASEY_AU, "*:*"),
+    ],
+)
+def test_any_server_side_condition_or_an_upload_is_enough(expr: Expr, q: str) -> None:
+    search = plan_of(expr)
+    assert search.q == q and search.filters_locally

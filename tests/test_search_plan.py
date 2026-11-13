@@ -296,8 +296,10 @@ def test_library_bibcodes_strategy(monkeypatch: pytest.MonkeyPatch, library: Lib
     search = plan_of(Document.in_(library) & (Document.year == 2020), library_bibcodes={"abc": large})
     assert search.q == "year:2020" and search.bigquery_bibcodes == tuple(large)
 
-    search = plan_of(~Document.in_(library), library_bibcodes={"abc": large})
-    assert search.q == "*:*" and search.exclude_bibcodes == frozenset(large)
+    search = plan_of(~Document.in_(library) & (Document.year == 2020), library_bibcodes={"abc": large})
+    assert search.q == "year:2020" and search.exclude_bibcodes == frozenset(large)
+    with pytest.raises(UnsupportedQueryError, match="download every document"):
+        plan_of(~Document.in_(library), library_bibcodes={"abc": large})
 
     with pytest.raises(ValueError, match="needs the bibcodes of library 'abc'"):
         plan_of(Document.in_(library))
@@ -376,7 +378,8 @@ def test_large_negated_set_is_excluded_client_side() -> None:
     assert search.q == "year:2020"
     assert search.path == "/search/query"
     assert search.exclude_bibcodes == frozenset(codes)
-    assert plan_of(Document.not_in(codes)).q == "*:*"
+    with pytest.raises(UnsupportedQueryError, match="download every document"):
+        plan_of(Document.not_in(codes))
 
 
 def test_large_positive_and_negated_sets() -> None:

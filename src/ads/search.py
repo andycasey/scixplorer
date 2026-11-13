@@ -25,6 +25,8 @@ which endpoint to use. It is pure (no I/O) and runs these passes in order:
 6. Move large bibcode sets out of the query string: a top-level positive set is
    sent to ``/search/bigquery`` and a top-level negated set is excluded while
    streaming (with offset and limit then applied locally, as for a refinement).
+   A search that would filter locally while ADS is sent ``*:*`` (apart from the
+   default collection) is refused: it would download the whole index.
 7. Compile, adding a final sort key so that pages are stable.
 
 :class:`SearchBackend` executes plans in the sans-IO protocol of :mod:`ads.query`.
@@ -491,6 +493,8 @@ def _finish(query: Query[Any], resolved: _Resolved, library_bibcodes: Mapping[st
         )
 
     remaining = rest[0] if len(rest) == 1 else And(tuple(rest)) if rest else EVERYTHING
+    if remaining == EVERYTHING and bigquery is None and (exclude is not None or refinements):
+        raise UnsupportedQueryError(_whole_index_message(exclude, refinements))
     if scope is not None:
         remaining = simplify(And((remaining, scope)))
     refinement = refinements[0] if len(refinements) == 1 else And(refinements) if refinements else None
@@ -503,6 +507,23 @@ def _finish(query: Query[Any], resolved: _Resolved, library_bibcodes: Mapping[st
         notes=tuple(notes),
         refinement=refinement,
         refinement_fl=tuple(f.solr_name for name, f in model._fields.items() if name in read),
+    )
+
+
+def _whole_index_message(exclude: frozenset[str] | None, refinements: tuple[Expr, ...]) -> str:
+    """Why a plan that filters every document of the index locally is refused, and what to add."""
+    checks = [f"excluding {len(exclude)} bibcode(s)"] if exclude is not None else []
+    for refinement in refinements:
+        negated = isinstance(refinement, Not)
+        node = refinement.operand if isinstance(refinement, Not) else refinement
+        if isinstance(node, Quantified):
+            checks.append(("~" if negated else "") + _label(node))
+    return (
+        f"This query would download every document in SciX: {' and '.join(checks)} is done "
+        f"client-side on each returned document, and nothing else narrows the search ADS runs "
+        f"(its query would be *:*, apart from the default collection). Add a condition ADS can "
+        f"search, AND-ed with the rest, for example a year range (Document.year.between(2015, 2020)), "
+        f"an author (Document.author == \"Last, F\") or a journal (Document.journal == \"ApJ\")."
     )
 
 
