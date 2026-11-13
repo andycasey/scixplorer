@@ -1,21 +1,23 @@
-"""Models (classes of records with fields) and relations between them."""
+"""Models (classes of records with fields), relations between them, and collections of records."""
 
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast, overload
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, NoReturn, TypeVar, cast, overload
 
 from . import exceptions
-from .expr import BOOL_ERROR, Expr
-from .fields import Field, FieldExpr, FieldInfo
+from .expr import BOOL_ERROR, And, Constant, Expr, Func, In, InLibrary, Like, Match, Not, Or, Quantified, Range, Raw, Related
+from .fields import Field, FieldExpr, FieldInfo, Scope, _quantifier_hint, parse_positions
 
 if TYPE_CHECKING:
     from .query import Backend, Query
 
-__all__ = ["Model", "ModelMeta", "Relation", "RelationExpr"]
+__all__ = ["Collection", "CollectionExpr", "Model", "ModelMeta", "RecordExpr", "Relation", "RelationExpr", "Source"]
 
 M = TypeVar("M", bound="Model")
 R = TypeVar("R")
+H = TypeVar("H", bound="RecordExpr")
 
 
 class Relation(Generic[R]):
@@ -107,10 +109,11 @@ class RelationExpr:
     ``Document.journal == journal`` matches by the related object's key.
     """
 
-    __slots__ = ("_relation",)
+    __slots__ = ("_relation", "_scope")
 
-    def __init__(self, relation: Relation[Any]) -> None:
+    def __init__(self, relation: Relation[Any], *, scope: Scope | None = None) -> None:
         self._relation = relation
+        self._scope = scope
 
     @property
     def relation(self) -> Relation[Any]:
@@ -123,17 +126,19 @@ class RelationExpr:
         model = self._relation.related_model
         field = model._fields.get(name)
         if field is None:
+            if name in ("any", "all"):
+                raise AttributeError(_quantifier_hint(None, name, self._relation))
             raise AttributeError(
                 f"{model.__name__} has no field {name!r}; fields are: {', '.join(model._fields)}"
             )
-        return field.expr_class(field, via=self._relation)
+        return field.expr_class(field, via=self._relation, scope=self._scope)
 
     def __dir__(self) -> Iterable[str]:
         return sorted({*object.__dir__(self), *self._relation.related_model._fields})
 
     def _key_handle(self) -> FieldExpr:
         field = self._relation.related_field
-        return field.expr_class(field, via=self._relation)
+        return field.expr_class(field, via=self._relation, scope=self._scope)
 
     def _key_of(self, other: Any) -> Any:
         model = self._relation.related_model
@@ -176,34 +181,436 @@ class RelationExpr:
         raise TypeError(f"{self!r} is not iterable; use .in_(objects) to match several objects")
 
     def __repr__(self) -> str:
-        return f"<{self._relation.owner.__name__}.{self._relation.name}>"
+        owner = self._relation.owner.__name__ if self._scope is None else self._scope._label()
+        return f"<{owner}.{self._relation.name}>"
+
+
+@dataclass(frozen=True)
+class Source:
+    """Where the value of one record field of a :class:`Collection` comes from on the owner.
+
+    :param fields: the owner's array fields holding the value, index-aligned
+        with the records; with several, the first that has a value for the
+        record wins.
+    :param search: the owner field that a condition on the record field is
+        searched through, or ``None`` if the server cannot search it (such a
+        condition is then checked client-side).
+    """
+
+    fields: tuple[str, ...]
+    search: str | None = None
+
+
+class Collection(Generic[M, H]):
+    """Records that an owner holds as index-aligned arrays, such as the authors of a document.
+
+    ADS stores per-author values as parallel arrays on the document (author
+    names, affiliations, ORCIDs, ...), entry ``i`` of each describing author
+    ``i``. A collection turns them into one record (an instance of ``model``)
+    per entry, and lets a query say several things about the *same* record:
+    ``Document.authors.any((Author.name == x) & (Author.aff == y))``.
+
+    Instance access gives ``list[M]`` (cached on the instance until any of its
+    fields changes); class access gives a :class:`CollectionExpr`.
+
+    :param model: the record model (a model with no backend of its own).
+    :param sources: for each record field, the owner field it comes from (a
+        name: read and searched), or a :class:`Source`. Record fields left out
+        have no value, except ``index``.
+    :param length: the owner field whose number of values is the number of records.
+    :param handle: the handle class for one record (``Document.authors[0]``): a
+        :class:`RecordExpr` subclass, which may declare the handle type of each
+        record field for type checkers.
+    :param index: the record field set to the record's 0-based position, if any.
+    :param placeholder: an array entry meaning "no value".
+    :param separator: separates several values in one entry, for a multivalued record field.
+    :param doc: help text.
+    """
+
+    name: str
+    owner: type[Model]
+
+    def __init__(
+        self,
+        model: type[M],
+        *,
+        sources: Mapping[str, str | Source],
+        length: str,
+        handle: type[H],
+        index: str | None = None,
+        placeholder: str = "-",
+        separator: str = ";",
+        doc: str = "",
+    ) -> None:
+        self.record_model = model
+        self.sources = {
+            name: Source((source,), source) if isinstance(source, str) else source for name, source in sources.items()
+        }
+        self.length = length
+        self.handle = handle
+        self.index = index
+        self.placeholder = placeholder
+        self.separator = separator
+        self.__doc__ = doc
+        for name in (*self.sources, *([index] if index else [])):
+            if name not in model._fields:
+                raise TypeError(f"Collection of {model.__name__}: {name!r} is not a field of {model.__name__}")
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        if hasattr(self, "owner"):
+            raise TypeError(
+                f"Collection {self.owner.__name__}.{self.name} cannot also be "
+                f"{owner.__name__}.{name}; create a separate collection for each class"
+            )
+        self.owner = owner
+        self.name = name
+
+    def owner_fields(self, names: Iterable[str] | None = None) -> tuple[str, ...]:
+        """The owner fields read to build records with the record fields ``names`` (all if ``None``).
+
+        Always includes :attr:`length`; each name appears once, in first-use order.
+        """
+        wanted = self.sources if names is None else {n: self.sources[n] for n in names if n in self.sources}
+        return tuple(dict.fromkeys([self.length, *(f for source in wanted.values() for f in source.fields)]))
+
+    def fields_read(self, predicate: Expr) -> tuple[str, ...]:
+        """The record fields that evaluating ``predicate`` on a record reads (a relation reads its key)."""
+        found: dict[str, None] = {}
+
+        def visit(node: Expr) -> None:
+            if isinstance(node, (And, Or)):
+                for operand in node.operands:
+                    visit(operand)
+            elif isinstance(node, Not):
+                visit(node.operand)
+            elif isinstance(node, Related):
+                found.setdefault(node.relation.key)
+            elif isinstance(node, (Match, In, Like, Range)):
+                found.setdefault(node.field.name)
+
+        visit(predicate)
+        return tuple(found)
+
+    def label(self, positions: tuple[int, int] | None = None) -> str:
+        """How the collection (restricted to ``positions``) is written: ``Document.authors[0]``."""
+        owner = getattr(self, "owner", None)
+        text = f"{owner.__name__ if owner else '?'}.{getattr(self, 'name', '?')}"
+        if positions is not None:
+            start, end = positions
+            text += f"[{start - 1}]" if start == end else f"[{start - 1}:{end}]"
+        return text
+
+    @overload
+    def __get__(self, instance: None, owner: type | None = None) -> CollectionExpr[H]: ...
+
+    @overload
+    def __get__(self, instance: object, owner: type | None = None) -> list[M]: ...
+
+    def __get__(self, instance: Any, owner: type | None = None) -> CollectionExpr[H] | list[M]:
+        if instance is None:
+            return CollectionExpr(self)
+        cache: dict[str, Any] = instance._related
+        if self.name not in cache:
+            records = self.records(instance)
+            instance._related[self.name] = records
+        return cast("list[M]", instance._related[self.name])
+
+    def __set__(self, instance: Any, value: Any) -> None:
+        raise AttributeError(f"{self!r} is derived from {', '.join(self.owner_fields())} and cannot be set")
+
+    def records(self, owner: Model, names: Iterable[str] | None = None) -> list[M]:
+        """The records of ``owner``, in order, with the record fields ``names`` set (all if ``None``).
+
+        Missing owner fields are loaded first, all at once (see
+        ``Model._load_fields``). Entry ``i`` of each source array gives record
+        ``i``'s value; a missing or short array, or the placeholder, gives no
+        value (``None``, or an empty list for a multivalued record field, whose
+        entries are split on the separator). Records already built for the
+        instance (by attribute access) are returned as they are.
+        """
+        if not isinstance(owner, self.owner):
+            raise TypeError(f"{self!r} holds records of {self.owner.__name__} objects, not of {owner!r}")
+        if self.name in owner._related:
+            return cast("list[M]", owner._related[self.name])
+        wanted = self.sources if names is None else {n: self.sources[n] for n in names if n in self.sources}
+        fields = [owner._fields[name] for name in self.owner_fields(wanted)]
+        owner._load_fields(fields)
+        arrays = {field.name: owner._get_value(field) for field in fields}
+        lengths = arrays[self.length]
+        model = self.record_model
+        records: list[M] = []
+        for i in range(len(lengths) if isinstance(lengths, (list, tuple)) else 0):
+            record = model()
+            if self.index is not None:
+                record._data[self.index] = i
+            for name, source in wanted.items():
+                field = model._fields[name]
+                values = [self._convert(field, _entry(arrays[f], i)) for f in source.fields]
+                present = [value for value in values if value is not None]
+                record._data[name] = next((v for v in present if v != []), present[0] if present else None)
+            records.append(record)
+        return records
+
+    def _convert(self, field: Field[Any, Any], raw: Any) -> Any:
+        """One array entry as the value of the record field ``field``."""
+        if raw is None:
+            return None
+        if isinstance(raw, str):
+            if field.multivalued:
+                parts = (part.strip() for part in raw.split(self.separator))
+                raw = [part for part in parts if part and part != self.placeholder]
+            elif raw.strip() in ("", self.placeholder):
+                return None
+        return field.to_python(raw)
+
+    def quantify(self, predicate: Any, quantifier: Literal["any", "all"], positions: tuple[int, int] | None) -> Expr:
+        """``Quantified(self, predicate, quantifier, positions)``, after checking ``predicate``.
+
+        Raises ``TypeError`` for something other than an expression and
+        :class:`~ads.exceptions.QueryError` for an expression that is not
+        about one record: a condition on another model's field (other than
+        through a relation of the record model), or an operator, raw query or
+        library condition.
+        """
+        call = f"{self.label(positions)}.{quantifier}(...)"
+        record = self.record_model.__name__
+        if isinstance(predicate, bool):
+            raise TypeError(
+                f"{call} got the bool {predicate!r} instead of an expression. This usually means "
+                f"and/or/not, `is` or a comparison between plain values was used: combine expressions "
+                f"with & | ~ and wrap each comparison in parentheses, e.g. "
+                f"{self.label(positions)}.{quantifier}(({record}.<field> == x) & ({record}.<field> == y))."
+            )
+        if not isinstance(predicate, Expr):
+            raise TypeError(f"{call} needs an expression over {record} fields, not {predicate!r}")
+        self._check(predicate, call)
+        return Quantified(self, predicate, quantifier, positions)
+
+    def _check(self, node: Expr, call: str) -> None:
+        model = self.record_model
+        if isinstance(node, (And, Or)):
+            for operand in node.operands:
+                self._check(operand, call)
+        elif isinstance(node, Not):
+            self._check(node.operand, call)
+        elif isinstance(node, Related):
+            if model._relations.get(node.relation.name) is not node.relation:
+                raise exceptions.QueryError(
+                    f"{call}: {node.relation!r} is not a relation of {model.__name__}; inside it, "
+                    f"use {model.__name__}'s fields and relations ({', '.join([*model._fields, *model._relations])})"
+                )
+        elif isinstance(node, (Match, In, Like, Range)):
+            if model._fields.get(node.field.name) is not node.field:
+                raise exceptions.QueryError(self._foreign(node.field, call))
+        elif isinstance(node, Func) and node.name == "pos":
+            raise exceptions.QueryError(
+                f"{call} cannot restrict positions within one {model.__name__.lower()}'s values; "
+                f"choose {model.__name__.lower()}s by position by indexing the collection: "
+                f"{self.label()}[0].any(...), {self.label()}[0:3].any(...)"
+            )
+        elif not isinstance(node, Constant):
+            kind = {Func: "an operator", Raw: "raw Solr text", InLibrary: "a library condition"}
+            raise exceptions.QueryError(
+                f"{call} cannot contain {kind.get(type(node), 'a nested .any()/.all()')} ({node!r}): "
+                f"everything inside it is a condition on one {model.__name__.lower()}, built from "
+                f"{model.__name__} fields and relations."
+            )
+
+    def _foreign(self, field: Field[Any, Any], call: str) -> str:
+        """Why a leaf on ``field`` (not a field of the record model) cannot be in ``call``."""
+        model, other = self.record_model, getattr(field, "model", None)
+        name = f"{other.__name__ if other else '?'}.{field.name}"
+        if other is not None and issubclass(self.owner, other):
+            return (
+                f"{name} is a field of {other.__name__}, not of {model.__name__}: everything inside "
+                f"{call} is about one {model.__name__.lower()}. Put conditions on the "
+                f"{other.__name__.lower()} outside it, e.g. {call} & ({name} == ...)"
+            )
+        through = [rel for rel in model._relations.values() if rel.related_model is other]
+        if through:
+            return (
+                f"{name} is not a field of {model.__name__}; reach it through the relation "
+                f"{model.__name__}.{through[0].name}, e.g. {model.__name__}.{through[0].name}.{field.name} == ..."
+            )
+        return f"{name} is not a field of {model.__name__}; inside {call} use: {', '.join(model._fields)}"
+
+    def __repr__(self) -> str:
+        return f"<Collection {self.label()}>"
+
+
+def _entry(array: Any, i: int) -> Any:
+    """Entry ``i`` of an owner's array value, or ``None`` if it is missing or too short."""
+    if isinstance(array, (list, tuple)) and i < len(array):
+        return array[i]
+    return None
+
+
+class CollectionExpr(Generic[H]):
+    """A handle on a :class:`Collection` (``Document.authors``), used to build per-record conditions.
+
+    ``any(predicate)`` / ``all(predicate)`` match owners for which some / every
+    record satisfies ``predicate`` (``all`` needs at least one record).
+    Everything inside one call is about the same record. Index to restrict the
+    records by position: ``[0]`` (one record: also allows attribute shorthand,
+    ``Document.authors[0].name == x``) or ``[0:3]``.
+    """
+
+    __slots__ = ("_collection", "_positions")
+
+    def __init__(self, collection: Collection[Any, H], positions: tuple[int, int] | None = None) -> None:
+        self._collection = collection
+        self._positions = positions
+
+    @property
+    def collection(self) -> Collection[Any, H]:
+        """The collection this handle is on."""
+        return self._collection
+
+    @property
+    def positions(self) -> tuple[int, int] | None:
+        """The 1-indexed inclusive positions selected, or ``None`` for all records."""
+        return self._positions
+
+    def any(self, predicate: Expr) -> Expr:
+        """Owners for which at least one (selected) record satisfies ``predicate``."""
+        return self._collection.quantify(predicate, "any", self._positions)
+
+    def all(self, predicate: Expr) -> Expr:
+        """Owners that have (selected) records and for which every one satisfies ``predicate``."""
+        return self._collection.quantify(predicate, "all", self._positions)
+
+    @overload
+    def __getitem__(self, index: int) -> H: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> CollectionExpr[H]: ...
+
+    def __getitem__(self, index: int | slice) -> H | CollectionExpr[H]:
+        """Restrict to positions: ``[0]`` (one record) or ``[0:3]``; as for field positions."""
+        if self._positions is not None:
+            raise TypeError(f"{self!r} is already restricted to positions")
+        selected = parse_positions(index)
+        if isinstance(index, slice):
+            return CollectionExpr(self._collection, selected)
+        return self._collection.handle(self._collection, selected)
+
+    if not TYPE_CHECKING:
+        # Runtime only, so that type checkers still flag unknown attributes.
+        def __getattr__(self, name: str) -> NoReturn:
+            if name.startswith("_"):
+                raise AttributeError(name)
+            model = self._collection.record_model
+            if name not in model._fields and name not in model._relations:
+                raise AttributeError(f"{self!r} has no attribute {name!r}; use .any(...) or .all(...)")
+            label, record = self._label(), model.__name__
+            raise AttributeError(
+                f"{label}.{name}: say which {record.lower()}s the condition is about. Use "
+                f"{label}.any({record}.{name} == ...) for any {record.lower()}, "
+                f"{label}.all({record}.{name} == ...) for every one, or index one position, "
+                f"e.g. {self._collection.label()}[0].{name} == ..."
+            )
+
+    def _label(self) -> str:
+        if self._positions is None:
+            return self._collection.label()
+        start, end = self._positions
+        return f"{self._collection.label()}[{start - 1}:{end}]"
+
+    def __dir__(self) -> Iterable[str]:
+        return sorted({*object.__dir__(self), "any", "all"})
+
+    def __eq__(self, other: object) -> NoReturn:
+        raise TypeError(
+            f"{self!r} cannot be compared with a value; compare a field of one record inside "
+            f".any(...) or .all(...), e.g. {self._label()}.any({self._collection.record_model.__name__}.<field> == x)"
+        )
+
+    def __ne__(self, other: object) -> NoReturn:
+        self.__eq__(other)
+
+    __hash__ = object.__hash__
+
+    def __bool__(self) -> bool:
+        raise TypeError(BOOL_ERROR.format(name=f"Collection {self!r}"))
+
+    def __iter__(self) -> Any:
+        raise TypeError(f"{self!r} is not iterable; use .any(...) or .all(...) to build a condition")
+
+    def __repr__(self) -> str:
+        return f"<{self._label()}>"
+
+
+class RecordExpr(CollectionExpr[Any]):
+    """A handle on one record of a collection, by position: ``Document.authors[0]``.
+
+    Attribute access gives handles on the record's fields and relations, whose
+    conditions are about that record: ``Document.authors[0].name == x`` is
+    ``Document.authors[0].any(Author.name == x)``. Subclasses may declare those
+    attributes' types for type checkers.
+    """
+
+    __slots__ = ()
+
+    if not TYPE_CHECKING:
+
+        def __getattr__(self, name: str) -> FieldExpr | RelationExpr:
+            if name.startswith("_"):
+                raise AttributeError(name)
+            model = self._collection.record_model
+            field = model._fields.get(name)
+            if field is not None:
+                return field.expr_class(field, scope=self)
+            relation = model._relations.get(name)
+            if relation is not None:
+                return RelationExpr(relation, scope=self)
+            raise AttributeError(
+                f"{model.__name__} has no field {name!r}; fields are: "
+                f"{', '.join([*model._fields, *model._relations])}"
+            )
+
+    def _enclose(self, node: Expr) -> Expr:
+        """A condition on this record's field, as a condition on the owner."""
+        return self._collection.quantify(node, "any", self._positions)
+
+    def _label(self) -> str:
+        return self._collection.label(self._positions)
+
+    def __dir__(self) -> Iterable[str]:
+        model = self._collection.record_model
+        return sorted({*super().__dir__(), *model._fields, *model._relations})
 
 
 class ModelMeta(type):
     """Metaclass collecting a model's fields and relations.
 
-    Sets ``_fields`` and ``_relations`` (dicts in definition order, inherited
-    entries first) and a per-model ``DoesNotExist`` exception class.
+    Sets ``_fields``, ``_relations`` and ``_collections`` (dicts in definition
+    order, inherited entries first) and a per-model ``DoesNotExist`` exception class.
     """
 
     _fields: dict[str, Field[Any, Any]]
     _relations: dict[str, Relation[Any]]
+    _collections: dict[str, Collection[Any, Any]]
     DoesNotExist: type[exceptions.DoesNotExist]
 
     def __init__(cls, name: str, bases: tuple[type, ...], namespace: dict[str, Any], **kwargs: Any) -> None:
         super().__init__(name, bases, namespace, **kwargs)
         fields: dict[str, Field[Any, Any]] = {}
         relations: dict[str, Relation[Any]] = {}
+        collections: dict[str, Collection[Any, Any]] = {}
         for base in reversed(bases):
             fields.update(getattr(base, "_fields", {}))
             relations.update(getattr(base, "_relations", {}))
+            collections.update(getattr(base, "_collections", {}))
         for attr, value in namespace.items():
             if isinstance(value, Field):
                 fields[attr] = value
             elif isinstance(value, Relation):
                 relations[attr] = value
+            elif isinstance(value, Collection):
+                collections[attr] = value
         cls._fields = fields
         cls._relations = relations
+        cls._collections = collections
 
         key = namespace.get("_key")
         if key is not None and key not in fields:
@@ -213,6 +620,13 @@ class ModelMeta(type):
                 raise TypeError(
                     f"{name}.{relation.name} uses key {relation.key!r}, which is not a field of {name}"
                 )
+        for collection in collections.values():
+            used = [*collection.owner_fields(), *(s.search for s in collection.sources.values() if s.search)]
+            for field_name in used:
+                if field_name not in fields:
+                    raise TypeError(
+                        f"{name}.{collection.name} reads {field_name!r}, which is not a field of {name}"
+                    )
 
         parent = next(
             (base.DoesNotExist for base in bases if isinstance(base, ModelMeta)),
@@ -232,6 +646,7 @@ class Model(metaclass=ModelMeta):
     _backend: ClassVar[Backend]
     _fields: ClassVar[dict[str, Field[Any, Any]]]
     _relations: ClassVar[dict[str, Relation[Any]]]
+    _collections: ClassVar[dict[str, Collection[Any, Any]]]
     DoesNotExist: ClassVar[type[exceptions.DoesNotExist]]
 
     def __init__(self, **values: Any) -> None:
@@ -265,7 +680,7 @@ class Model(metaclass=ModelMeta):
     def _field(cls, ref: str | Field[Any, Any] | FieldExpr) -> Field[Any, Any]:
         """Resolve a field name, definition or plain handle to a field of this model."""
         if isinstance(ref, FieldExpr):
-            if ref.via is not None or ref.position is not None:
+            if ref.via is not None or ref.position is not None or ref.scope is not None:
                 raise TypeError(f"{ref!r} is not a plain field of {cls.__name__}")
             ref = ref.field
         if isinstance(ref, str):
@@ -290,6 +705,13 @@ class Model(metaclass=ModelMeta):
     def _load_missing(self, field: Field[Any, Any]) -> Any:
         """Return the value of a field that was never set. The default is ``None``."""
         return None
+
+    def _load_fields(self, fields: Iterable[Field[Any, Any]]) -> None:
+        """Load, at once where possible, those of ``fields`` that were never set.
+
+        Used before reading several fields together (as a :class:`Collection`
+        does). The default loads nothing: unset fields read as ``None``.
+        """
 
     def _set_value(self, field: Field[Any, Any], value: Any) -> None:
         """Store ``value`` (as the field normalises it) for ``field``, discarding cached related objects."""

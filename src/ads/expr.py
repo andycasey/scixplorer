@@ -11,13 +11,13 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from .exceptions import QueryError
 
 if TYPE_CHECKING:
     from .fields import Field
-    from .model import Relation
+    from .model import Collection, Relation
 
 __all__ = [
     "EVERYTHING",
@@ -33,6 +33,7 @@ __all__ = [
     "Not",
     "Or",
     "Order",
+    "Quantified",
     "Range",
     "Raw",
     "Related",
@@ -227,6 +228,33 @@ class Related(Expr):
 
 
 @dataclass(frozen=True, slots=True)
+class Quantified(Expr):
+    """Rows for which ``any`` (or ``all``) of their records in ``collection`` satisfy ``predicate``.
+
+    A record is one entry of a set of index-aligned arrays on the row, such as
+    one author of a document (see :class:`~ads.model.Collection`); ``predicate``
+    is an expression over the fields of the record model, so everything in it
+    is about one record. ``positions`` (1-indexed, inclusive, as for ``pos()``)
+    restricts the records considered. ``all`` requires at least one record.
+    """
+
+    collection: Collection[Any, Any]
+    predicate: Expr
+    quantifier: Literal["any", "all"] = "any"
+    positions: tuple[int, int] | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.predicate, Expr):
+            raise TypeError(f"Quantified predicate must be an expression, not {self.predicate!r}")
+        if self.quantifier not in ("any", "all"):
+            raise ValueError(f"Quantified quantifier must be 'any' or 'all', not {self.quantifier!r}")
+        if self.positions is not None:
+            start, end = self.positions
+            if not (isinstance(start, int) and isinstance(end, int) and 1 <= start <= end):
+                raise ValueError(f"Quantified positions must be 1 <= start <= end, not {self.positions!r}")
+
+
+@dataclass(frozen=True, slots=True)
 class InLibrary(Expr):
     """The document belongs to the ADS library with id ``library_id``."""
 
@@ -345,7 +373,7 @@ def _children(expr: Expr) -> tuple[Expr, ...]:
         return (expr.operand,)
     if isinstance(expr, Func):
         return tuple(arg for arg in expr.args if isinstance(arg, Expr))
-    if isinstance(expr, Related):
+    if isinstance(expr, (Related, Quantified)):
         return (expr.predicate,)
     return ()
 
@@ -361,6 +389,8 @@ def transform(expr: Expr, fn: Callable[[Expr], Expr]) -> Expr:
         expr = Func(expr.name, args)
     elif isinstance(expr, Related):
         expr = Related(expr.relation, transform(expr.predicate, fn))
+    elif isinstance(expr, Quantified):
+        expr = Quantified(expr.collection, transform(expr.predicate, fn), expr.quantifier, expr.positions)
     return fn(expr)
 
 
@@ -370,6 +400,12 @@ def simplify(expr: Expr) -> Expr:
     Flattens nested ``And``/``Or``, drops duplicate operands, folds constants,
     rewrites ``In`` with zero or one values, unwraps single-operand groups and
     removes double negation, throughout the tree.
+
+    A :class:`Quantified` node's predicate is simplified like any subtree. If it
+    becomes a constant: no record satisfies ``NOTHING``, so ``any`` and ``all``
+    of it are ``NOTHING``; every record satisfies ``EVERYTHING``, so both mean
+    "there is at least one record (at those positions)", which is kept as
+    ``any(EVERYTHING)`` (not folded to ``EVERYTHING``: a row may have no records).
     """
     return transform(expr, _simplify_node)
 
@@ -386,6 +422,11 @@ def _simplify_node(expr: Expr) -> Expr:
             return NOTHING
         if len(expr.values) == 1:
             return Match(expr.field, expr.values[0], expr.exact)
+    if isinstance(expr, Quantified):
+        if expr.predicate == NOTHING:
+            return NOTHING
+        if expr.predicate == EVERYTHING and expr.quantifier == "all":
+            return Quantified(expr.collection, EVERYTHING, "any", expr.positions)
     return expr
 
 
