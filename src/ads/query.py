@@ -548,3 +548,10 @@ class MemoryBackend(Generic[M]):
                 index.setdefault(getattr(row, self._key), row)
             self._index = index
         return self._index.get(value)
+
+    def clear(self) -> None:
+        """Drop the lookup index, so the next :meth:`lookup` rebuilds it from the loader.
+
+        Call this when the data the loader returns has changed.
+        """
+        self._index = None
