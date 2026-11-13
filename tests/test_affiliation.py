@@ -7,17 +7,17 @@ from pathlib import Path
 
 import pytest
 
-import ads.client
-import ads.models.affiliation as affiliation_module
-from ads.evaluate import matches
-from ads.exceptions import DoesNotExist
-from ads.models.affiliation import Affiliation
-from ads.query import Query
+import scixplorer.client
+import scixplorer.models.affiliation as affiliation_module
+from scixplorer.evaluate import matches
+from scixplorer.exceptions import DoesNotExist
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.query import Query
 
 
 def raw_rows(name: str) -> list[list[str]]:
     """Data rows of a packaged TSV file, parsed independently of the module under test."""
-    lines = (resources.files("ads") / "data" / name).read_text("utf-8").splitlines()[1:]
+    lines = (resources.files("scixplorer") / "data" / name).read_text("utf-8").splitlines()[1:]
     return [[value.strip() for value in line.split("\t")] for line in lines if line.strip()]
 
 
@@ -46,7 +46,7 @@ def no_default_client(monkeypatch: pytest.MonkeyPatch) -> None:
     def fail() -> None:
         raise AssertionError("affiliation queries must not need a client")
 
-    monkeypatch.setattr(ads.client, "get_default_client", fail)
+    monkeypatch.setattr(scixplorer.client, "get_default_client", fail)
 
 
 @pytest.fixture(autouse=True)
@@ -82,7 +82,7 @@ def test_disagreeing_rows_keep_the_first_names() -> None:
 
 
 def test_surrounding_whitespace_is_stripped() -> None:
-    raw = (resources.files("ads") / "data" / "affiliations.tsv").read_text("utf-8")
+    raw = (resources.files("scixplorer") / "data" / "affiliations.tsv").read_text("utf-8")
     assert "0\tA06826\tDLSU\t De La Salle University, Philippines\n" in raw
     assert Affiliation.lookup("A06826").canonical_name == "De La Salle University, Philippines"
 
@@ -254,9 +254,9 @@ def hook(event, args):
         if path.endswith(("journals.json", ".tsv")):
             opened.append(os.path.basename(path))
 sys.addaudithook(hook)
-import ads.models.affiliation
+import scixplorer.models.affiliation
 assert opened == [], opened
-ads.models.affiliation.Affiliation.lookup("A00211").children.all()
+scixplorer.models.affiliation.Affiliation.lookup("A00211").children.all()
 assert sorted(opened) == ["affiliations.tsv", "affiliations_country.tsv"], opened
 """
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)

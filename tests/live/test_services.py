@@ -12,11 +12,11 @@ from typing import Any
 
 import pytest
 
-from ads import _config
-from ads.client import Client, Request
-from ads.exceptions import APIError, AuthenticationError
-from ads.search import QUERY_PATH
-from ads.services import citation_helper, export, resolver, vis
+from scixplorer import _config
+from scixplorer.client import Client, Request
+from scixplorer.exceptions import APIError, AuthenticationError
+from scixplorer.search import QUERY_PATH
+from scixplorer.services import citation_helper, export, resolver, vis
 
 from .harness import PINNED, Outcome
 from .support import Findings, LiveTransport, redact
@@ -59,7 +59,7 @@ def test_invalid_token_raises_authentication_error(
     token (it runs only when a real token is configured, like every API test).
     """
     client = Client(
-        "ads-live-test-invalid-token",
+        "scixplorer-live-test-invalid-token",
         config=dataclasses.replace(_config.config, max_retries=0),
         transport=live_transport,
     )

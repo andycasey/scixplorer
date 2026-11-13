@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from ads._config import TOKEN_ENV_VARS, TOKEN_FILES, Config, config
+from scixplorer._config import TOKEN_ENV_VARS, TOKEN_FILES, Config, config
 
 
 @pytest.fixture

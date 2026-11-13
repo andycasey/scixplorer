@@ -8,9 +8,9 @@ from types import SimpleNamespace
 import pytest
 from helpers import INSTITUTES, JOURNALS, Institute, Journal, Paper
 
-from ads.evaluate import matches, predicate, sort_rows
-from ads.exceptions import NotLocallyEvaluable
-from ads.expr import (
+from scixplorer.evaluate import matches, predicate, sort_rows
+from scixplorer.exceptions import NotLocallyEvaluable
+from scixplorer.expr import (
     EVERYTHING,
     NOTHING,
     And,

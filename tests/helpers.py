@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ads.fields import (
+from scixplorer.fields import (
     BooleanField,
     DateField,
     DateTimeField,
@@ -15,7 +15,7 @@ from ads.fields import (
     TextField,
     VirtualField,
 )
-from ads.model import Model, Relation
+from scixplorer.model import Model, Relation
 
 
 class Journal(Model):

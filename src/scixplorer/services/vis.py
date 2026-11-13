@@ -10,8 +10,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from ads.client import Client, Request, get_default_client
-from ads.utils import _require_bibcodes, _response_field
+from scixplorer.client import Client, Request, get_default_client
+from scixplorer.utils import _require_bibcodes, _response_field
 
 __all__ = ["author_network", "paper_network"]
 
@@ -20,9 +20,9 @@ def author_network(*documents: Any, client: Client | None = None) -> Any:
     """Return the data for a network of the authors of the given documents.
 
     :param documents: any mix of bibcodes, documents and libraries, or
-        iterables of them (see :func:`ads.utils.to_bibcodes`).
-    :param client: the :class:`~ads.client.Client` to use (default:
-        :func:`~ads.client.get_default_client`).
+        iterables of them (see :func:`scixplorer.utils.to_bibcodes`).
+    :param client: the :class:`~scixplorer.client.Client` to use (default:
+        :func:`~scixplorer.client.get_default_client`).
     """
     return _network("author", documents, client)
 

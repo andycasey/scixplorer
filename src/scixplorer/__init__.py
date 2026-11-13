@@ -2,7 +2,7 @@
 
 Search with Python expressions on the model classes::
 
-    from ads import Document
+    from scixplorer import Document
 
     docs = (
         Document.select(Document.bibcode, Document.title)
@@ -14,7 +14,7 @@ Search with Python expressions on the model classes::
 
 __version__ = "1.0.0.dev0"
 
-# The version is defined before these imports because the client and ads.data read it.
+# The version is defined before these imports because the client and scixplorer.data read it.
 from . import data, exceptions
 from ._config import Config, config
 from .client import Client, get_default_client, set_default_client

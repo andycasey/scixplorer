@@ -1,4 +1,4 @@
-"""Tests for the document search planner (ads.search.plan and to_solr): pure, no I/O."""
+"""Tests for the document search planner (scixplorer.search.plan and to_solr): pure, no I/O."""
 
 from __future__ import annotations
 
@@ -8,17 +8,17 @@ from typing import Any
 import pytest
 from search_fakes import bibcodes
 
-from ads import _config
-from ads.exceptions import NotLocallyEvaluable, QueryError, UnsupportedQueryError
-from ads.expr import EVERYTHING, Expr, SolrLiteral
-from ads.fields import StringField
-from ads.model import Model, Relation
-from ads.models.affiliation import Affiliation
-from ads.models.document import Document, SearchQuery
-from ads.models.journal import Journal
-from ads.models.library import Library
-from ads.query import Query
-from ads.search import MAX_RELATED_VALUES, SearchBackend, SearchPlan, plan, to_solr
+from scixplorer import _config
+from scixplorer.exceptions import NotLocallyEvaluable, QueryError, UnsupportedQueryError
+from scixplorer.expr import EVERYTHING, Expr, SolrLiteral
+from scixplorer.fields import StringField
+from scixplorer.model import Model, Relation
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.models.document import Document, SearchQuery
+from scixplorer.models.journal import Journal
+from scixplorer.models.library import Library
+from scixplorer.query import Query
+from scixplorer.search import MAX_RELATED_VALUES, SearchBackend, SearchPlan, plan, to_solr
 
 
 def q(expr: Expr) -> str:
@@ -245,7 +245,7 @@ class _Curated(Model):
 
 
 def test_related_model_needing_requests_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("ads.client._default_client", None)
+    monkeypatch.setattr("scixplorer.client._default_client", None)
     with pytest.raises(UnsupportedQueryError, match="without requests to ADS"):
         plan(Query(_Curated).where(_Curated.library.name == "Gaia"))
     assert plan(Query(_Curated).where(_Curated.library == "abc")).q == 'library_ids:"abc"'

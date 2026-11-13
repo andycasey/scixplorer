@@ -1,6 +1,6 @@
 """Tests for models, relations and relation handles.
 
-``Model.select`` and ``Model.get`` need ``ads.query`` and are tested with it.
+``Model.select`` and ``Model.get`` need ``scixplorer.query`` and are tested with it.
 """
 
 from __future__ import annotations
@@ -11,11 +11,11 @@ from datetime import date, datetime, timezone
 import pytest
 from helpers import INSTITUTES, JOURNALS, Institute, Journal, Paper
 
-from ads import exceptions
-from ads.exceptions import DataWarning, QueryError
-from ads.expr import And, Func, In, Like, Match, Not, Related
-from ads.fields import Field, FieldInfo, IntegerField, StringField, TextField
-from ads.model import Model, Relation, RelationExpr
+from scixplorer import exceptions
+from scixplorer.exceptions import DataWarning, QueryError
+from scixplorer.expr import And, Func, In, Like, Match, Not, Related
+from scixplorer.fields import Field, FieldInfo, IntegerField, StringField, TextField
+from scixplorer.model import Model, Relation, RelationExpr
 
 
 def raises_set_name_error(fn, match: str) -> None:

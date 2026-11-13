@@ -1,7 +1,7 @@
 """Concepts of the Unified Astronomy Thesaurus (UAT), a controlled vocabulary for astronomy.
 
 The thesaurus is not packaged with this library (it is licensed CC BY-SA 3.0):
-download it once with ``refresh("uat")`` from :mod:`ads.data`. It is read from
+download it once with ``refresh("uat")`` from :mod:`scixplorer.data`. It is read from
 ``uat.json``, the flat list form published by the ``astrothesaurus/UAT``
 repository (``UAT_list.json``).
 
@@ -133,7 +133,7 @@ class UATConcept(Model):
     """A concept of the Unified Astronomy Thesaurus, identified by its number (e.g. ``486``).
 
     Concepts are held in memory and queried locally once the thesaurus has been
-    downloaded (``refresh("uat")`` in :mod:`ads.data`)::
+    downloaded (``refresh("uat")`` in :mod:`scixplorer.data`)::
 
         UATConcept.lookup(486).name
         UATConcept.select().where(UATConcept.name == "exoplanets").order_by(UATConcept.name)

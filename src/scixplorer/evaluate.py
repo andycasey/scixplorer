@@ -50,7 +50,7 @@ _WORD = re.compile(r"\w+")
 def matches(expr: Expr, obj: Any) -> bool:
     """Whether ``obj`` satisfies ``expr``.
 
-    Raises :class:`~ads.exceptions.NotLocallyEvaluable` if any part of ``expr``
+    Raises :class:`~scixplorer.exceptions.NotLocallyEvaluable` if any part of ``expr``
     can only be evaluated by ADS.
     """
     return predicate(expr)(obj)

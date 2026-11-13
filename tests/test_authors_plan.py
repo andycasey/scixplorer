@@ -7,13 +7,13 @@ from typing import Any
 import pytest
 from search_fakes import bibcodes
 
-from ads import _config, search
-from ads.exceptions import NotLocallyEvaluable, QueryError, UnsupportedQueryError
-from ads.expr import EVERYTHING, And, Expr, Not, SolrLiteral, simplify
-from ads.models.affiliation import Affiliation
-from ads.models.author import Author
-from ads.models.document import Document
-from ads.search import MAX_RELATED_VALUES, SearchPlan, plan, to_solr
+from scixplorer import _config, search
+from scixplorer.exceptions import NotLocallyEvaluable, QueryError, UnsupportedQueryError
+from scixplorer.expr import EVERYTHING, And, Expr, Not, SolrLiteral, simplify
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.models.author import Author
+from scixplorer.models.document import Document
+from scixplorer.search import MAX_RELATED_VALUES, SearchPlan, plan, to_solr
 
 
 def ids(expr: Expr) -> list[str]:

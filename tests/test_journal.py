@@ -8,13 +8,13 @@ from pathlib import Path
 
 import pytest
 
-import ads.client
-import ads.models.journal as journal_module
-from ads.exceptions import DoesNotExist
-from ads.models.journal import Journal
-from ads.query import Query
+import scixplorer.client
+import scixplorer.models.journal as journal_module
+from scixplorer.exceptions import DoesNotExist
+from scixplorer.models.journal import Journal
+from scixplorer.query import Query
 
-RAW: dict[str, str] = json.loads((resources.files("ads") / "data" / "journals.json").read_text("utf-8"))
+RAW: dict[str, str] = json.loads((resources.files("scixplorer") / "data" / "journals.json").read_text("utf-8"))
 
 
 @pytest.fixture(autouse=True)
@@ -22,7 +22,7 @@ def no_default_client(monkeypatch: pytest.MonkeyPatch) -> None:
     def fail() -> None:
         raise AssertionError("journal queries must not need a client")
 
-    monkeypatch.setattr(ads.client, "get_default_client", fail)
+    monkeypatch.setattr(scixplorer.client, "get_default_client", fail)
 
 
 @pytest.fixture(autouse=True)
@@ -100,11 +100,11 @@ def hook(event, args):
         if path.endswith(("journals.json", ".tsv")):
             opened.append(path)
 sys.addaudithook(hook)
-import ads.models.journal
+import scixplorer.models.journal
 assert opened == [], opened
-ads.models.journal.Journal.lookup("ApJ")
+scixplorer.models.journal.Journal.lookup("ApJ")
 assert len(opened) == 1 and opened[0].endswith("journals.json"), opened
-ads.models.journal.Journal.select().all()
+scixplorer.models.journal.Journal.select().all()
 assert len(opened) == 1, opened
 """
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)

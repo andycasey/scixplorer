@@ -10,17 +10,17 @@ from typing import Any
 import pytest
 from search_fakes import FakeSearch, bibcodes
 
-from ads import solr
-from ads.evaluate import matches
-from ads.exceptions import LazyLoadWarning, NotLocallyEvaluable, QueryError
-from ads.expr import EVERYTHING, NOTHING, And, Match, Not, Quantified, Related, SolrLiteral, simplify, transform, walk
-from ads.fields import IntegerField, NameField, StringField, TextField
-from ads.model import CollectionExpr, RecordExpr
-from ads.models.affiliation import Affiliation
-from ads.models.author import Author, AuthorExpr
-from ads.models.document import Document
-from ads.models.journal import Journal
-from ads.search import to_solr
+from scixplorer import solr
+from scixplorer.evaluate import matches
+from scixplorer.exceptions import LazyLoadWarning, NotLocallyEvaluable, QueryError
+from scixplorer.expr import EVERYTHING, NOTHING, And, Match, Not, Quantified, Related, SolrLiteral, simplify, transform, walk
+from scixplorer.fields import IntegerField, NameField, StringField, TextField
+from scixplorer.model import CollectionExpr, RecordExpr
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.models.author import Author, AuthorExpr
+from scixplorer.models.document import Document
+from scixplorer.models.journal import Journal
+from scixplorer.search import to_solr
 
 
 def country_ids(country: str) -> list[str]:

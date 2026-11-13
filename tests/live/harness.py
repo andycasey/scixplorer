@@ -1,6 +1,6 @@
 """Searching from the live tests: requests built by the client's own planner, and readable outcomes.
 
-Every search goes through :func:`ads.search.plan` and :meth:`SearchPlan.request`,
+Every search goes through :func:`scixplorer.search.plan` and :meth:`SearchPlan.request`,
 so the ``q``, ``fl``, ``sort`` and endpoint are exactly what the client sends.
 A rejected request does not raise: the :class:`Outcome` holds the server's
 error text, so a test can show the ``q`` it sent and what the server said.
@@ -15,12 +15,12 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, TypeVar
 
-from ads import search
-from ads.client import Client, Request, Response
-from ads.exceptions import APIError, DataWarning
-from ads.expr import Expr, Order
-from ads.models.document import Document
-from ads.query import Query
+from scixplorer import search
+from scixplorer.client import Client, Request, Response
+from scixplorer.exceptions import APIError, DataWarning
+from scixplorer.expr import Expr, Order
+from scixplorer.models.document import Document
+from scixplorer.query import Query
 
 from .support import LiveTransport, Verdict, redact
 

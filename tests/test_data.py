@@ -16,22 +16,22 @@ from typing import Any
 import httpx
 import pytest
 
-import ads
-import ads._config
-import ads.data as data
-import ads.models.affiliation as affiliation_module
-import ads.models.journal as journal_module
-import ads.models.uat as uat_module
-from ads.exceptions import ADSError, DataNotAvailable, DataWarning
-from ads.models.affiliation import Affiliation
-from ads.models.journal import Journal
-from ads.models.planetary import PlanetaryFeature
-from ads.models.uat import UATConcept
-from ads.query import MemoryBackend
+import scixplorer
+import scixplorer._config
+import scixplorer.data as data
+import scixplorer.models.affiliation as affiliation_module
+import scixplorer.models.journal as journal_module
+import scixplorer.models.uat as uat_module
+from scixplorer.exceptions import SciXError, DataNotAvailable, DataWarning
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.models.journal import Journal
+from scixplorer.models.planetary import PlanetaryFeature
+from scixplorer.models.uat import UATConcept
+from scixplorer.query import MemoryBackend
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PACKAGED_JOURNALS: dict[str, str] = json.loads(
-    (resources.files("ads") / "data" / "journals.json").read_text("utf-8")
+    (resources.files("scixplorer") / "data" / "journals.json").read_text("utf-8")
 )
 URLS = {name: [remote.url for remote in dataset.files] for name, dataset in data.DATASETS.items()}
 
@@ -70,7 +70,7 @@ def journal_page(titles: dict[str, str]) -> str:
 
 
 def packaged(name: str) -> bytes:
-    return (resources.files("ads") / "data" / name).read_bytes()
+    return (resources.files("scixplorer") / "data" / name).read_bytes()
 
 
 def upstream_affiliations(extra: bool = True) -> tuple[str, str]:
@@ -271,7 +271,7 @@ def test_refresh_sends_no_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
     secret = "secret-scix-token"
     monkeypatch.setenv("ADS_API_TOKEN", secret)
     monkeypatch.setenv("ADS_DEV_KEY", secret)
-    monkeypatch.setattr(ads._config.config, "token", secret)
+    monkeypatch.setattr(scixplorer._config.config, "token", secret)
     server = Server(good_routes())
     assert all(result.ok for result in data.refresh(transport=server.transport))
     assert len(server.requests) == 5
@@ -279,7 +279,7 @@ def test_refresh_sends_no_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
         assert "authorization" not in request.headers
         assert "cookie" not in request.headers
         assert all(secret not in value for value in request.headers.values())
-        assert request.headers["user-agent"] == f"scixplorer/{ads.__version__}"
+        assert request.headers["user-agent"] == f"scixplorer/{scixplorer.__version__}"
         assert request.method == "GET" and request.content == b""
 
 
@@ -482,10 +482,10 @@ def test_vocabularies_need_downloading(model: Any, name: str, cache: Path) -> No
     for run in (query.all, query.count, query.first, query.explain, lambda: model.lookup(1)):
         with pytest.raises(DataNotAvailable) as info:
             run()
-        assert isinstance(info.value, ADSError)
+        assert isinstance(info.value, SciXError)
         message = str(info.value)
         assert message.startswith(f"The {name!r} data has not been downloaded. ")
-        assert f'Download it once with ads.data.refresh("{name}"); it is stored in {cache}.' in message
+        assert f'Download it once with scixplorer.data.refresh("{name}"); it is stored in {cache}.' in message
     assert not cache.exists()
 
 
@@ -494,9 +494,9 @@ def test_vocabularies_need_downloading(model: Any, name: str, cache: Path) -> No
 
 def test_refresh_imports_the_model_that_parses_a_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delitem(data._registry, "uat")
-    monkeypatch.delitem(sys.modules, "ads.models.uat")
+    monkeypatch.delitem(sys.modules, "scixplorer.models.uat")
     [result] = data.refresh("uat", transport=Server(good_routes()).transport)
-    assert result.ok and "uat" in data._registry and "ads.models.uat" in sys.modules
+    assert result.ok and "uat" in data._registry and "scixplorer.models.uat" in sys.modules
 
 
 def test_memory_backend_clear_drops_the_index() -> None:
@@ -521,7 +521,7 @@ def test_uat_reset_drops_every_cache() -> None:
 
 
 def test_notice_and_gpl_text_are_package_resources() -> None:
-    folder = resources.files("ads.data")
+    folder = resources.files("scixplorer.data")
     names = ("NOTICE.md", "LICENSE-GPL-3.0.txt", "journals.json", "affiliations.tsv", "affiliations_country.tsv")
     for name in names:
         assert (folder / name).is_file(), name
@@ -533,7 +533,7 @@ def test_notice_and_gpl_text_are_package_resources() -> None:
 
 def test_notices() -> None:
     text = data.notices()
-    assert text == (resources.files("ads.data") / "NOTICE.md").read_text("utf-8")
+    assert text == (resources.files("scixplorer.data") / "NOTICE.md").read_text("utf-8")
     flat = " ".join(text.split())
     assert "not covered by the MIT licence" in flat
     for dataset in data.DATASETS.values():
@@ -580,19 +580,19 @@ def hook(event, args):
         if path.startswith(cache) or path.endswith((".json", ".tsv", ".csv", ".html")):
             events.append(os.path.basename(path))
 sys.addaudithook(hook)
-import ads.data, ads.exceptions, ads.models.uat, ads.models.planetary, ads.models.journal, ads.models.affiliation
-from ads.models.uat import UATConcept
-from ads.models.planetary import PlanetaryFeature
+import scixplorer.data, scixplorer.exceptions, scixplorer.models.uat, scixplorer.models.planetary, scixplorer.models.journal, scixplorer.models.affiliation
+from scixplorer.models.uat import UATConcept
+from scixplorer.models.planetary import PlanetaryFeature
 query = UATConcept.select().where(UATConcept.name == "stars")
 PlanetaryFeature.select().where(PlanetaryFeature.target == "Mars")
-ads.data.status()
+scixplorer.data.status()
 assert events == [], events
 assert [c.id for c in query] == [2, 4, 6, 9]
 UATConcept.lookup(2).descendants
 assert events == ["uat.json"], events
 try:
     PlanetaryFeature.lookup(1)
-except ads.exceptions.DataNotAvailable:
+except scixplorer.exceptions.DataNotAvailable:
     pass
 assert not [e for e in events if e.startswith("socket.")], events
 """

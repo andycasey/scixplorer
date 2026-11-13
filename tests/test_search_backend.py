@@ -10,12 +10,12 @@ import httpx
 import pytest
 from search_fakes import FakeSearch, bibcodes, make_docs
 
-from ads import _config
-from ads.exceptions import APIError, DataWarning, UnsupportedQueryError
-from ads.models.affiliation import Affiliation
-from ads.models.document import Document, SearchQuery
-from ads.models.journal import Journal
-from ads.models.library import Library
+from scixplorer import _config
+from scixplorer.exceptions import APIError, DataWarning, UnsupportedQueryError
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.models.document import Document, SearchQuery
+from scixplorer.models.journal import Journal
+from scixplorer.models.library import Library
 
 
 @pytest.fixture
@@ -148,7 +148,7 @@ def test_get(page_size: None) -> None:
 
 def test_model_get_uses_the_default_client(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = FakeSearch(make_docs(1))
-    monkeypatch.setattr("ads.client._default_client", fake.client())
+    monkeypatch.setattr("scixplorer.client._default_client", fake.client())
     assert Document.get(Document.affiliation.country == "Australia").bibcode == bibcodes(1)[0]
     fake.reply = lambda request: httpx.Response(200, json={"response": {"numFound": 0, "docs": []}})
     with pytest.raises(Document.DoesNotExist):
@@ -358,7 +358,7 @@ def test_explain_library_bibcodes_strategy(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_explain_makes_no_requests(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("ads.client._default_client", FakeSearch().client())
+    monkeypatch.setattr("scixplorer.client._default_client", FakeSearch().client())
     Document.select().where(Affiliation.country == "Australia").explain()
     Document.select().where(Journal.abbreviation == "ApJ").explain()
 

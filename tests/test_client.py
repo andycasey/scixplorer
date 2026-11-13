@@ -10,8 +10,8 @@ from typing import Any
 import httpx
 import pytest
 
-from ads import __version__
-from ads.client import (
+from scixplorer import __version__
+from scixplorer.client import (
     Client,
     RateLimit,
     Request,
@@ -20,9 +20,9 @@ from ads.client import (
     service_for,
     set_default_client,
 )
-from ads._config import TOKEN_ENV_VARS, Config
-from ads._config import config as module_config
-from ads.exceptions import APIError, AuthenticationError, RateLimitExceeded
+from scixplorer._config import TOKEN_ENV_VARS, Config
+from scixplorer._config import config as module_config
+from scixplorer.exceptions import APIError, AuthenticationError, RateLimitExceeded
 
 TOKEN = "s3cret-token-value"
 SEARCH = Request("GET", "/search/query", params={"q": "star"})
@@ -167,7 +167,7 @@ def test_url_joining(harness, base, path):
 def test_auth_and_user_agent_headers(harness):
     harness.send(harness.client(reply()))
     assert harness.last.headers["Authorization"] == f"Bearer {TOKEN}"
-    assert harness.last.headers["User-Agent"] == f"ads-python/{__version__}"
+    assert harness.last.headers["User-Agent"] == f"scixplorer/{__version__}"
 
 
 def test_caller_headers_override_defaults_but_not_authorization(harness):
@@ -552,7 +552,7 @@ def test_missing_token_raises_before_any_request(harness, no_token_env):
     message = str(info.value)
     assert "SCIX_API_TOKEN, ADS_API_TOKEN, ADS_DEV_KEY (checked in that order)" in message
     assert "~/.scix/token, ~/.ads/token, ~/.ads/dev_key (checked in that order)" in message
-    assert "ads.config.token" in message
+    assert "scixplorer.config.token" in message
     assert harness.requests == []
 
 

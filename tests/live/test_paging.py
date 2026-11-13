@@ -6,8 +6,8 @@ from collections import Counter
 
 import pytest
 
-from ads.models.document import Document
-from ads.search import BIGQUERY_PATH, MAX_PAGE_SIZE, plan
+from scixplorer.models.document import Document
+from scixplorer.search import BIGQUERY_PATH, MAX_PAGE_SIZE, plan
 
 from .harness import Live, Outcome, closed_set
 from .support import Findings, LiveTransport

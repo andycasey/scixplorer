@@ -30,8 +30,8 @@ import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 
-from ads import fields
-from ads.models.document import Document
+from scixplorer import fields
+from scixplorer.models.document import Document
 
 #: Model fields that are deliberately classified differently from the rule above.
 DELIBERATE = {

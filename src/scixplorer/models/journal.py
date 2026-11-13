@@ -1,5 +1,5 @@
 """Journals known to SciX, from ``journals.json``: the copy downloaded by
-:func:`ads.data.refresh` if there is one, else the packaged snapshot."""
+:func:`scixplorer.data.refresh` if there is one, else the packaged snapshot."""
 
 from __future__ import annotations
 

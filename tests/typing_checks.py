@@ -12,8 +12,8 @@ import sys
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, NoReturn
 
-from ads.expr import Expr, Order
-from ads.fields import (
+from scixplorer.expr import Expr, Order
+from scixplorer.fields import (
     BooleanField,
     DateField,
     DateTimeField,
@@ -30,13 +30,13 @@ from ads.fields import (
     TextField,
     VirtualField,
 )
-from ads.model import Model, Relation, RelationExpr
-from ads.models.affiliation import Affiliation
-from ads.models.document import Document
-from ads.models.journal import Journal as KnownJournal
-from ads.models.planetary import PlanetaryFeature
-from ads.models.uat import UATConcept
-from ads.query import Query, Sender
+from scixplorer.model import Model, Relation, RelationExpr
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.models.document import Document
+from scixplorer.models.journal import Journal as KnownJournal
+from scixplorer.models.planetary import PlanetaryFeature
+from scixplorer.models.uat import UATConcept
+from scixplorer.query import Query, Sender
 
 if TYPE_CHECKING:
     if sys.version_info >= (3, 11):

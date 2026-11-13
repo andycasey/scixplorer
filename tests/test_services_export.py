@@ -9,12 +9,12 @@ from typing import Any
 import httpx
 import pytest
 
-from ads.client import Client, Request
-from ads.exceptions import APIError
-from ads.expr import Order
-from ads.fields import IntegerField, StringField
-from ads.model import Model
-from ads.services import export
+from scixplorer.client import Client, Request
+from scixplorer.exceptions import APIError
+from scixplorer.expr import Order
+from scixplorer.fields import IntegerField, StringField
+from scixplorer.model import Model
+from scixplorer.services import export
 
 BIBCODES = ["2015ApJ...808...16N", "2000A&AS..143...41K"]
 
@@ -83,7 +83,7 @@ def test_all_lists_every_format() -> None:
 def test_simple_format(name: str, server: Server, client: Client) -> None:
     function = getattr(export, name)
     assert function.__name__ == name
-    assert function.__module__ == "ads.services.export"
+    assert function.__module__ == "scixplorer.services.export"
     assert "Export documents in" in inspect.getdoc(function)
     assert list(inspect.signature(function).parameters) == ["documents", "sort", "client"]
 
@@ -132,7 +132,7 @@ def test_no_documents(server: Server, client: Client) -> None:
 
 def test_default_client_is_used(server: Server, monkeypatch: pytest.MonkeyPatch) -> None:
     client = Client(token="t", transport=httpx.MockTransport(server))
-    monkeypatch.setattr("ads.services.export.get_default_client", lambda: client)
+    monkeypatch.setattr("scixplorer.services.export.get_default_client", lambda: client)
     assert export.ads("A") == "EXPORTED"
     client.close()
 

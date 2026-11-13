@@ -6,49 +6,49 @@ import os
 import subprocess
 import sys
 
-import ads
+import scixplorer
 
 
 def test_every_exported_name_exists():
-    for name in ads.__all__:
-        assert hasattr(ads, name), name
+    for name in scixplorer.__all__:
+        assert hasattr(scixplorer, name), name
 
 
 def test_config_is_the_settings_instance_used_by_the_default_client():
-    assert isinstance(ads.config, ads.Config)
-    ads.set_default_client(None)
+    assert isinstance(scixplorer.config, scixplorer.Config)
+    scixplorer.set_default_client(None)
     try:
-        assert ads.get_default_client().config is ads.config
+        assert scixplorer.get_default_client().config is scixplorer.config
     finally:
-        ads.set_default_client(None)
+        scixplorer.set_default_client(None)
 
 
 def test_models_services_and_helpers_are_reachable():
-    assert ads.Document.select().model is ads.Document
-    assert ads.Library.documents is not None
-    assert callable(ads.export.bibtex)
-    assert callable(ads.citation_helper)
-    assert ads.days_ago(7).text == "NOW-7DAYS"
-    assert issubclass(ads.exceptions.RateLimitExceeded, ads.exceptions.APIError)
+    assert scixplorer.Document.select().model is scixplorer.Document
+    assert scixplorer.Library.documents is not None
+    assert callable(scixplorer.export.bibtex)
+    assert callable(scixplorer.citation_helper)
+    assert scixplorer.days_ago(7).text == "NOW-7DAYS"
+    assert issubclass(scixplorer.exceptions.RateLimitExceeded, scixplorer.exceptions.APIError)
 
 
 def test_library_documents_is_a_document_query():
-    library = ads.Library(id="abc", name="x")
+    library = scixplorer.Library(id="abc", name="x")
     query = library.documents
-    assert query.model is ads.Document
-    assert ads.search.to_solr(query) == "docs(library/abc)"
+    assert query.model is scixplorer.Document
+    assert scixplorer.search.to_solr(query) == "docs(library/abc)"
 
 
 def test_vocabulary_models_and_data_are_exported():
-    from ads.models.planetary import PlanetaryFeature
-    from ads.models.uat import UATConcept
+    from scixplorer.models.planetary import PlanetaryFeature
+    from scixplorer.models.uat import UATConcept
 
-    assert ads.UATConcept is UATConcept and ads.models.UATConcept is UATConcept
-    assert ads.PlanetaryFeature is PlanetaryFeature and ads.models.PlanetaryFeature is PlanetaryFeature
-    assert {"UATConcept", "PlanetaryFeature", "data"} <= set(ads.__all__)
+    assert scixplorer.UATConcept is UATConcept and scixplorer.models.UATConcept is UATConcept
+    assert scixplorer.PlanetaryFeature is PlanetaryFeature and scixplorer.models.PlanetaryFeature is PlanetaryFeature
+    assert {"UATConcept", "PlanetaryFeature", "data"} <= set(scixplorer.__all__)
     for name in ("refresh", "status", "clear", "cache_dir", "notices", "DATASETS"):
-        assert hasattr(ads.data, name), name
-    assert ads.data.DATASETS["uat"].packaged is False
+        assert hasattr(scixplorer.data, name), name
+    assert scixplorer.data.DATASETS["uat"].packaged is False
 
 
 def test_import_reads_no_data_files_and_opens_no_sockets(tmp_path):
@@ -66,13 +66,13 @@ def hook(event, args):
         if path.startswith({str(cache)!r}) or path.endswith((".json", ".tsv", ".csv", ".md", ".txt")):
             events.append(path)
 sys.addaudithook(hook)
-import ads
+import scixplorer
 assert events == [], events
-ads.Document.select().where(ads.Document.uat == 498)
-ads.UATConcept.select().where(ads.UATConcept.name == "Stars")
-ads.data.cache_dir()
+scixplorer.Document.select().where(scixplorer.Document.uat == 498)
+scixplorer.UATConcept.select().where(scixplorer.UATConcept.name == "Stars")
+scixplorer.data.cache_dir()
 assert events == [], events
-assert ads.__version__ and ads.data.USER_AGENT.endswith(ads.__version__)
+assert scixplorer.__version__ and scixplorer.data.USER_AGENT.endswith(scixplorer.__version__)
 """
     env = {**os.environ, "SCIX_CACHE_DIR": str(cache)}
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, env=env, cwd=tmp_path)

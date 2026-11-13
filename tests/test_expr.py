@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from ads.exceptions import QueryError
-from ads.expr import (
+from scixplorer.exceptions import QueryError
+from scixplorer.expr import (
     EVERYTHING,
     NOTHING,
     And,

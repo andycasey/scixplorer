@@ -23,8 +23,8 @@ from urllib.parse import urlsplit
 import httpx
 import pytest
 
-from ads.client import Client, RateLimit, service_for
-from ads.models.library import Library
+from scixplorer.client import Client, RateLimit, service_for
+from scixplorer.models.library import Library
 
 #: Requests after which no more are sent and the session stops (the suite is designed to need fewer than 120).
 HARD_LIMIT = 150
@@ -33,9 +33,9 @@ HARD_LIMIT = 150
 REDACTED = "[REDACTED]"
 
 #: Start of the name of every library the write tests create.
-LIBRARY_PREFIX = "ads-live-test"
+LIBRARY_PREFIX = "scixplorer-live-test"
 
-LIBRARY_DESCRIPTION = "Temporary library created by the ads live test suite; it is deleted when the run ends."
+LIBRARY_DESCRIPTION = "Temporary library created by the scixplorer live test suite; it is deleted when the run ends."
 
 #: Read-only endpoints whose answers are reused within a session.
 _CACHEABLE = frozenset({("GET", "search/query"), ("POST", "search/bigquery")})

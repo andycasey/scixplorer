@@ -21,12 +21,12 @@ from typing import Any
 
 import httpx
 
-from ads import __version__
-from ads._config import TOKEN_ENV_VARS, TOKEN_FILES, Config, normalise_tokens
-from ads._config import config as _module_config
-from ads.exceptions import APIError, AuthenticationError, RateLimitExceeded
+from scixplorer import __version__
+from scixplorer._config import TOKEN_ENV_VARS, TOKEN_FILES, Config, normalise_tokens
+from scixplorer._config import config as _module_config
+from scixplorer.exceptions import APIError, AuthenticationError, RateLimitExceeded
 
-USER_AGENT = f"ads-python/{__version__}"
+USER_AGENT = f"scixplorer/{__version__}"
 
 #: Statuses that indicate a transient upstream problem worth retrying.
 RETRY_STATUSES = frozenset({502, 503, 504})
@@ -47,7 +47,7 @@ _ASSUMED_RATE_LIMIT_WAIT = timedelta(seconds=60)
 
 _MISSING_TOKEN_MESSAGE = (
     "No API token found. Get one at https://scixplorer.org/user/settings/token "
-    "and then either set ads.config.token = '...', pass token= to Client(), set one of the "
+    "and then either set scixplorer.config.token = '...', pass token= to Client(), set one of the "
     f"environment variables {', '.join(TOKEN_ENV_VARS)} (checked in that order), or save it "
     f"as the first line of one of {', '.join('~/' + f for f in TOKEN_FILES)} (checked in that order)."
 )
@@ -185,8 +185,8 @@ class Client:
         the first one that is not currently rate limited for the request's
         service (after HTTP 429, or a response reporting no remaining
         requests, until the reported reset time).
-    :param config: settings to use; defaults to the module-level ``ads.config``
-        (``ads._config.config``). Its ``api_url``, ``timeout``, ``max_retries``
+    :param config: settings to use; defaults to the module-level ``scixplorer.config``
+        (``scixplorer._config.config``). Its ``api_url``, ``timeout``, ``max_retries``
         and ``retry_backoff`` are read on every request.
     :param transport: optional ``httpx`` transport for the sync client.
     :param async_transport: optional ``httpx`` transport for the async client.
@@ -236,10 +236,10 @@ class Client:
         the server may already have applied them. After HTTP 429 the request is
         sent again at once if another token is available for its service.
 
-        Raises :class:`~ads.exceptions.AuthenticationError` if there is no token
-        or ADS rejects it, :class:`~ads.exceptions.RateLimitExceeded` when every
+        Raises :class:`~scixplorer.exceptions.AuthenticationError` if there is no token
+        or ADS rejects it, :class:`~scixplorer.exceptions.RateLimitExceeded` when every
         token is rate limited for the service (without sending the request if
-        that is already known), and :class:`~ads.exceptions.APIError` for any
+        that is already known), and :class:`~scixplorer.exceptions.APIError` for any
         other failure.
         """
         exchange = _Exchange(request, self._resolve_tokens())
@@ -614,7 +614,7 @@ _default_client: Client | None = None
 def get_default_client() -> Client:
     """Return the shared default :class:`Client`, creating it on first use.
 
-    The default client uses the module-level ``ads.config`` (``ads._config.config``).
+    The default client uses the module-level ``scixplorer.config`` (``scixplorer._config.config``).
     """
     global _default_client
     if _default_client is None:

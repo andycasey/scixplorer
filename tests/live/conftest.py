@@ -1,6 +1,6 @@
 """Fixtures and hooks shared by the live tests.
 
-One session-scoped :class:`~ads.client.Client` sends every request through a
+One session-scoped :class:`~scixplorer.client.Client` sends every request through a
 :class:`~live.support.LiveTransport`, which counts requests per service,
 replays identical searches from a session cache, refuses request
 :data:`~live.support.HARD_LIMIT` + 1 (the test making it fails with
@@ -22,10 +22,10 @@ from typing import Any
 import httpx
 import pytest
 
-from ads import _config
-from ads.client import Client, set_default_client
-from ads.models.document import Document
-from ads.models.library import Library
+from scixplorer import _config
+from scixplorer.client import Client, set_default_client
+from scixplorer.models.document import Document
+from scixplorer.models.library import Library
 
 from . import probes as probing
 from . import schema

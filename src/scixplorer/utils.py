@@ -10,10 +10,10 @@ import re
 from collections.abc import Iterable, Iterator
 from typing import TYPE_CHECKING, Any
 
-from ads.exceptions import APIError
+from scixplorer.exceptions import APIError
 
 if TYPE_CHECKING:
-    from ads.client import Request, Response
+    from scixplorer.client import Request, Response
 
 __all__ = ["flatten", "parse_bibcode", "to_bibcodes"]
 

@@ -15,12 +15,12 @@ from typing import Any
 import pytest
 from search_fakes import FakeSearch, bibcodes
 
-from ads import _config, search
-from ads.exceptions import LazyLoadWarning
-from ads.expr import Expr
-from ads.models.affiliation import Affiliation
-from ads.models.author import Author
-from ads.models.document import Document
+from scixplorer import _config, search
+from scixplorer.exceptions import LazyLoadWarning
+from scixplorer.expr import Expr
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.models.author import Author
+from scixplorer.models.document import Document
 
 
 def ids(country: str) -> list[str]:

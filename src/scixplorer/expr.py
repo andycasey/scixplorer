@@ -1,8 +1,8 @@
 """Immutable expression trees describing search predicates.
 
 Expressions are built by operator overloading on field handles (see
-:mod:`ads.fields`) and interpreted by :mod:`ads.solr` (compile to a Solr query)
-and :mod:`ads.evaluate` (evaluate in Python). Every node is a frozen, hashable
+:mod:`scixplorer.fields`) and interpreted by :mod:`scixplorer.solr` (compile to a Solr query)
+and :mod:`scixplorer.evaluate` (evaluate in Python). Every node is a frozen, hashable
 dataclass that compares structurally.
 """
 
@@ -232,7 +232,7 @@ class Quantified(Expr):
     """Rows for which ``any`` (or ``all``) of their records in ``collection`` satisfy ``predicate``.
 
     A record is one entry of a set of index-aligned arrays on the row, such as
-    one author of a document (see :class:`~ads.model.Collection`); ``predicate``
+    one author of a document (see :class:`~scixplorer.model.Collection`); ``predicate``
     is an expression over the fields of the record model, so everything in it
     is about one record. ``positions`` (1-indexed, inclusive, as for ``pos()``)
     restricts the records considered. ``all`` requires at least one record.

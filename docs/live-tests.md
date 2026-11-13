@@ -24,7 +24,7 @@ Useful additions:
 
 ### The token
 
-The token is found exactly as the client finds it, by `ads._config.config.resolve_tokens()`:
+The token is found exactly as the client finds it, by `scixplorer._config.config.resolve_tokens()`:
 the environment variable `SCIX_API_TOKEN` (or `ADS_API_TOKEN`, `ADS_DEV_KEY`), else the first line of
 `~/.scix/token` (or `~/.ads/token`, `~/.ads/dev_key`). Without one, the API tests are skipped with
 the message "no API token: set SCIX_API_TOKEN ...". The token is never printed:

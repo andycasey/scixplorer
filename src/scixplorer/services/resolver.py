@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote
 
-from ads.client import Client, Request, Response, get_default_client
-from ads.exceptions import APIError
-from ads.utils import _response_field, to_bibcodes
+from scixplorer.client import Client, Request, Response, get_default_client
+from scixplorer.exceptions import APIError
+from scixplorer.utils import _response_field, to_bibcodes
 
 __all__ = ["LINK_TYPES", "external_resource", "external_resources"]
 
@@ -39,8 +39,8 @@ def external_resources(document: Any, *, client: Client | None = None) -> list[d
     """Return every external resource ADS knows for one document.
 
     :param document: a bibcode, or an object with a ``bibcode`` (a document).
-    :param client: the :class:`~ads.client.Client` to use (default:
-        :func:`~ads.client.get_default_client`).
+    :param client: the :class:`~scixplorer.client.Client` to use (default:
+        :func:`~scixplorer.client.get_default_client`).
     :returns: one dict per kind of resource, with keys such as ``type``
         (a link type), ``title``, ``url`` and ``count``.
     """

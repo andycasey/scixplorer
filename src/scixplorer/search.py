@@ -1,6 +1,6 @@
 """Plan and run document searches on the ADS search API.
 
-:func:`plan` turns a :class:`~ads.query.Query` over :class:`~ads.models.document.Document`
+:func:`plan` turns a :class:`~scixplorer.query.Query` over :class:`~scixplorer.models.document.Document`
 into a :class:`SearchPlan`: the Solr ``q``, ``fl`` and ``sort`` parameters, and
 which endpoint to use. It is pure (no I/O) and runs these passes in order:
 
@@ -27,7 +27,7 @@ which endpoint to use. It is pure (no I/O) and runs these passes in order:
    streaming (with offset and limit then applied locally, as for a refinement).
 7. Compile, adding a final sort key so that pages are stable.
 
-:class:`SearchBackend` executes plans in the sans-IO protocol of :mod:`ads.query`.
+:class:`SearchBackend` executes plans in the sans-IO protocol of :mod:`scixplorer.query`.
 """
 
 from __future__ import annotations
@@ -209,8 +209,8 @@ def plan(query: Query[Any], *, library_bibcodes: Mapping[str, Sequence[str]] | N
 
     With ``config.library_membership == "bibcodes"``, ``library_bibcodes`` must
     map the id of every library in the filter to its bibcodes (the backend
-    fetches them). Raises :class:`~ads.exceptions.QueryError` (or its subclass
-    :class:`~ads.exceptions.UnsupportedQueryError`) for a query that cannot be
+    fetches them). Raises :class:`~scixplorer.exceptions.QueryError` (or its subclass
+    :class:`~scixplorer.exceptions.UnsupportedQueryError`) for a query that cannot be
     sent, and ``ValueError`` for an invalid configuration.
     """
     return _finish(query, _resolve(query), library_bibcodes or {})
@@ -222,7 +222,7 @@ def to_solr(query_or_expr: Query[Any] | Expr) -> str:
     For a search sent to ``/search/bigquery`` this is the query applied to the
     uploaded bibcodes, without them; for one with a per-record condition
     checked client-side, it holds only that condition's necessary part. A filter that can never match gives the
-    query matching nothing. Raises :class:`~ads.exceptions.UnsupportedQueryError`
+    query matching nothing. Raises :class:`~scixplorer.exceptions.UnsupportedQueryError`
     if the query needs the bibcodes of a library (``library_membership="bibcodes"``).
     """
     if isinstance(query_or_expr, Expr):
@@ -235,7 +235,7 @@ def to_solr(query_or_expr: Query[Any] | Expr) -> str:
     ids = _library_ids(resolved)
     if ids:
         raise UnsupportedQueryError(
-            f"With ads.config.library_membership = 'bibcodes' this query needs the bibcodes "
+            f"With scixplorer.config.library_membership = 'bibcodes' this query needs the bibcodes "
             f"of library {ids[0]!r}, which to_solr() does not fetch. Use query.explain(), or "
             f"set library_membership = 'docs' to see the query with docs(library/<id>)."
         )
@@ -246,7 +246,7 @@ def _strategy() -> str:
     strategy = _config.config.library_membership
     if strategy not in _STRATEGIES:
         raise ValueError(
-            f"ads.config.library_membership must be 'docs' or 'bibcodes', not {strategy!r}"
+            f"scixplorer.config.library_membership must be 'docs' or 'bibcodes', not {strategy!r}"
         )
     return strategy
 
@@ -254,7 +254,7 @@ def _strategy() -> str:
 def _page_size() -> int:
     size = _config.config.page_size
     if isinstance(size, bool) or not isinstance(size, int) or size < 1:
-        raise ValueError(f"ads.config.page_size must be a positive int, not {size!r}")
+        raise ValueError(f"scixplorer.config.page_size must be a positive int, not {size!r}")
     return min(size, MAX_PAGE_SIZE)
 
 
@@ -523,7 +523,7 @@ class _Server:
 
 
 def _per_record(expr: Expr, model: type[Model], notes: list[str]) -> tuple[Expr, tuple[Expr, ...], tuple[str, ...]]:
-    """Pass 4b: translate per-record conditions (:class:`~ads.expr.Quantified`) for ADS.
+    """Pass 4b: translate per-record conditions (:class:`~scixplorer.expr.Quantified`) for ADS.
 
     Returns the filter to send, the refinements (top-level conditions to check
     client-side on each returned document) and the owner fields they read.
@@ -689,7 +689,7 @@ def _collection_scope(expr: Expr, model: type[Model]) -> tuple[Expr | None, str 
     if not names or database is None:
         return None, None
     setting = names[0] if len(names) == 1 else list(names)
-    skipped = f"collection {setting!r} (ads.config.collection) not applied"
+    skipped = f"collection {setting!r} (scixplorer.config.collection) not applied"
     for node in walk(expr):
         if isinstance(node, (Match, In, Like, Range)) and _is_field(model, node.field, _COLLECTION_FIELDS):
             return None, f"{skipped}: the filter names a collection itself ({node.field.name})"
@@ -702,7 +702,7 @@ def _collection_scope(expr: Expr, model: type[Model]) -> tuple[Expr | None, str 
         if isinstance(conjunct, (Match, In)) and _is_field(model, conjunct.field, naming):
             return None, f"{skipped}: the filter names specific documents by {conjunct.field.name}"
     scope = Match(database, names[0]) if len(names) == 1 else In(database, names)
-    return scope, f"limited to collection {setting!r} (ads.config.collection): {solr.compile(scope)} is added"
+    return scope, f"limited to collection {setting!r} (scixplorer.config.collection): {solr.compile(scope)} is added"
 
 
 def _is_field(model: type[Model], field: Field[Any, Any], names: Sequence[str]) -> bool:
@@ -729,7 +729,7 @@ def _large_set_message(node: In, limit: int, from_library: bool) -> str:
     )
     if from_library:
         message += (
-            " This set comes from a library because ads.config.library_membership is "
+            " This set comes from a library because scixplorer.config.library_membership is "
             "'bibcodes'; with 'docs' (the default) ADS tests library membership directly."
         )
     return message

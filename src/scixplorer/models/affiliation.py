@@ -1,9 +1,9 @@
 """Institutions known to SciX, from ``affiliations.tsv`` and ``affiliations_country.tsv``:
-the copies downloaded by :func:`ads.data.refresh` if there are any, else the
+the copies downloaded by :func:`scixplorer.data.refresh` if there are any, else the
 packaged snapshot.
 
 Both files come unmodified from the ``adsabs/CanonicalAffiliations``
-repository (GPL-3.0; see ``NOTICE.md`` in :mod:`ads.data`).
+repository (GPL-3.0; see ``NOTICE.md`` in :mod:`scixplorer.data`).
 
 ``affiliations.tsv`` has one row per (parent, child) pair, with parent ``0``
 meaning "no parent"; an affiliation listed under several parents is merged into

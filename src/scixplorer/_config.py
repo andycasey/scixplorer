@@ -94,7 +94,7 @@ class Config:
             names = value
         else:
             raise TypeError(
-                f"ads.config.collection must be a str or a sequence of str, not {type(value).__name__}"
+                f"scixplorer.config.collection must be a str or a sequence of str, not {type(value).__name__}"
             )
         return _distinct_strings(names, "collection")
 

@@ -27,7 +27,7 @@ def test_static_types_of_authors(tmp_path: Path) -> None:
         str(tmp_path),
         str(ROOT / "tests" / "typing_checks_authors.py"),
     ]
-    # Resolve ``ads`` from the source tree, so the check does not depend on how
+    # Resolve ``scixplorer`` from the source tree, so the check does not depend on how
     # (or whether) the package is installed.
     env = {**os.environ, "MYPYPATH": str(ROOT / "src")}
     result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True)

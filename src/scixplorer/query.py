@@ -1,8 +1,8 @@
 """Queries over models, the sans-IO backend protocol, and the drivers that run it.
 
 A :class:`Query` is an immutable description of what to fetch. Executing it asks
-the model's backend for a generator that yields :class:`~ads.client.Request`
-objects (to be sent, with the :class:`~ads.client.Response` sent back in) and
+the model's backend for a generator that yields :class:`~scixplorer.client.Request`
+objects (to be sent, with the :class:`~scixplorer.client.Response` sent back in) and
 lists of model instances (batches of results). The drivers :func:`drive` and
 :func:`adrive` run such a generator with a sync or async ``send`` callable, so
 pagination and merging logic is written once in the backend and works both ways.
@@ -76,7 +76,7 @@ def _body_size(request: Request) -> int | None:
 
 
 class Sender(Protocol):
-    """What a query needs from a client to send requests; :class:`~ads.client.Client` is one."""
+    """What a query needs from a client to send requests; :class:`~scixplorer.client.Client` is one."""
 
     def send(self, request: Request) -> Response:
         """Send a request and return its response."""
@@ -275,7 +275,7 @@ class Query(Generic[M]):
     def order_by(self, *keys: Order | str | Field[Any, Any] | FieldExpr) -> Query[M]:
         """Return a query sorted by ``keys`` (replacing any previous ordering).
 
-        Each key is an :class:`~ads.expr.Order` (from ``.asc()``/``.desc()``) or a
+        Each key is an :class:`~scixplorer.expr.Order` (from ``.asc()``/``.desc()``) or a
         field handle or name, meaning ascending. No keys removes the ordering.
         """
         orders = []

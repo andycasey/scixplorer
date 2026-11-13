@@ -6,8 +6,8 @@ from collections.abc import Sequence
 
 import pytest
 
-from ads.expr import Match, Or
-from ads.models.document import Document
+from scixplorer.expr import Match, Or
+from scixplorer.models.document import Document
 
 from .harness import Live, Outcome, summarise
 from .probes import ALIASES, ProbeResults

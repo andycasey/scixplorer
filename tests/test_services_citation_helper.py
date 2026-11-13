@@ -8,9 +8,9 @@ from typing import Any
 import httpx
 import pytest
 
-from ads.client import Client, Request
-from ads.exceptions import APIError
-from ads.services.citation_helper import _request, citation_helper
+from scixplorer.client import Client, Request
+from scixplorer.exceptions import APIError
+from scixplorer.services.citation_helper import _request, citation_helper
 
 SUGGESTIONS = [
     {

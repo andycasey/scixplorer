@@ -7,13 +7,13 @@ from typing import Any
 
 import pytest
 
-import ads.client
-from ads.client import Request, Response
-from ads.exceptions import APIError, DoesNotExist, NotLocallyEvaluable, QueryError
-from ads.expr import NOTHING, And, Match, Order
-from ads.fields import IntegerField, StringField, VirtualField
-from ads.model import Model
-from ads.query import (
+import scixplorer.client
+from scixplorer.client import Request, Response
+from scixplorer.exceptions import APIError, DoesNotExist, NotLocallyEvaluable, QueryError
+from scixplorer.expr import NOTHING, And, Match, Order
+from scixplorer.fields import IntegerField, StringField, VirtualField
+from scixplorer.model import Model
+from scixplorer.query import (
     Explanation,
     MemoryBackend,
     Query,
@@ -151,7 +151,7 @@ def no_default_client(monkeypatch: pytest.MonkeyPatch) -> None:
     def fail() -> Any:
         raise AssertionError("the default client must not be needed")
 
-    monkeypatch.setattr(ads.client, "get_default_client", fail)
+    monkeypatch.setattr(scixplorer.client, "get_default_client", fail)
 
 
 def ns(rows: list[Remote]) -> list[int]:
@@ -599,7 +599,7 @@ def test_default_client_is_resolved_only_when_a_request_is_sent(
         calls.append(1)
         return client
 
-    monkeypatch.setattr(ads.client, "get_default_client", default)
+    monkeypatch.setattr(scixplorer.client, "get_default_client", default)
     query = Remote.select().limit(1)
     repr(query)
     query.explain()
@@ -620,7 +620,7 @@ def test_default_client_errors_are_raised(backend: PagedBackend, no_default_clie
 
 def test_using_selects_the_client(backend: PagedBackend, monkeypatch: pytest.MonkeyPatch) -> None:
     default, explicit = FakeClient(), FakeClient()
-    monkeypatch.setattr(ads.client, "get_default_client", lambda: default)
+    monkeypatch.setattr(scixplorer.client, "get_default_client", lambda: default)
     query = Remote.select().using(explicit)
     assert query.client is explicit
     query.all()

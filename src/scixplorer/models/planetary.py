@@ -1,7 +1,7 @@
 """Named features on planetary surfaces, from the IAU/USGS Gazetteer of Planetary Nomenclature.
 
 The gazetteer is not packaged with this library: download it once with
-``refresh("planetary_features")`` from :mod:`ads.data`. It is read from
+``refresh("planetary_features")`` from :mod:`scixplorer.data`. It is read from
 ``planetary_features.csv``, the gazetteer's CSV export with the columns
 ``Feature ID, Clean Feature Name, Target, Feature Type, Approval Status,
 Approval Date`` (headings may contain runs of spaces).
@@ -85,7 +85,7 @@ class PlanetaryFeature(Model):
     """A named feature on a planet, moon or small body, identified by its gazetteer id (e.g. ``2071``, Gale crater).
 
     Features are held in memory and queried locally once the gazetteer has been
-    downloaded (``refresh("planetary_features")`` in :mod:`ads.data`)::
+    downloaded (``refresh("planetary_features")`` in :mod:`scixplorer.data`)::
 
         PlanetaryFeature.select().where(
             (PlanetaryFeature.target == "Mars") & (PlanetaryFeature.feature_type == "Crater")

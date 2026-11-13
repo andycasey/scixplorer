@@ -6,9 +6,9 @@ from typing import Any
 
 import pytest
 
-from ads.client import Request, Response
-from ads.exceptions import APIError
-from ads.utils import (
+from scixplorer.client import Request, Response
+from scixplorer.exceptions import APIError
+from scixplorer.utils import (
     _require_bibcodes,
     _response_field,
     flatten,

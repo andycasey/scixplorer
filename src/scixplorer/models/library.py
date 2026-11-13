@@ -1,8 +1,8 @@
 """ADS libraries ("biblib"): collections of documents curated by ADS users.
 
 Every interaction is first described without I/O: a private function builds the
-:class:`~ads.client.Request`, or a generator in the sans-IO backend protocol of
-:mod:`ads.query` yields the requests and returns the result
+:class:`~scixplorer.client.Request`, or a generator in the sans-IO backend protocol of
+:mod:`scixplorer.query` yields the requests and returns the result
 (:func:`fetch_library`, :func:`fetch_bibcodes`). The public methods of
 :class:`Library` only send those requests and update the object from the
 responses, one API call per method.
@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import quote
 
 from ..client import Client, Request, Response, get_default_client
-from ..exceptions import ADSError, APIError
+from ..exceptions import SciXError, APIError
 from ..expr import And, Expr, In, Match
 from ..fields import BooleanField, DateTimeField, Field, IntegerField, StringField
 from ..model import Model
@@ -23,7 +23,7 @@ from ..query import Explanation, Query, drive, filter_rows, select_rows
 from ..utils import _require_bibcodes, _response_field, to_bibcodes
 
 if TYPE_CHECKING:
-    # ``ads.models.document`` is written separately. Until it exists, ``Document``
+    # ``scixplorer.models.document`` is written separately. Until it exists, ``Document``
     # is ``Any`` here; ``unused-ignore`` keeps this line valid once it does.
     from .document import Document  # type: ignore[import-not-found, unused-ignore]
 
@@ -408,7 +408,7 @@ class Library(Model):
     Requests are sent with the ``client=`` argument of a method if given, else
     with the client in the ``client`` attribute (``None`` unless set by the
     user, or by :meth:`create` and the set operations when given a client),
-    else with :func:`~ads.client.get_default_client`. Lazy loading and
+    else with :func:`~scixplorer.client.get_default_client`. Lazy loading and
     :attr:`bibcodes` use the attribute or the default. Libraries returned by a
     query do not remember the query's client: set ``library.client`` if needed.
     """
@@ -693,7 +693,7 @@ class Library(Model):
         """The number of documents, as ADS reports it in ``num_documents``."""
         count = self.num_documents
         if count is None:
-            raise ADSError(f"{self!r}: the number of documents is not known")
+            raise SciXError(f"{self!r}: the number of documents is not known")
         return count
 
     def __contains__(self, item: object) -> bool:
@@ -717,12 +717,12 @@ class Library(Model):
     # Helpers.
 
     def _remote_id(self) -> str:
-        """This library's id; raises ``ADSError`` if it was deleted or never existed on ADS."""
+        """This library's id; raises ``SciXError`` if it was deleted or never existed on ADS."""
         if self._deleted:
-            raise ADSError(f"{self!r} was deleted from ADS and can no longer be used")
+            raise SciXError(f"{self!r} was deleted from ADS and can no longer be used")
         library_id = self._data.get("id")
         if library_id is None:
-            raise ADSError(f"{self!r} has no id, so it is not on ADS; use Library.create()")
+            raise SciXError(f"{self!r} has no id, so it is not on ADS; use Library.create()")
         return _check_id(library_id)
 
     def _client(self, client: Client | None) -> Client:

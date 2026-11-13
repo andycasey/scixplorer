@@ -7,9 +7,9 @@ from typing import Any
 import httpx
 import pytest
 
-from ads.client import Client, Request
-from ads.exceptions import APIError
-from ads.services import resolver
+from scixplorer.client import Client, Request
+from scixplorer.exceptions import APIError
+from scixplorer.services import resolver
 
 BIBCODE = "2018A&A...616A...1G"
 

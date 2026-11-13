@@ -1,4 +1,4 @@
-"""Exceptions and warnings raised by the ``ads`` package."""
+"""Exceptions and warnings raised by the ``scixplorer`` package."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from datetime import datetime
 from typing import Any
 
 
-class ADSError(Exception):
+class SciXError(Exception):
     """Base class for every error raised by this package."""
 
 
-class QueryError(ADSError):
+class QueryError(SciXError):
     """A query expression is malformed or cannot be executed."""
 
 
@@ -22,11 +22,11 @@ class NotLocallyEvaluable(QueryError):
     """The expression can only be evaluated by the ADS search engine, not in Python."""
 
 
-class DoesNotExist(ADSError, LookupError):
+class DoesNotExist(SciXError, LookupError):
     """No object matched a query that required exactly one result."""
 
 
-class APIError(ADSError):
+class APIError(SciXError):
     """The ADS API returned an error response."""
 
     def __init__(self, message: str, *, status_code: int | None = None, response: Any = None):
@@ -58,7 +58,7 @@ class RateLimitExceeded(APIError):
         self.reset = reset
 
 
-class DataNotAvailable(ADSError):
+class DataNotAvailable(SciXError):
     """Reference data that is not packaged has not been downloaded yet; the message says how."""
 
 

@@ -11,10 +11,10 @@ import httpx
 import pytest
 from search_fakes import FakeSearch, bibcodes, make_docs
 
-from ads import _config
-from ads.exceptions import APIError, LazyLoadWarning, QueryError
-from ads.expr import Func, In, InLibrary, Order, Raw
-from ads.fields import (
+from scixplorer import _config
+from scixplorer.exceptions import APIError, LazyLoadWarning, QueryError
+from scixplorer.expr import Func, In, InLibrary, Order, Raw
+from scixplorer.fields import (
     DateField,
     DateTimeField,
     FloatField,
@@ -25,13 +25,13 @@ from ads.fields import (
     TextField,
     VirtualField,
 )
-from ads.models.affiliation import Affiliation
-from ads.models.document import Document
-from ads.models.journal import Journal
-from ads.models.library import Library
-from ads.evaluate import matches
-from ads.search import to_solr
-from ads.utils import flatten
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.models.document import Document
+from scixplorer.models.journal import Journal
+from scixplorer.models.library import Library
+from scixplorer.evaluate import matches
+from scixplorer.search import to_solr
+from scixplorer.utils import flatten
 
 # Fields.
 
@@ -395,7 +395,7 @@ def test_lazy_loading_skips_documents_that_already_have_the_field() -> None:
 def test_lazy_loading_uses_the_pages_client(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = FakeSearch(make_docs(2))
     other = FakeSearch(make_docs(2))
-    monkeypatch.setattr("ads.client._default_client", other.client())
+    monkeypatch.setattr("scixplorer.client._default_client", other.client())
     documents = three(fake)
     with pytest.warns(LazyLoadWarning):
         documents[0].title
@@ -424,7 +424,7 @@ def test_lazy_loading_a_large_page_uses_bigquery(monkeypatch: pytest.MonkeyPatch
 
 def test_hand_built_document_loads_only_itself(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = FakeSearch(make_docs(3))
-    monkeypatch.setattr("ads.client._default_client", fake.client())
+    monkeypatch.setattr("scixplorer.client._default_client", fake.client())
     document = Document(bibcode=bibcodes(3)[1])
     with pytest.warns(LazyLoadWarning, match="1 document"):
         assert document.title == ["Paper 1"]
@@ -433,7 +433,7 @@ def test_hand_built_document_loads_only_itself(monkeypatch: pytest.MonkeyPatch) 
 
 def test_document_without_bibcode_loads_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = FakeSearch(make_docs(1))
-    monkeypatch.setattr("ads.client._default_client", fake.client())
+    monkeypatch.setattr("scixplorer.client._default_client", fake.client())
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         assert Document().title is None
@@ -447,7 +447,7 @@ def test_identifiers_and_score_are_never_lazy_loaded(monkeypatch: pytest.MonkeyP
     fake.reply = lambda request: httpx.Response(
         200, json={"response": {"numFound": 1, "docs": [{"bibcode": "2015ApJ...808...16N"}]}}
     )
-    monkeypatch.setattr("ads.client._default_client", fake.client())
+    monkeypatch.setattr("scixplorer.client._default_client", fake.client())
     (document,) = Document.select(Document.year).using(fake.client()).all()
     document._data.pop(name, None)
     with warnings.catch_warnings():
@@ -458,7 +458,7 @@ def test_identifiers_and_score_are_never_lazy_loaded(monkeypatch: pytest.MonkeyP
 
 def test_document_without_bibcode_loads_through_its_other_identifier(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = FakeSearch([{"scix_id": "S1", "id": "1", "title": ["By scix_id"]}, {"id": "2", "title": ["By id"]}])
-    monkeypatch.setattr("ads.client._default_client", fake.client())
+    monkeypatch.setattr("scixplorer.client._default_client", fake.client())
     with pytest.warns(LazyLoadWarning, match="1 document"):
         assert Document(scix_id="S1", id="1").title == ["By scix_id"]
     assert fake.params()["q"] == 'scix_id:"S1"'
@@ -544,7 +544,7 @@ def test_page_does_not_keep_documents_alive() -> None:
 
 def test_lazy_loading_inside_get(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = FakeSearch(make_docs(1))
-    monkeypatch.setattr("ads.client._default_client", fake.client())
+    monkeypatch.setattr("scixplorer.client._default_client", fake.client())
     document: Any = Document.select(Document.year).where(Document.bibcode == bibcodes(1)[0]).get()
     with pytest.warns(LazyLoadWarning):
         assert document.citation_count == 0
@@ -595,7 +595,7 @@ def test_int_id_on_an_instance_is_held_as_a_string() -> None:
 
 def test_get_by_int_id(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = FakeSearch(make_docs(3))
-    monkeypatch.setattr("ads.client._default_client", fake.client())
+    monkeypatch.setattr("scixplorer.client._default_client", fake.client())
     document = Document.get(id=1001)
     assert document.bibcode == bibcodes(3)[1] and document.id == "1001"
     assert fake.params()["q"] == 'id:"1001"'
@@ -603,7 +603,7 @@ def test_get_by_int_id(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_lazy_loading_by_int_id(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = FakeSearch([{"id": "1001", "title": ["No bibcode"]}])
-    monkeypatch.setattr("ads.client._default_client", fake.client())
+    monkeypatch.setattr("scixplorer.client._default_client", fake.client())
     document = Document(id=1001)  # type: ignore[arg-type]
     with pytest.warns(LazyLoadWarning, match="1 document"):
         assert document.title == ["No bibcode"]

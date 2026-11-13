@@ -83,12 +83,12 @@ class FieldExpr:
 
     :param field: the field definition.
     :param via: the relation through which the field is reached, if any; the
-        resulting expressions are wrapped in :class:`~ads.expr.Related`.
+        resulting expressions are wrapped in :class:`~scixplorer.expr.Related`.
     :param position: 1-indexed inclusive ``(start, end)`` positions within a
         multivalued field; the resulting expressions are wrapped in ``pos()``.
     :param scope: the record(s) of a collection the field belongs to, such as
         ``Document.authors[0]`` for ``Document.authors[0].name``; the resulting
-        expressions are wrapped in :class:`~ads.expr.Quantified` by it.
+        expressions are wrapped in :class:`~scixplorer.expr.Quantified` by it.
     """
 
     def __init__(
@@ -293,7 +293,7 @@ def parse_positions(index: int | slice) -> tuple[int, int]:
     """The 1-indexed inclusive ``(start, end)`` positions selected by ``index``: ``[0]``, ``[0:3]``.
 
     Raises ``TypeError`` for an index that is not an int or a slice of ints, and
-    :class:`~ads.exceptions.QueryError` for a negative or open-ended one (ADS
+    :class:`~scixplorer.exceptions.QueryError` for a negative or open-ended one (ADS
     cannot search by position from the end), an empty slice or a step.
     """
     if isinstance(index, slice):
@@ -412,7 +412,7 @@ class Field(Generic[T, H]):
     :param stored: the field can be returned by the API (``False`` for search-only fields).
     :param indexed: the field can be searched and sorted by (``False`` for fields that
         are only returned); building an expression or sort key on it raises
-        :class:`~ads.exceptions.QueryError`.
+        :class:`~scixplorer.exceptions.QueryError`.
     :param solr_name: the field's name in Solr, if different from the attribute name.
     """
 
@@ -500,7 +500,7 @@ class Field(Generic[T, H]):
         one-element list given for a scalar field becomes its element. A value
         that still cannot be converted, including a list with any unconvertible
         or ``None`` element, becomes ``None`` with a
-        :class:`~ads.exceptions.DataWarning`.
+        :class:`~scixplorer.exceptions.DataWarning`.
         """
         if raw is None:
             return None
@@ -557,7 +557,7 @@ class Field(Generic[T, H]):
     def to_solr(self, value: Any) -> str:
         """Format one value as bare Solr text (unquoted, unescaped).
 
-        Raises :class:`~ads.exceptions.QueryError` if the value has the wrong type.
+        Raises :class:`~scixplorer.exceptions.QueryError` if the value has the wrong type.
         """
         if isinstance(value, SolrLiteral):
             return value.text

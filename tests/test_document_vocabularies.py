@@ -10,15 +10,15 @@ from typing import Any
 import pytest
 from search_fakes import FakeSearch, make_docs
 
-import ads.data as data
-import ads.search
-from ads.exceptions import DataNotAvailable, LazyLoadWarning, UnsupportedQueryError
-from ads.expr import Expr
-from ads.fields import IntegerField, StringField, TextField
-from ads.models.document import Document, SearchQuery
-from ads.models.planetary import PlanetaryFeature
-from ads.models.uat import UATConcept
-from ads.search import plan, to_solr
+import scixplorer.data as data
+import scixplorer.search
+from scixplorer.exceptions import DataNotAvailable, LazyLoadWarning, UnsupportedQueryError
+from scixplorer.expr import Expr
+from scixplorer.fields import IntegerField, StringField, TextField
+from scixplorer.models.document import Document, SearchQuery
+from scixplorer.models.planetary import PlanetaryFeature
+from scixplorer.models.uat import UATConcept
+from scixplorer.search import plan, to_solr
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -111,7 +111,7 @@ def test_resolution_notes(vocabularies: Path) -> None:
 
 
 def test_too_many_related_ids(vocabularies: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(ads.search, "MAX_RELATED_VALUES", 3)
+    monkeypatch.setattr(scixplorer.search, "MAX_RELATED_VALUES", 3)
     message = "4 PlanetaryFeature rows matched .* at most 3 planetary_feature_id"
     with pytest.raises(UnsupportedQueryError, match=message):
         to_solr(Document.planetary_feature.target == "Mars")

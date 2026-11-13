@@ -1,7 +1,7 @@
 """Creating, changing and deleting libraries (item 18; only with --live --live-write).
 
 Every library here is created through a :class:`~live.support.Janitor`, named
-``ads-live-test-<UTC start time>-<random>-<label>``, and deleted when the module
+``scixplorer-live-test-<UTC start time>-<random>-<label>``, and deleted when the module
 ends, also after a failed assertion or an aborted session. No pre-existing
 library is read, changed or deleted. The changes run once, in order, in the
 ``scenario`` fixture; each test then checks one of their results.
@@ -18,16 +18,16 @@ from typing import Any
 
 import pytest
 
-from ads.client import Client
-from ads.models.document import Document
-from ads.models.library import Library
+from scixplorer.client import Client
+from scixplorer.models.document import Document
+from scixplorer.models.library import Library
 
 from .harness import PINNED, Live, Outcome
 from .support import Findings, Janitor, LiveTransport, redact
 
 pytestmark = [pytest.mark.live, pytest.mark.live_write]
 
-UPDATED_DESCRIPTION = "Updated by the ads live test suite."
+UPDATED_DESCRIPTION = "Updated by the scixplorer live test suite."
 
 #: Documents of the two libraries combined by the set operations: they share PINNED[2].
 FIRST, SECOND = PINNED[:3], PINNED[2:]

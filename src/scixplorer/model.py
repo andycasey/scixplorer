@@ -367,7 +367,7 @@ class Collection(Generic[M, H]):
         """``Quantified(self, predicate, quantifier, positions)``, after checking ``predicate``.
 
         Raises ``TypeError`` for something other than an expression and
-        :class:`~ads.exceptions.QueryError` for an expression that is not
+        :class:`~scixplorer.exceptions.QueryError` for an expression that is not
         about one record: a condition on another model's field (other than
         through a relation of the record model), or an operator, raw query or
         library condition.

@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from ads.client import Client, Request, get_default_client
-from ads.exceptions import APIError
-from ads.utils import _require_bibcodes
+from scixplorer.client import Client, Request, get_default_client
+from scixplorer.exceptions import APIError
+from scixplorer.utils import _require_bibcodes
 
 __all__ = ["citation_helper"]
 
@@ -19,9 +19,9 @@ def citation_helper(*documents: Any, client: Client | None = None) -> list[dict[
     cited by, the given documents but are not among them.
 
     :param documents: any mix of bibcodes, documents and libraries, or
-        iterables of them (see :func:`ads.utils.to_bibcodes`).
-    :param client: the :class:`~ads.client.Client` to use (default:
-        :func:`~ads.client.get_default_client`).
+        iterables of them (see :func:`scixplorer.utils.to_bibcodes`).
+    :param client: the :class:`~scixplorer.client.Client` to use (default:
+        :func:`~scixplorer.client.get_default_client`).
     :returns: the suggestions as ADS sends them: dicts with keys ``bibcode``,
         ``score`` (an int), and ``title`` and ``author`` (each one string,
         not a list as in search results).

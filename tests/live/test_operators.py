@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from ads.models.document import Document
+from scixplorer.models.document import Document
 
 from .harness import Live, closed_set, compiled
 from .support import Findings

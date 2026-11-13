@@ -129,10 +129,10 @@ def _positive_int(name: str, value: Any) -> int:
 
 
 def _outside_package_stacklevel() -> int:
-    """The ``stacklevel`` for a warning raised by the caller, pointing at the first frame outside ``ads``."""
+    """The ``stacklevel`` for a warning raised by the caller, pointing at the first frame outside ``scixplorer``."""
     level = 1
     frame = sys._getframe(1)
-    while frame.f_back is not None and frame.f_globals.get("__name__", "").split(".")[0] == "ads":
+    while frame.f_back is not None and frame.f_globals.get("__name__", "").split(".")[0] == "scixplorer":
         frame = frame.f_back
         level += 1
     return level
@@ -163,7 +163,7 @@ class Document(Model):
 
     Lazy loading: reading a stored field that was not fetched sends one search
     request that loads it for every document of the same result page that
-    lacks it, with a :class:`~ads.exceptions.LazyLoadWarning`. Documents are
+    lacks it, with a :class:`~scixplorer.exceptions.LazyLoadWarning`. Documents are
     found by their identifier (in practice the bibcode; documents of the page
     identified by another field are loaded with one more request per field).
     The request is synchronous, even inside async code, so there select the
@@ -173,14 +173,14 @@ class Document(Model):
 
     Relations: :attr:`journal` (from the bibcode), :attr:`affiliation` (from
     ``aff_id``), :attr:`uat` (from ``uat_id``) and :attr:`planetary_feature`
-    (from ``planetary_feature_id``) give :class:`~ads.models.journal.Journal`,
-    :class:`~ads.models.affiliation.Affiliation`,
-    :class:`~ads.models.uat.UATConcept` and
-    :class:`~ads.models.planetary.PlanetaryFeature` objects, and can be searched
+    (from ``planetary_feature_id``) give :class:`~scixplorer.models.journal.Journal`,
+    :class:`~scixplorer.models.affiliation.Affiliation`,
+    :class:`~scixplorer.models.uat.UATConcept` and
+    :class:`~scixplorer.models.planetary.PlanetaryFeature` objects, and can be searched
     by their fields (``Document.journal.title.contains("astro")``), as can those
     models' fields directly (``Journal.title.contains("astro")``). The last two
-    need their data downloaded once (``ads.data.refresh("uat")``,
-    ``ads.data.refresh("planetary_features")``), except to match ids directly
+    need their data downloaded once (``scixplorer.data.refresh("uat")``,
+    ``scixplorer.data.refresh("planetary_features")``), except to match ids directly
     (``Document.uat == 498``).
 
     Names: the Solr fields ``uat`` and ``planetary_feature`` (the names of the
@@ -403,7 +403,7 @@ class Document(Model):
         resolve=_affiliations_of,
         doc=(
             "The curated affiliations, one entry per author: None, an Affiliation, or a tuple of them "
-            "(from aff_id; ids missing from the local affiliation data are skipped). Use ads.utils.flatten() "
+            "(from aff_id; ids missing from the local affiliation data are skipped). Use scixplorer.utils.flatten() "
             "to scan them."
         ),
     )
@@ -593,7 +593,7 @@ class Document(Model):
         :param n: how many documents.
         :param expr: an expression, or a Solr query string.
         :param order_by: how to rank them before taking the first ``n``: an
-            :class:`~ads.expr.Order` such as ``Document.citation_count.desc()``, or
+            :class:`~scixplorer.expr.Order` such as ``Document.citation_count.desc()``, or
             a field handle (ascending). By default, by relevance.
         """
         args: list[Any] = [_positive_int("top_n() n", n), _operand("top_n", expr)]
@@ -635,7 +635,7 @@ class Document(Model):
 
     @classmethod
     def in_(cls, source: Any) -> Expr:
-        """Documents in ``source``: a :class:`~ads.models.library.Library`, or bibcodes.
+        """Documents in ``source``: a :class:`~scixplorer.models.library.Library`, or bibcodes.
 
         A library is tested by ADS itself (``docs(library/<id>)``), without
         fetching its bibcodes. Anything else may be bibcode strings, documents,

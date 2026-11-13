@@ -8,12 +8,12 @@ from typing import Any
 import httpx
 import pytest
 
-import ads.client
-import ads.data as data
-import ads.models.uat as uat_module
-from ads.exceptions import DoesNotExist
-from ads.models.uat import UATConcept
-from ads.query import Query
+import scixplorer.client
+import scixplorer.data as data
+import scixplorer.models.uat as uat_module
+from scixplorer.exceptions import DoesNotExist
+from scixplorer.models.uat import UATConcept
+from scixplorer.query import Query
 
 FIXTURE = (Path(__file__).parent / "fixtures" / "uat.json").read_text("utf-8")
 URL = data.DATASETS["uat"].files[0].url
@@ -33,7 +33,7 @@ def thesaurus(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]
     def fail() -> None:
         raise AssertionError("UAT queries must not need a client")
 
-    monkeypatch.setattr(ads.client, "get_default_client", fail)
+    monkeypatch.setattr(scixplorer.client, "get_default_client", fail)
     monkeypatch.setenv("SCIX_CACHE_DIR", str(tmp_path / "cache"))
     assert install(FIXTURE).ok
     yield

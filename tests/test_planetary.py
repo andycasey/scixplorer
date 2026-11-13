@@ -7,11 +7,11 @@ from typing import Any
 import httpx
 import pytest
 
-import ads.client
-import ads.data as data
-import ads.models.planetary as planetary_module
-from ads.exceptions import DoesNotExist
-from ads.models.planetary import PlanetaryFeature
+import scixplorer.client
+import scixplorer.data as data
+import scixplorer.models.planetary as planetary_module
+from scixplorer.exceptions import DoesNotExist
+from scixplorer.models.planetary import PlanetaryFeature
 
 FIXTURE = (Path(__file__).parent / "fixtures" / "planetary_features.csv").read_text("utf-8")
 HEADER = "Feature ID,Clean Feature Name,Target,Feature Type,Approval Status,Approval Date\n"
@@ -31,7 +31,7 @@ def gazetteer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]
     def fail() -> None:
         raise AssertionError("planetary feature queries must not need a client")
 
-    monkeypatch.setattr(ads.client, "get_default_client", fail)
+    monkeypatch.setattr(scixplorer.client, "get_default_client", fail)
     monkeypatch.setenv("SCIX_CACHE_DIR", str(tmp_path / "cache"))
     assert install(FIXTURE).ok
     yield

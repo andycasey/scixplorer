@@ -7,8 +7,8 @@ from datetime import date, datetime
 import pytest
 from helpers import Journal, Paper
 
-from ads.exceptions import QueryError
-from ads.expr import (
+from scixplorer.exceptions import QueryError
+from scixplorer.expr import (
     EVERYTHING,
     NOTHING,
     And,
@@ -26,9 +26,9 @@ from ads.expr import (
     days_ago,
     now,
 )
-from ads.fields import DateTimeField, StringField
-from ads.model import Model
-from ads.solr import QUOTED_FIELD_TYPES, compile, compile_order, format_value, quote
+from scixplorer.fields import DateTimeField, StringField
+from scixplorer.model import Model
+from scixplorer.solr import QUOTED_FIELD_TYPES, compile, compile_order, format_value, quote
 
 
 class Dated(Model):

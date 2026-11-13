@@ -116,7 +116,7 @@ class DatasetStatus:
     files in ``paths``; they are ``None`` when nothing can be inspected. The
     cached files are not parsed here, so an unreadable cache still shows as
     ``"cache"`` (the models then fall back to the packaged snapshot, with a
-    :class:`~ads.exceptions.DataWarning`).
+    :class:`~scixplorer.exceptions.DataWarning`).
     """
 
     name: str
@@ -290,7 +290,7 @@ def read_text(dataset: str, filename: str) -> str:
     """The text of one file of a dataset: the cached copy if every file of the
     dataset is cached (as :func:`load` and :func:`status` decide), else the packaged one.
 
-    Raises :class:`~ads.exceptions.DataNotAvailable` if neither exists. The
+    Raises :class:`~scixplorer.exceptions.DataNotAvailable` if neither exists. The
     text is not checked; :func:`load` checks it and falls back if it is bad.
     """
     found = _dataset(dataset)
@@ -348,8 +348,8 @@ def _parse_cache(dataset: Dataset, parse: Callable[[Reader], S]) -> tuple[S | No
 def load(name: str, parse: Callable[[Reader], S]) -> S:
     """Parse dataset ``name`` with ``parse``: the cached copy if usable, else the packaged one.
 
-    An unusable cached copy is skipped with a :class:`~ads.exceptions.DataWarning`.
-    Raises :class:`~ads.exceptions.DataNotAvailable` if there is no usable copy
+    An unusable cached copy is skipped with a :class:`~scixplorer.exceptions.DataWarning`.
+    Raises :class:`~scixplorer.exceptions.DataNotAvailable` if there is no usable copy
     and nothing is packaged.
     """
     dataset = _dataset(name)
@@ -469,7 +469,7 @@ def clear(*names: str) -> None:
     """Delete the cached copies of datasets (all if no names); packaged snapshots are kept.
 
     Models then read their packaged snapshot, or raise
-    :class:`~ads.exceptions.DataNotAvailable` if there is none.
+    :class:`~scixplorer.exceptions.DataNotAvailable` if there is none.
     """
     datasets = [_dataset(name) for name in names] or list(DATASETS.values())
     directory = cache_dir()

@@ -17,7 +17,7 @@ needs_mypy = pytest.mark.skipif(importlib.util.find_spec("mypy") is None, reason
 
 @needs_mypy
 def test_package_type_checks(tmp_path: Path) -> None:
-    """``mypy`` with the project configuration (strict, ``files = ["src/ads"]``) is clean."""
+    """``mypy`` with the project configuration (strict, ``files = ["src/scixplorer"]``) is clean."""
     command = [
         sys.executable,
         "-m",
@@ -43,7 +43,7 @@ def test_static_types(tmp_path: Path) -> None:
         str(tmp_path),
         str(ROOT / "tests" / "typing_checks.py"),
     ]
-    # Resolve ``ads`` from the source tree, so the check does not depend on how
+    # Resolve ``scixplorer`` from the source tree, so the check does not depend on how
     # (or whether) the package is installed.
     env = {**os.environ, "MYPYPATH": str(ROOT / "src")}
     result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, text=True)

@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 
-from ads.client import Client
+from scixplorer.client import Client
 
 PREFIX = "/v1"
 _QUOTED = re.compile(r'"((?:[^"\\]|\\.)*)"')

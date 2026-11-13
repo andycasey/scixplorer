@@ -16,9 +16,9 @@ from typing import Any
 import httpx
 import pytest
 
-from ads._config import Config
-from ads.client import Client, Request
-from ads.exceptions import APIError, RateLimitExceeded
+from scixplorer._config import Config
+from scixplorer.client import Client, Request
+from scixplorer.exceptions import APIError, RateLimitExceeded
 from live.harness import Live
 from live.support import BudgetExhausted, Janitor, LiveTransport, isolate, new_tag, peel, redact, scrub_report
 
@@ -201,7 +201,7 @@ class Biblib:
 
 
 def test_janitor_deletes_its_libraries_when_a_test_fails_midway() -> None:
-    older_run = "ads-live-test-20200101T000000Z-abcdef-first"
+    older_run = "scixplorer-live-test-20200101T000000Z-abcdef-first"
     fake = Biblib({"theirs": "Reading list", "older": older_run})
     transport, client = setup(Server(fake))
     with pytest.raises(AssertionError, match="midway"), Janitor(client, transport) as janitor:
@@ -244,7 +244,7 @@ def test_janitor_cleans_up_after_the_budget_is_spent_and_after_a_rate_limit() ->
 
 def test_session_tags_are_unique_and_recognisable() -> None:
     tags = {new_tag() for _ in range(20)}
-    assert len(tags) == 20 and all(tag.startswith("ads-live-test-") for tag in tags)
+    assert len(tags) == 20 and all(tag.startswith("scixplorer-live-test-") for tag in tags)
 
 
 # Redaction.

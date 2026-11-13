@@ -8,9 +8,9 @@ from typing import Any
 
 import pytest
 
-from ads.exceptions import DataWarning, QueryError
-from ads.expr import Expr, Func, In, Like, Match, Not, Order, Range, SolrLiteral, days_ago
-from ads.fields import (
+from scixplorer.exceptions import DataWarning, QueryError
+from scixplorer.expr import Expr, Func, In, Like, Match, Not, Order, Range, SolrLiteral, days_ago
+from scixplorer.fields import (
     BooleanField,
     DateField,
     DateTimeField,

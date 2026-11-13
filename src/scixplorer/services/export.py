@@ -1,10 +1,10 @@
 """The ADS export service: citations for documents in BibTeX and other formats.
 
 Every function takes any mix of bibcodes, documents and libraries, or
-iterables of them (see :func:`ads.utils.to_bibcodes`), sends one request to
+iterables of them (see :func:`scixplorer.utils.to_bibcodes`), sends one request to
 ``/export/<format>`` and returns the exported text::
 
-    from ads.services import export
+    from scixplorer.services import export
     print(export.bibtex("2015ApJ...808...16N", library, sort="date desc"))
 """
 
@@ -13,9 +13,9 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from ads.client import Client, Request, get_default_client
-from ads.expr import Order
-from ads.utils import _require_bibcodes, _response_field
+from scixplorer.client import Client, Request, get_default_client
+from scixplorer.expr import Order
+from scixplorer.utils import _require_bibcodes, _response_field
 
 __all__ = [
     "CSL_FORMATS",
@@ -54,10 +54,10 @@ CSL_FORMATS = (1, 2, 3)
 
 _COMMON_PARAMS = """
 :param sort: ``None`` (the default) sends ADS ``"no sort"``; a string such as
-    ``"citation_count desc"`` or an :class:`~ads.expr.Order` such as
+    ``"citation_count desc"`` or an :class:`~scixplorer.expr.Order` such as
     ``Document.year.desc()`` sorts; ``False`` sends no ``sort`` at all.
-:param client: the :class:`~ads.client.Client` to use (default:
-    :func:`~ads.client.get_default_client`).
+:param client: the :class:`~scixplorer.client.Client` to use (default:
+    :func:`~scixplorer.client.get_default_client`).
 """
 
 
@@ -83,10 +83,10 @@ def bibtex(
         :data:`JOURNAL_FORMATS`: 1 = AASTeX macros where they exist, else the
         full name; 2 = abbreviations; 3 = full names.
     :param sort: ``None`` (the default) sends ADS ``"no sort"``; a string such as
-        ``"citation_count desc"`` or an :class:`~ads.expr.Order` such as
+        ``"citation_count desc"`` or an :class:`~scixplorer.expr.Order` such as
         ``Document.year.desc()`` sorts; ``False`` sends no ``sort`` at all.
-    :param client: the :class:`~ads.client.Client` to use (default:
-        :func:`~ads.client.get_default_client`).
+    :param client: the :class:`~scixplorer.client.Client` to use (default:
+        :func:`~scixplorer.client.get_default_client`).
     """
     return _export(
         "bibtex",

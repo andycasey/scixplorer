@@ -1,4 +1,4 @@
-"""Tests for the default collection (ads.config.collection) in document searches."""
+"""Tests for the default collection (scixplorer.config.collection) in document searches."""
 
 from __future__ import annotations
 
@@ -7,12 +7,12 @@ from typing import Any
 import pytest
 from search_fakes import FakeSearch, bibcodes, make_docs
 
-from ads import _config
-from ads.exceptions import LazyLoadWarning
-from ads.expr import Expr
-from ads.models.document import Document
-from ads.models.library import Library
-from ads.search import SearchPlan, plan, to_solr
+from scixplorer import _config
+from scixplorer.exceptions import LazyLoadWarning
+from scixplorer.expr import Expr
+from scixplorer.models.document import Document
+from scixplorer.models.library import Library
+from scixplorer.search import SearchPlan, plan, to_solr
 
 ASTRONOMY = 'database:"astronomy"'
 BOTH = 'database:("astronomy" OR "physics")'
@@ -36,7 +36,7 @@ def plan_of(expr: Expr | None = None, **kwargs: Any) -> SearchPlan:
 
 
 def collection_notes(search: SearchPlan) -> list[str]:
-    return [note for note in search.notes if "ads.config.collection" in note]
+    return [note for note in search.notes if "scixplorer.config.collection" in note]
 
 
 # Applied.
@@ -60,7 +60,7 @@ def test_scope_is_a_final_top_level_condition(astronomy: None, expr: Expr | None
     search = plan_of(expr)
     assert search.q == expected
     assert collection_notes(search) == [
-        f"limited to collection 'astronomy' (ads.config.collection): {ASTRONOMY} is added"
+        f"limited to collection 'astronomy' (scixplorer.config.collection): {ASTRONOMY} is added"
     ]
 
 
@@ -69,7 +69,7 @@ def test_several_collections(monkeypatch: pytest.MonkeyPatch) -> None:
     search = plan_of(Document.year == 2020)
     assert search.q == f"year:2020 AND {BOTH}"
     assert collection_notes(search) == [
-        f"limited to collection ['astronomy', 'physics'] (ads.config.collection): {BOTH} is added"
+        f"limited to collection ['astronomy', 'physics'] (scixplorer.config.collection): {BOTH} is added"
     ]
     assert to_solr(Document.journal == "ApJ") == f'bibstem:"ApJ" AND {BOTH}'
 
@@ -126,7 +126,7 @@ def test_filter_on_the_collection_is_not_scoped(astronomy: None, expr: Expr) -> 
     search = plan_of(expr)
     assert "astronomy" not in search.q
     (note,) = collection_notes(search)
-    assert note.startswith("collection 'astronomy' (ads.config.collection) not applied: the filter names a collection")
+    assert note.startswith("collection 'astronomy' (scixplorer.config.collection) not applied: the filter names a collection")
 
 
 @pytest.mark.parametrize("text", ["database:physics", "year:2020 AND COLLECTION:physics", "Database:(a OR b)"])
@@ -158,7 +158,7 @@ def test_top_level_identifier_condition_is_not_scoped(astronomy: None, expr: Exp
     search = plan_of(expr)
     assert search.q == expected
     assert collection_notes(search) == [
-        f"collection 'astronomy' (ads.config.collection) not applied: the filter names specific documents by {field}"
+        f"collection 'astronomy' (scixplorer.config.collection) not applied: the filter names specific documents by {field}"
     ]
 
 
@@ -199,7 +199,7 @@ def test_library_docs_strategy_is_not_scoped(astronomy: None) -> None:
     search = plan_of(Document.in_(Library(id="abc")) & (Document.year == 2020))
     assert search.q == "docs(library/abc) AND year:2020"
     assert collection_notes(search) == [
-        "collection 'astronomy' (ads.config.collection) not applied: the filter asks for the documents of library abc"
+        "collection 'astronomy' (scixplorer.config.collection) not applied: the filter asks for the documents of library abc"
     ]
     assert plan_of(Document.not_in(Library(id="abc"))).q == f"-docs(library/abc) AND {ASTRONOMY}"
 
@@ -254,7 +254,7 @@ def test_lazy_loading_is_never_scoped(astronomy: None) -> None:
 
 def test_lazy_loading_by_another_identifier_is_never_scoped(monkeypatch: pytest.MonkeyPatch, astronomy: None) -> None:
     fake = FakeSearch([{"id": "7", "title": ["No bibcode"]}])
-    monkeypatch.setattr("ads.client._default_client", fake.client())
+    monkeypatch.setattr("scixplorer.client._default_client", fake.client())
     with pytest.warns(LazyLoadWarning):
         assert Document(id="7").title == ["No bibcode"]
     assert fake.params()["q"] == 'id:"7"'
@@ -262,6 +262,6 @@ def test_lazy_loading_by_another_identifier_is_never_scoped(monkeypatch: pytest.
 
 def test_get_by_bibcode_is_never_scoped(monkeypatch: pytest.MonkeyPatch, astronomy: None) -> None:
     fake = FakeSearch(make_docs(2))
-    monkeypatch.setattr("ads.client._default_client", fake.client())
+    monkeypatch.setattr("scixplorer.client._default_client", fake.client())
     assert Document.get(bibcode=bibcodes(2)[1]).bibcode == bibcodes(2)[1]
     assert fake.params()["q"] == f'bibcode:"{bibcodes(2)[1]}"'

@@ -11,12 +11,12 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING
 
-from ads.expr import Expr
-from ads.fields import NumericExpr, TextExpr
-from ads.model import CollectionExpr, RelationExpr
-from ads.models.affiliation import Affiliation
-from ads.models.author import Author, AuthorExpr
-from ads.models.document import Document
+from scixplorer.expr import Expr
+from scixplorer.fields import NumericExpr, TextExpr
+from scixplorer.model import CollectionExpr, RelationExpr
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.models.author import Author, AuthorExpr
+from scixplorer.models.document import Document
 
 if TYPE_CHECKING:
     if sys.version_info >= (3, 11):

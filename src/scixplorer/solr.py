@@ -67,7 +67,7 @@ _NOTHING = _Fragment("*:* AND -*:*", compound=True)
 def compile(expr: Expr) -> str:
     """Compile a resolved expression to a Solr query string.
 
-    Raises :class:`~ads.exceptions.QueryError` for unresolved ``Related`` and
+    Raises :class:`~scixplorer.exceptions.QueryError` for unresolved ``Related`` and
     ``Quantified`` nodes.
     """
     return _compile(expr).text

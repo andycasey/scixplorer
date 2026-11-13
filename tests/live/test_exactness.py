@@ -7,9 +7,9 @@ from typing import Any
 
 import pytest
 
-from ads.expr import Match, Or
-from ads.models.document import Document
-from ads.solr import EXPANDED_MATCH_KINDS
+from scixplorer.expr import Match, Or
+from scixplorer.models.document import Document
+from scixplorer.solr import EXPANDED_MATCH_KINDS
 
 from . import schema
 from .harness import Live, Outcome, compiled, summarise

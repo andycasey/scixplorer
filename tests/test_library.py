@@ -13,13 +13,13 @@ from typing import Any, cast
 import httpx
 import pytest
 
-import ads.client
-from ads.client import Client, Request, Response
-from ads.exceptions import ADSError, APIError, DoesNotExist
-from ads.expr import InLibrary
-from ads.models import library as lib_module
-from ads.models.library import Library, LibraryBackend, fetch_bibcodes, fetch_library
-from ads.utils import to_bibcodes
+import scixplorer.client
+from scixplorer.client import Client, Request, Response
+from scixplorer.exceptions import SciXError, APIError, DoesNotExist
+from scixplorer.expr import InLibrary
+from scixplorer.models import library as lib_module
+from scixplorer.models.library import Library, LibraryBackend, fetch_bibcodes, fetch_library
+from scixplorer.utils import to_bibcodes
 
 PREFIX = "/v1"
 
@@ -94,7 +94,7 @@ def client(server: FakeADS) -> Client:
 @pytest.fixture
 def default_client(client: Client, monkeypatch: pytest.MonkeyPatch) -> Client:
     """Make ``client`` the default client for the duration of a test."""
-    monkeypatch.setattr(ads.client, "_default_client", client)
+    monkeypatch.setattr(scixplorer.client, "_default_client", client)
     return client
 
 
@@ -569,7 +569,7 @@ def test_method_client_beats_library_client_beats_default(monkeypatch: pytest.Mo
     servers = {name: FakeADS() for name in ("default", "attribute", "argument")}
     for fake in servers.values():
         fake.on("PUT", "/biblib/documents/abc", {})
-    monkeypatch.setattr(ads.client, "_default_client", servers["default"].client())
+    monkeypatch.setattr(scixplorer.client, "_default_client", servers["default"].client())
     library = loaded()
     library.update(name="1")
     library.client = servers["attribute"].client()
@@ -645,7 +645,7 @@ def test_bibcodes_page_through_the_library(server: FakeADS, default_client: Clie
 
 
 def test_bibcodes_of_a_library_not_on_ads() -> None:
-    with pytest.raises(ADSError, match="no id"):
+    with pytest.raises(SciXError, match="no id"):
         Library(name="local").bibcodes
 
 
@@ -730,9 +730,9 @@ def test_documents_query_with_a_fake_document_module(monkeypatch: pytest.MonkeyP
         def in_(library: Library) -> InLibrary:
             return InLibrary(library.id)
 
-    module = types.ModuleType("ads.models.document")
+    module = types.ModuleType("scixplorer.models.document")
     module.Document = Document  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "ads.models.document", module)
+    monkeypatch.setitem(sys.modules, "scixplorer.models.document", module)
     library = loaded()
     assert cast(Any, library.documents).exprs == (InLibrary("abc"),)
     assert list(library) == ["doc"]
@@ -769,7 +769,7 @@ def test_set_operations_need_another_library(server: FakeADS, client: Client, ac
         getattr(loaded(), action)(client=client)
     with pytest.raises(TypeError, match="Library or a library id"):
         getattr(loaded(), action)(["x"], client=client)
-    with pytest.raises(ADSError, match="no id"):
+    with pytest.raises(SciXError, match="no id"):
         getattr(loaded(), action)(Library(name="local"), client=client)
     assert server.requests == []
 
@@ -865,14 +865,14 @@ def test_delete_then_every_remote_method_raises(server: FakeADS, client: Client)
         lambda: loaded("other").union(library, client=client),
     ]
     for call in calls:
-        with pytest.raises(ADSError, match="deleted"):
+        with pytest.raises(SciXError, match="deleted"):
             call()
     assert len(server.requests) == 1
     assert library.name == "x"
 
 
 def test_methods_on_a_library_not_on_ads(server: FakeADS, client: Client) -> None:
-    with pytest.raises(ADSError, match="Library.create"):
+    with pytest.raises(SciXError, match="Library.create"):
         Library(name="x").add("A", client=client)
     assert server.requests == []
 
@@ -882,7 +882,7 @@ def test_methods_on_a_library_not_on_ads(server: FakeADS, client: Client) -> Non
 
 def test_len_is_num_documents(server: FakeADS, default_client: Client) -> None:
     assert len(loaded(num_documents=42)) == 42
-    with pytest.raises(ADSError, match="not known"):
+    with pytest.raises(SciXError, match="not known"):
         len(Library(name="local"))
 
 

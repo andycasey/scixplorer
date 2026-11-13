@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ads"
+name = "scixplorer"
 version = "1.0.0.dev0"
-description = "A Python client for the NASA Astrophysics Data System (ADS) with composable, typed search expressions."
+description = "A Python client for SciX (Science Explorer), the successor to NASA/ADS, with composable, typed search expressions."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT AND GPL-3.0-only"
-license-files = ["LICENSE", "src/ads/data/NOTICE.md", "src/ads/data/LICENSE-GPL-3.0.txt"]
+license-files = ["LICENSE", "src/scixplorer/data/NOTICE.md", "src/scixplorer/data/LICENSE-GPL-3.0.txt"]
 authors = [{ name = "Andy Casey" }]
 dependencies = ["httpx>=0.27"]
 classifiers = [
@@ -22,7 +22,7 @@ classifiers = [
 dev = ["pytest>=8", "mypy>=1.11"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ads"]
+packages = ["src/scixplorer"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -34,4 +34,4 @@ markers = [
 [tool.mypy]
 python_version = "3.10"
 strict = true
-files = ["src/ads"]
+files = ["src/scixplorer"]

@@ -15,11 +15,11 @@ from urllib.parse import urlencode
 
 import pytest
 
-from ads import solr
-from ads.expr import NOTHING, Expr, days_ago
-from ads.models.affiliation import Affiliation
-from ads.models.document import Document
-from ads.search import MAX_RELATED_VALUES, QUERY_PATH, plan
+from scixplorer import solr
+from scixplorer.expr import NOTHING, Expr, days_ago
+from scixplorer.models.affiliation import Affiliation
+from scixplorer.models.document import Document
+from scixplorer.search import MAX_RELATED_VALUES, QUERY_PATH, plan
 
 from .harness import Live, Outcome, closed_set, compiled, month_of
 from .probes import ProbeResults

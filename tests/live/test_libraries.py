@@ -13,10 +13,10 @@ import warnings
 
 import pytest
 
-from ads.client import Client
-from ads.exceptions import APIError, DataWarning
-from ads.models.document import Document
-from ads.models.library import Library, fetch_bibcodes
+from scixplorer.client import Client
+from scixplorer.exceptions import APIError, DataWarning
+from scixplorer.models.document import Document
+from scixplorer.models.library import Library, fetch_bibcodes
 
 from .harness import Live, complete, compiled
 from .support import LiveTransport, redact

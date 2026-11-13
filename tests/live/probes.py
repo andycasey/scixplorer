@@ -14,9 +14,9 @@ from typing import Any
 
 import pytest
 
-from ads import search
-from ads.expr import And, Expr, Not, Or, escape_pattern
-from ads.models.document import Document
+from scixplorer import search
+from scixplorer.expr import And, Expr, Not, Or, escape_pattern
+from scixplorer.models.document import Document
 
 from .harness import Live, Outcome, alias_value, choose_lead, leading_words, name_parts
 from .support import Verdict, isolate

@@ -27,7 +27,7 @@ def _affiliations_of(author: Author) -> tuple[Affiliation, ...]:
 
 
 class Author(Model):
-    """One author of a :class:`~ads.models.document.Document`, from ``doc.authors``.
+    """One author of a :class:`~scixplorer.models.document.Document`, from ``doc.authors``.
 
     Values come from entry :attr:`position` of the document's per-author
     arrays; ``"-"`` (ADS's "none") and missing entries give ``None`` (an empty
