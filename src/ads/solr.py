@@ -36,7 +36,7 @@ __all__ = ["QUOTED_FIELD_TYPES", "compile", "compile_order", "format_value", "qu
 
 #: Field types whose values are written as double-quoted phrases. Values of all
 #: other field types are written bare. ``SolrLiteral`` values are always bare.
-QUOTED_FIELD_TYPES: tuple[type[Field], ...] = (TextField, StringField, VirtualField, DateTimeField)
+QUOTED_FIELD_TYPES: tuple[type[Field[Any, Any]], ...] = (TextField, StringField, VirtualField, DateTimeField)
 
 _LUCENE_SPECIALS = re.compile(r'([+\-&|!(){}\[\]^"~:\\/*?])')
 _WHITESPACE = re.compile(r"\s")
@@ -72,7 +72,7 @@ def quote(text: str) -> str:
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def format_value(field: Field, value: Any) -> str:
+def format_value(field: Field[Any, Any], value: Any) -> str:
     """Format one value of ``field`` for a query: the single place quoting is decided."""
     if isinstance(value, SolrLiteral):
         return value.text

@@ -114,7 +114,7 @@ def _value_test(expr: Match | In | Like | Range) -> Predicate:
     return _range_test(expr)
 
 
-def _match_test(field: Field, target: Any, exact: bool) -> Predicate:
+def _match_test(field: Field[Any, Any], target: Any, exact: bool) -> Predicate:
     _require_local(target)
     if isinstance(field, TextField):
         if exact:
@@ -151,7 +151,7 @@ def _require_local(value: Any) -> None:
         raise NotLocallyEvaluable(f"{value!r} is evaluated by Solr and cannot be compared locally")
 
 
-def _comparable(field: Field, value: Any) -> Any:
+def _comparable(field: Field[Any, Any], value: Any) -> Any:
     """Normalise a value of a date field for comparison; other values pass through.
 
     ``DateTimeField`` values become aware UTC datetimes (dates are midnight UTC);
@@ -165,7 +165,7 @@ def _comparable(field: Field, value: Any) -> Any:
         if isinstance(value, date):
             return (value.year, value.month)
         if isinstance(value, str):
-            parsed = field.to_python(value)
+            parsed = field._to_python(value)
             return (parsed.year, parsed.month)
     return value
 

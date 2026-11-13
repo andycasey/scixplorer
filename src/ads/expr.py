@@ -99,11 +99,11 @@ def _flatten(kind: type[And] | type[Or], operands: tuple[Expr, ...]) -> tuple[Ex
 
 
 def _expr_tuple(owner: str, items: Any) -> tuple[Expr, ...]:
-    items = tuple(items)
-    for item in items:
+    operands: tuple[Any, ...] = tuple(items)
+    for item in operands:
         if not isinstance(item, Expr):
             raise TypeError(f"{owner} operands must be expressions, not {item!r}")
-    return items
+    return operands
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,7 +141,7 @@ class Not(Expr):
 class Match(Expr):
     """``field`` matches ``value``; ``exact`` requests an exact (``=field:``) match."""
 
-    field: Field
+    field: Field[Any, Any]
     value: Any
     exact: bool = False
 
@@ -153,7 +153,7 @@ class Like(Expr):
     A backslash makes the next character literal (``\\*``, ``\\?``, ``\\\\``).
     """
 
-    field: Field
+    field: Field[Any, Any]
     pattern: str
 
     def __post_init__(self) -> None:
@@ -168,7 +168,7 @@ class Like(Expr):
 class Range(Expr):
     """``lo <= field <= hi`` (bounds exclusive where requested); ``None`` is unbounded."""
 
-    field: Field
+    field: Field[Any, Any]
     lo: Any
     hi: Any
     include_lo: bool = True
@@ -183,7 +183,7 @@ class Range(Expr):
 class In(Expr):
     """``field`` matches any of ``values``."""
 
-    field: Field
+    field: Field[Any, Any]
     values: tuple[Any, ...]
 
     def __post_init__(self) -> None:
@@ -217,7 +217,7 @@ class Related(Expr):
     ``predicate`` is an expression over the fields of the related model.
     """
 
-    relation: Relation
+    relation: Relation[Any]
     predicate: Expr
 
     def __post_init__(self) -> None:
@@ -254,7 +254,7 @@ NOTHING = Constant(False)
 class Order:
     """A sort key: ``field`` ascending, or descending if ``descending``."""
 
-    field: Field
+    field: Field[Any, Any]
     descending: bool = False
 
 

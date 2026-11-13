@@ -5,6 +5,10 @@ values to and from the API, and is what expression nodes refer to. Accessing a
 field on the model class (``Document.year``) returns a :class:`FieldExpr`
 handle, whose overloaded operators build expressions. The two are kept separate
 so that fields keep plain identity equality while handles overload ``==``.
+
+Fields are generic in their value type, so type checkers know that
+``paper.year`` is ``int | None`` and ``paper.title`` (multivalued) is
+``list[str] | None``.
 """
 
 from __future__ import annotations
@@ -13,7 +17,7 @@ import math
 import re
 from collections.abc import Iterable
 from datetime import date, datetime, timezone
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, NoReturn, Protocol, TypeVar, cast, overload
 
 from .exceptions import QueryError
 from .expr import (
@@ -63,9 +67,9 @@ class FieldExpr:
 
     def __init__(
         self,
-        field: Field,
+        field: Field[Any, Any],
         *,
-        via: Relation | None = None,
+        via: Relation[Any] | None = None,
         position: tuple[int, int] | None = None,
     ):
         self.field = field
@@ -216,13 +220,26 @@ class NumericExpr(FieldExpr):
         return self._wrap(Range(self.field, self._check(lo), self._check(hi)))
 
 
-def _model_name(field: Field) -> str:
+def _model_name(field: Field[Any, Any]) -> str:
     model = getattr(field, "model", None)
     return model.__name__ if model is not None else "?"
 
 
-class Field:
+T = TypeVar("T")
+H = TypeVar("H", bound=FieldExpr)
+
+class _Record(Protocol):
+    """What a field's owner instances provide (``Model`` does)."""
+
+    def _get_value(self, field: Field[Any, Any], /) -> Any: ...
+
+
+class Field(Generic[T, H]):
     """A field of a model: a data descriptor and the definition used in expressions.
+
+    ``T`` is the type of the value on an instance (``list[...]`` for a
+    multivalued field) and ``H`` the type of handle returned by class access.
+    Instance access gives ``T | None``; class access gives an ``H``.
 
     :param doc: help text, shown by ``help()``.
     :param multivalued: the field holds a list of values.
@@ -241,7 +258,7 @@ class Field:
         multivalued: bool = False,
         stored: bool = True,
         solr_name: str | None = None,
-    ):
+    ) -> None:
         self.__doc__ = doc
         self.multivalued = multivalued
         self.stored = stored
@@ -261,15 +278,26 @@ class Field:
         """The field's name in Solr queries and API responses."""
         return self._solr_name or self.name
 
-    def __get__(self, instance: Any, owner: type | None = None) -> Any:
-        if instance is None:
-            return self.expr_class(self)
-        return instance._get_value(self)
+    @overload
+    def __get__(self, instance: None, owner: type | None = None) -> H: ...
 
-    def __set__(self, instance: Any, value: Any) -> None:
+    @overload
+    def __get__(self, instance: _Record, owner: type | None = None) -> T | None: ...
+
+    # Only for type checkers: mypy applies ``__get__`` to the value of a property
+    # that returns a field (e.g. ``Relation.related_field``); this keeps that a field.
+    @overload
+    def __get__(self, instance: object, owner: type | None = None) -> Field[T, H]: ...
+
+    def __get__(self, instance: Any, owner: type | None = None) -> H | T | None | Field[T, H]:
+        if instance is None:
+            return cast(H, self.expr_class(self))
+        return cast("T | None", instance._get_value(self))
+
+    def __set__(self, instance: Any, value: T | None) -> None:
         instance._set_value(self, value)
 
-    def to_python(self, raw: Any) -> Any:
+    def to_python(self, raw: Any) -> T | None:
         """Convert a value from the API to Python, element-wise for lists.
 
         ADS data is not perfectly regular, so a value that cannot be converted
@@ -278,8 +306,8 @@ class Field:
         if raw is None:
             return None
         if self.multivalued and isinstance(raw, (list, tuple)):
-            return [self._convert(item) for item in raw]
-        return self._convert(raw)
+            return cast(T, [self._convert(item) for item in raw])
+        return cast(T, self._convert(raw))
 
     def _convert(self, raw: Any) -> Any:
         if raw is None:
@@ -324,7 +352,13 @@ class Field:
         return f"<{type(self).__name__} {self._label()}>"
 
 
-class _StringLikeField(Field):
+# Each concrete field class repeats two ``__init__`` overloads for the type
+# checker only: ``multivalued=True`` makes the value type ``list[...]``. The
+# overloads must name the concrete class, because type checkers cannot infer a
+# subclass's type parameter from self-typed overloads inherited from a base.
+
+
+class _StringLikeField(Field[T, TextExpr]):
     """Shared behaviour of fields holding strings."""
 
     expr_class = TextExpr
@@ -337,21 +371,75 @@ class _StringLikeField(Field):
         return value
 
 
-class TextField(_StringLikeField):
+class TextField(_StringLikeField[T]):
     """Tokenized full text (title, abstract, ...): ``==`` is a phrase match."""
 
+    if TYPE_CHECKING:
 
-class StringField(_StringLikeField):
+        @overload
+        def __init__(
+            self: TextField[str],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: TextField[list[str]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+
+class StringField(_StringLikeField[T]):
     """An untokenized keyword (bibcode, doctype, ...): ``==`` is an exact value match."""
 
+    if TYPE_CHECKING:
 
-class VirtualField(_StringLikeField):
+        @overload
+        def __init__(
+            self: StringField[str],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: StringField[list[str]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+
+class VirtualField(_StringLikeField[NoReturn]):
     """A search-only field (such as ``full``); it never has a value on an instance."""
 
-    def __init__(self, doc: str = "", *, multivalued: bool = False, solr_name: str | None = None):
+    def __init__(self, doc: str = "", *, multivalued: bool = False, solr_name: str | None = None) -> None:
         super().__init__(doc, multivalued=multivalued, stored=False, solr_name=solr_name)
 
-    def __get__(self, instance: Any, owner: type | None = None) -> Any:
+    @overload
+    def __get__(self, instance: None, owner: type | None = None) -> TextExpr: ...
+
+    @overload
+    def __get__(self, instance: object, owner: type | None = None) -> NoReturn: ...
+
+    def __get__(self, instance: Any, owner: type | None = None) -> TextExpr:
         if instance is None:
             return self.expr_class(self)
         raise AttributeError(f"{self._label()} is search-only and has no value on an instance")
@@ -360,10 +448,34 @@ class VirtualField(_StringLikeField):
         raise AttributeError(f"{self._label()} is search-only and cannot be set")
 
 
-class IntegerField(Field):
+class IntegerField(Field[T, NumericExpr]):
     """An integer."""
 
     expr_class = NumericExpr
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: IntegerField[int],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: IntegerField[list[int]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
         return int(raw)
@@ -379,10 +491,34 @@ class IntegerField(Field):
         return value + direction
 
 
-class FloatField(Field):
+class FloatField(Field[T, NumericExpr]):
     """A floating-point number."""
 
     expr_class = NumericExpr
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: FloatField[float],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: FloatField[list[float]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
         return float(raw)
@@ -393,8 +529,33 @@ class FloatField(Field):
         return repr(value)
 
 
-class BooleanField(Field):
+class BooleanField(Field[T, FieldExpr]):
     """A boolean."""
+
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: BooleanField[bool],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: BooleanField[list[bool]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
         if isinstance(raw, str):
@@ -416,10 +577,34 @@ def as_utc(value: date) -> datetime:
     return value.astimezone(timezone.utc)
 
 
-class DateTimeField(Field):
+class DateTimeField(Field[T, NumericExpr]):
     """A timestamp, held as an aware UTC ``datetime``."""
 
     expr_class = NumericExpr
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: DateTimeField[datetime],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: DateTimeField[list[datetime]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
         if isinstance(raw, date):
@@ -441,10 +626,34 @@ class DateTimeField(Field):
 _PUBDATE = re.compile(r"(\d{4})-(\d{2})(?:-(\d{2}))?")
 
 
-class DateField(Field):
+class DateField(Field[T, NumericExpr]):
     """A date with month precision in queries (ADS ``pubdate``), held as a ``date``."""
 
     expr_class = NumericExpr
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: DateField[date],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: DateField[list[date]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
         if isinstance(raw, datetime):
