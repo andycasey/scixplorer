@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast, overloa
 
 from . import exceptions
 from .expr import BOOL_ERROR, Expr
-from .fields import Field, FieldExpr
+from .fields import Field, FieldExpr, FieldInfo
 
 if TYPE_CHECKING:
     # ``ads.query`` is written separately; until it exists ``Query`` is ``Any`` here.
@@ -312,6 +312,18 @@ class Model(metaclass=ModelMeta):
     def __hash__(self) -> int:
         key = self._key_value()
         return id(self) if key is None else hash((type(self), key))
+
+    def to_dict(self) -> dict[str, Any]:
+        """The values loaded on this instance, by field name in definition order.
+
+        Never loads missing values, and does not include relations.
+        """
+        return {name: self._data[name] for name in self._fields if name in self._data}
+
+    @classmethod
+    def describe(cls) -> list[FieldInfo]:
+        """Describe the fields of this model, in definition order."""
+        return [field.info() for field in cls._fields.values()]
 
     def __repr__(self) -> str:
         key = self._key_value()

@@ -15,6 +15,7 @@ from ads.fields import (
     DateTimeField,
     Field,
     FieldExpr,
+    FieldInfo,
     FloatField,
     IntegerField,
     NumericExpr,
@@ -454,3 +455,27 @@ def test_only_multivalued_fields_can_be_indexed():
 def test_expressions_from_handles_are_exprs():
     assert isinstance(Rec.year == 1, Expr)
     assert isinstance(Rec.title.like("x"), Expr)
+
+
+# --- schema -----------------------------------------------------------------
+
+
+def test_python_type_of_each_field_class():
+    assert StringField.python_type is str
+    assert TextField.python_type is str
+    assert VirtualField.python_type is str
+    assert IntegerField.python_type is int
+    assert FloatField.python_type is float
+    assert BooleanField.python_type is bool
+    assert DateTimeField.python_type is datetime
+    assert DateField.python_type is date
+
+
+def test_type_name_and_info():
+    assert F["year"].type_name == "int"
+    assert F["title"].type_name == "list[str]"
+    assert F["entry_date"].type_name == "datetime"
+    assert F["full"].info() == FieldInfo(
+        name="full", type="str", multivalued=False, stored=False, solr_name="full", doc="Full text"
+    )
+    assert F["norm"].info().solr_name == "citation_count_norm"

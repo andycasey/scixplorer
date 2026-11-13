@@ -13,7 +13,7 @@ from helpers import INSTITUTES, JOURNALS, Institute, Journal, Paper
 from ads import exceptions
 from ads.exceptions import QueryError
 from ads.expr import And, Func, In, Like, Match, Not, Related
-from ads.fields import Field, IntegerField, StringField, TextField
+from ads.fields import Field, FieldInfo, IntegerField, StringField, TextField
 from ads.model import Model, Relation, RelationExpr
 
 
@@ -390,3 +390,61 @@ def test_position_then_relation_wrapping():
 def test_relation_expressions_combine():
     expr = (Paper.year == 2020) & (Paper.journal == "ApJ")
     assert expr == And((Match(Paper._fields["year"], 2020), Related(journal_rel, Match(abbreviation, "ApJ"))))
+
+
+# --- to_dict, describe -------------------------------------------------------
+
+
+def test_to_dict_returns_loaded_values_in_field_order():
+    loaded = []
+
+    class Lazy(Model):
+        a = StringField()
+        b = StringField()
+        c = IntegerField()
+
+        def _load_missing(self, field):
+            loaded.append(field.name)
+            return "loaded"
+
+    obj = Lazy(c=3, a="x")
+    assert obj.to_dict() == {"a": "x", "c": 3}
+    assert list(obj.to_dict()) == ["a", "c"]
+    assert loaded == []
+    assert Lazy().to_dict() == {}
+
+
+def test_to_dict_excludes_relations_and_is_a_copy():
+    paper = Paper(bibcode="2020ApJ...900..1C", year=2020)
+    assert paper.journal is JOURNALS["ApJ"]
+    data = paper.to_dict()
+    assert data == {"bibcode": "2020ApJ...900..1C", "year": 2020}
+    data["year"] = 1
+    assert paper.year == 2020
+
+
+def test_describe_lists_fields_in_definition_order():
+    info = Paper.describe()
+    assert [i.name for i in info] == list(Paper._fields)
+    by_name = {i.name: i for i in info}
+    assert by_name["bibcode"] == FieldInfo(
+        name="bibcode", type="str", multivalued=False, stored=True, solr_name="bibcode", doc="Bibcode"
+    )
+    assert by_name["title"].type == "list[str]"
+    assert by_name["title"].multivalued is True
+    assert by_name["year"].type == "int"
+    assert by_name["citation_count_norm"].type == "float"
+    assert by_name["entry_date"].type == "datetime"
+    assert by_name["pubdate"].type == "date"
+    assert by_name["public"].type == "bool"
+    assert by_name["full"].stored is False
+    assert by_name["doctype"].stored is False
+    assert "journal" not in by_name
+    assert Journal.describe()[1] == FieldInfo(
+        name="title", type="str", multivalued=False, stored=True, solr_name="title", doc="Title"
+    )
+
+
+def test_field_info_is_frozen():
+    with pytest.raises(AttributeError):
+        Paper.describe()[0].name = "x"  # type: ignore[misc]

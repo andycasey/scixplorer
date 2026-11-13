@@ -19,6 +19,7 @@ from ads.fields import (
     DateTimeField,
     Field,
     FieldExpr,
+    FieldInfo,
     FloatField,
     IntegerField,
     NumericExpr,
@@ -119,6 +120,8 @@ def definitions_and_models(row: dict[str, Any]) -> None:
     relation = Relation(Journal, key="k", related_key="abbreviation", resolve=resolve_journal)
     assert_type(relation, Relation[Journal | None])
     assert_type(Paper._from_row(row), Paper)
+    assert_type(Paper.describe(), list[FieldInfo])
+    assert_type(Paper(bibcode="X").to_dict(), dict[str, Any])
     assert_type(Paper._fields, dict[str, Field[Any, Any]])
     assert_type(relation.related_field, Field[Any, Any])
 

@@ -16,6 +16,7 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, NoReturn, Protocol, TypeVar, cast, overload
 
@@ -45,6 +46,7 @@ __all__ = [
     "DateTimeField",
     "Field",
     "FieldExpr",
+    "FieldInfo",
     "FloatField",
     "IntegerField",
     "NumericExpr",
@@ -234,6 +236,18 @@ class _Record(Protocol):
     def _get_value(self, field: Field[Any, Any], /) -> Any: ...
 
 
+@dataclass(frozen=True)
+class FieldInfo:
+    """A readable description of one field of a model (see ``Model.describe()``)."""
+
+    name: str
+    type: str
+    multivalued: bool
+    stored: bool
+    solr_name: str
+    doc: str
+
+
 class Field(Generic[T, H]):
     """A field of a model: a data descriptor and the definition used in expressions.
 
@@ -248,6 +262,8 @@ class Field(Generic[T, H]):
     """
 
     expr_class: ClassVar[type[FieldExpr]] = FieldExpr
+    #: The Python type of one value (one element, for a multivalued field).
+    python_type: ClassVar[type] = object
     name: str
     model: type
 
@@ -277,6 +293,23 @@ class Field(Generic[T, H]):
     def solr_name(self) -> str:
         """The field's name in Solr queries and API responses."""
         return self._solr_name or self.name
+
+    @property
+    def type_name(self) -> str:
+        """The value type as text, e.g. ``"int"`` or ``"list[str]"``."""
+        name = self.python_type.__name__
+        return f"list[{name}]" if self.multivalued else name
+
+    def info(self) -> FieldInfo:
+        """Describe this field."""
+        return FieldInfo(
+            name=self.name,
+            type=self.type_name,
+            multivalued=self.multivalued,
+            stored=self.stored,
+            solr_name=self.solr_name,
+            doc=self.__doc__ or "",
+        )
 
     @overload
     def __get__(self, instance: None, owner: type | None = None) -> H: ...
@@ -362,6 +395,7 @@ class _StringLikeField(Field[T, TextExpr]):
     """Shared behaviour of fields holding strings."""
 
     expr_class = TextExpr
+    python_type = str
 
     def _to_solr(self, value: Any) -> str:
         if not isinstance(value, str):
@@ -452,6 +486,7 @@ class IntegerField(Field[T, NumericExpr]):
     """An integer."""
 
     expr_class = NumericExpr
+    python_type = int
 
     if TYPE_CHECKING:
 
@@ -495,6 +530,7 @@ class FloatField(Field[T, NumericExpr]):
     """A floating-point number."""
 
     expr_class = NumericExpr
+    python_type = float
 
     if TYPE_CHECKING:
 
@@ -532,6 +568,7 @@ class FloatField(Field[T, NumericExpr]):
 class BooleanField(Field[T, FieldExpr]):
     """A boolean."""
 
+    python_type = bool
 
     if TYPE_CHECKING:
 
@@ -581,6 +618,7 @@ class DateTimeField(Field[T, NumericExpr]):
     """A timestamp, held as an aware UTC ``datetime``."""
 
     expr_class = NumericExpr
+    python_type = datetime
 
     if TYPE_CHECKING:
 
@@ -630,6 +668,7 @@ class DateField(Field[T, NumericExpr]):
     """A date with month precision in queries (ADS ``pubdate``), held as a ``date``."""
 
     expr_class = NumericExpr
+    python_type = date
 
     if TYPE_CHECKING:
 
