@@ -1,0 +1,213 @@
+from __future__ import annotations
+
+import subprocess
+import sys
+from importlib import resources
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+import ads.client
+import ads.models.affiliation as affiliation_module
+from ads.exceptions import DoesNotExist
+from ads.models.affiliation import Affiliation
+from ads.query import Query
+
+
+def raw_rows(name: str) -> list[list[str]]:
+    """Data rows of a packaged TSV file, parsed independently of the module under test."""
+    lines = (resources.files("ads") / "data" / name).read_text("utf-8").splitlines()[1:]
+    return [[value.strip() for value in line.split("\t")] for line in lines if line.strip()]
+
+
+AFFILIATIONS = raw_rows("affiliations.tsv")  # parent, child, abbreviation, canonical name
+COUNTRIES = raw_rows("affiliations_country.tsv")  # country, parent ('' for none), child, ...
+CHILD_IDS = list(dict.fromkeys(row[1] for row in AFFILIATIONS))
+PARENTS: dict[str, list[str]] = {child: [] for child in CHILD_IDS}
+for _parent, _child, *_ in AFFILIATIONS:
+    if _parent != "0" and _parent not in PARENTS[_child]:
+        PARENTS[_child].append(_parent)
+
+
+def expected_country(child: str) -> str | None:
+    """The first non-empty country listed for ``child`` in the country file."""
+    return next((row[0] for row in COUNTRIES if row[2] == child and row[0]), None)
+
+
+def ids(affiliations: list[Affiliation]) -> list[str]:
+    return [affiliation.id for affiliation in affiliations]
+
+
+@pytest.fixture(autouse=True)
+def no_default_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail() -> None:
+        raise AssertionError("affiliation queries must not need a client")
+
+    monkeypatch.setattr(ads.client, "get_default_client", fail)
+
+
+def test_one_affiliation_per_child_id() -> None:
+    affiliations = Affiliation.select().all()
+    assert len(AFFILIATIONS) == 7236
+    assert len(affiliations) == len(CHILD_IDS) == Affiliation.select().count() == 6862
+    assert ids(affiliations) == CHILD_IDS
+
+
+def test_parent_ids_merge_every_row_in_file_order() -> None:
+    assert sum(1 for parents in PARENTS.values() if len(parents) > 1) == 251
+    assert {a.id: a.parent_ids for a in Affiliation.select()} == {
+        child: tuple(parents) for child, parents in PARENTS.items()
+    }
+    supa = Affiliation.lookup("A11755")
+    assert supa.abbreviation == "SUPA"
+    assert supa.parent_ids == tuple(PARENTS["A11755"])
+    assert len(supa.parent_ids) == 7
+
+
+def test_disagreeing_rows_keep_the_first_names() -> None:
+    rows = [row for row in AFFILIATIONS if row[1] == "A00075"]
+    assert len({row[3] for row in rows}) > 1
+    ames = Affiliation.lookup("A00075")
+    assert (ames.abbreviation, ames.canonical_name) == (rows[0][2], rows[0][3])
+
+
+def test_trailing_whitespace_is_stripped() -> None:
+    assert Affiliation.lookup("A05860").abbreviation == "George Fox Coll"
+    assert Affiliation.lookup("A05860").country == "USA"
+
+
+def test_countries() -> None:
+    affiliations = Affiliation.select().all()
+    assert {a.id: a.country for a in affiliations} == {child: expected_country(child) for child in CHILD_IDS}
+    assert sum(1 for a in affiliations if a.country is not None) == 6835
+    assert Affiliation.select().where(Affiliation.country.like("*")).count() == 6835
+
+
+def test_country_through_the_parentless_fallback_key() -> None:
+    # Harvard is top-level: parent '0' in affiliations.tsv but '' in the country file,
+    # so the exact 'parent|child' key misses and '|child' supplies the country.
+    pairs = {(row[1], row[2]) for row in COUNTRIES}
+    assert ["0", "A00211", "Harvard U", "Harvard University, Massachusetts"] in AFFILIATIONS
+    assert ("0", "A00211") not in pairs and ("", "A00211") in pairs
+    assert Affiliation.lookup("A00211").country == "USA"
+
+
+def test_affiliation_without_a_country() -> None:
+    assert [row[0] for row in COUNTRIES if row[2] == "A99999"] == [""]
+    assert Affiliation.lookup("A99999").country is None
+    assert "A99999" in ids(Affiliation.select().where(~Affiliation.country.like("*")).all())
+
+
+def test_parents_and_parent() -> None:
+    supa = Affiliation.lookup("A11755")
+    assert ids(supa.parents) == PARENTS["A11755"]
+    assert supa.parent.id == PARENTS["A11755"][0]
+    harvard = Affiliation.lookup("A00211")
+    assert harvard.parents == [] and harvard.parent is None
+    orphan = Affiliation(id="X1", parent_ids=("A00211", "NoSuchId"))
+    assert ids(orphan.parents) == ["A00211"]
+
+
+def test_children() -> None:
+    expected = [child for child in CHILD_IDS if "A00007" in PARENTS[child]]
+    aberdeen = Affiliation.lookup("A00007")
+    assert isinstance(aberdeen.children, Query)
+    assert ids(aberdeen.children.all()) == expected
+    expected_many = [child for child in CHILD_IDS if "A00211" in PARENTS[child]]
+    assert len(expected_many) > 5
+    by_name = Affiliation.lookup("A00211").children.order_by(Affiliation.abbreviation.desc())
+    by_abbreviation = {a.id: a.abbreviation for a in Affiliation.select()}
+    assert ids(by_name.all()) == sorted(expected_many, key=by_abbreviation.__getitem__, reverse=True)
+    assert Affiliation.lookup("A99999").children.all() == []
+
+
+def test_siblings() -> None:
+    mine = set(PARENTS["A11755"])
+    expected = [c for c in CHILD_IDS if c != "A11755" and mine & set(PARENTS[c])]
+    siblings = Affiliation.lookup("A11755").siblings
+    assert isinstance(siblings, Query)
+    assert ids(siblings.all()) == expected
+    assert len(expected) > 10
+    top_level = Affiliation.lookup("A00211").siblings
+    assert isinstance(top_level, Query)
+    assert top_level.all() == [] and top_level.count() == 0
+
+
+def test_where_order_by_limit_and_in() -> None:
+    australian = [child for child in CHILD_IDS if expected_country(child) == "Australia"]
+    query = Affiliation.select().where(Affiliation.country == "Australia")
+    assert query.count() == len(australian) > 10
+    by_abbreviation = {a.id: a.abbreviation for a in Affiliation.select()}
+    first_three = query.order_by(Affiliation.abbreviation).limit(3).all()
+    assert ids(first_three) == sorted(australian, key=by_abbreviation.__getitem__)[:3]
+    picked = Affiliation.select().where(Affiliation.id.in_(["A00211", "A00007", "nope"]))
+    assert ids(picked.all()) == [c for c in CHILD_IDS if c in ("A00211", "A00007")]
+    harvards = Affiliation.select().where(Affiliation.canonical_name.contains("Harvard"))
+    assert "A00211" in ids(harvards.all())
+
+
+def test_get_and_lookup() -> None:
+    assert Affiliation.get(id="A00211") is Affiliation.lookup("A00211")
+    assert Affiliation.lookup("nope") is None
+    with pytest.raises(Affiliation.DoesNotExist) as info:
+        Affiliation.get(id="nope")
+    assert isinstance(info.value, DoesNotExist)
+
+
+def test_str_and_repr() -> None:
+    harvard = Affiliation.lookup("A00211")
+    assert str(harvard) == "Harvard University, Massachusetts"
+    assert repr(harvard) == "<Affiliation: id='A00211' (Harvard U)>"
+    assert repr(Affiliation()) == "<Affiliation>"
+
+
+def test_loader_merges_and_resolves_countries(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "affiliations.tsv").write_bytes(
+        b"Parent\tChild\tAbbrev\tCanonical Name\r\n"
+        b"0\tA1\tOne \tFirst One\r\n"
+        b"A1\tA2\tTwo\tSecond\r\n"
+        b"A3\tA2\tTwo-b\tSecond (b)\r\n"
+        b"A1\tA2\tTwo\tSecond\r\n"
+        b"0\tA3\tThree\tThird\r\n"
+        b"A3\tA4\tFour\tFourth\r\n"
+        b"\r\n"
+    )
+    (data / "affiliations_country.tsv").write_bytes(
+        b"Country\t[Aff_id_parent]\tAff_id_child\tInst\tAffiliation\r\n"
+        b"Narnia\t\tA1\tOne\tFirst One\r\n"
+        b"\tA1\tA2\tTwo\tSecond\r\n"
+        b"Gondor\tA3\tA2\tTwo-b\tSecond (b)\r\n"
+        b"Rohan \tA3\t\tThree\tThird\r\n"
+    )
+    monkeypatch.setattr(affiliation_module, "resources", SimpleNamespace(files=lambda package: tmp_path))
+    loaded = {a.id: a for a in affiliation_module._load.__wrapped__()}
+    assert list(loaded) == ["A1", "A2", "A3", "A4"]
+    assert (loaded["A1"].abbreviation, loaded["A1"].country, loaded["A1"].parent_ids) == ("One", "Narnia", ())
+    # Empty country for (A1, A2): the later (A3, A2) row supplies one; names come from the first row.
+    assert (loaded["A2"].abbreviation, loaded["A2"].canonical_name) == ("Two", "Second")
+    assert (loaded["A2"].country, loaded["A2"].parent_ids) == ("Gondor", ("A1", "A3"))
+    assert loaded["A3"].country is None
+    # No (A3, A4) or (, A4) row: the 'parent|' key supplies the parent's country.
+    assert (loaded["A4"].country, loaded["A4"].parent_ids) == ("Rohan", ("A3",))
+
+
+def test_import_reads_no_files() -> None:
+    script = """
+import os, sys
+opened = []
+def hook(event, args):
+    if event == "open" and not isinstance(args[0], int):
+        path = os.fsdecode(os.fspath(args[0]))
+        if path.endswith(("journals.json", ".tsv")):
+            opened.append(os.path.basename(path))
+sys.addaudithook(hook)
+import ads.models.affiliation
+assert opened == [], opened
+ads.models.affiliation.Affiliation.lookup("A00211").children.all()
+assert sorted(opened) == ["affiliations.tsv", "affiliations_country.tsv"], opened
+"""
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
