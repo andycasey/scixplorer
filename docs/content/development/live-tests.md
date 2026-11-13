@@ -1,4 +1,8 @@
-# Live tests
+---
+title: Live tests
+weight: 3
+description: How the opt-in test suite checks the client's assumptions about the real SciX API, and how to read its failures.
+---
 
 The offline tests prove that the client builds the requests it means to build.
 They cannot prove that the SciX / ADS server understands those requests the way

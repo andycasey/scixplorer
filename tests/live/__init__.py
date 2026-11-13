@@ -1,1 +1,1 @@
-"""Opt-in tests against the real ADS / SciX API (run with ``pytest --live``; see docs/live-tests.md)."""
+"""Opt-in tests against the real ADS / SciX API (run with ``pytest --live``; see docs/content/development/live-tests.md)."""
