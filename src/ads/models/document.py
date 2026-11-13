@@ -134,12 +134,20 @@ class Document(Model):
     of bibcodes that can run to tens of thousands) and rarely needed. They are
     fetched when selected explicitly, or loaded on first access.
 
+    Identity: a document is identified by the first of its identifiers
+    (``_identifiers``: ``bibcode``, ``scix_id``, ``id``) that has a value. Two
+    documents are equal when that is the same field with the same value; a
+    document with no identifier is equal only to itself.
+
     Lazy loading: reading a stored field that was not fetched sends one search
     request that loads it for every document of the same result page that
-    lacks it, with a :class:`~ads.exceptions.LazyLoadWarning`. The request is
-    synchronous, even inside async code, so there select the fields you need.
-    ``bibcode`` and ``id`` (always fetched) and ``score`` (only meaningful
-    for the query that produced the document) are never loaded this way.
+    lacks it, with a :class:`~ads.exceptions.LazyLoadWarning`. Documents are
+    found by their identifier (in practice the bibcode; documents of the page
+    identified by another field are loaded with one more request per field).
+    The request is synchronous, even inside async code, so there select the
+    fields you need. The identifiers (always fetched) and ``score`` (only
+    meaningful for the query that produced the document) are never loaded
+    this way, and a document with no identifier loads nothing.
 
     Relations: :attr:`journal` (from the bibcode) and :attr:`affiliation`
     (from ``aff_id``) give :class:`~ads.models.journal.Journal` and
@@ -148,14 +156,17 @@ class Document(Model):
     models' fields directly (``Journal.title.contains("astro")``).
     """
 
-    _key = "bibcode"
+    #: The fields that can identify a document, in order of preference. Every
+    #: search fetches them all, and identity, lazy loading and ``repr`` use the
+    #: first one that has a value.
+    _identifiers: ClassVar[tuple[str, ...]] = ("bibcode", "scix_id", "id")
     _backend = SearchBackend()
     _deferred: ClassVar[frozenset[str]] = frozenset(
         {"ack", "body", "caption", "citation", "credit", "mention", "reference"}
     )
     #: Fields never loaded on access: identifiers are always fetched, and a
     #: score belongs to the query that produced the document.
-    _not_lazy: ClassVar[frozenset[str]] = frozenset({"bibcode", "id", "score"})
+    _not_lazy: ClassVar[frozenset[str]] = frozenset({*_identifiers, "score"})
 
     abs = VirtualField("Search for a word or phrase in abstract, title, and keywords.")
     abstract = TextField("The document abstract.")
@@ -355,8 +366,27 @@ class Document(Model):
         state["_page"] = None
         return state
 
+    def _key_value(self) -> tuple[str, Any] | None:
+        """The first identifier with a value, as ``(field name, value)``; ``None`` if there is none.
+
+        ``Model`` compares and hashes instances by this.
+        """
+        for name in self._identifiers:
+            value = self._data.get(name)
+            if value is not None:
+                return name, value
+        return None
+
+    def __repr__(self) -> str:
+        identity = self._key_value()
+        if identity is None:
+            return "<Document>"
+        name, value = identity
+        return f"<Document: {name}={value!r}>"
+
     def __str__(self) -> str:
-        return self.bibcode if self.bibcode is not None else repr(self)
+        identity = self._key_value()
+        return repr(self) if identity is None else str(identity[1])
 
     # Second-order and other operators.
 
@@ -554,36 +584,46 @@ class Document(Model):
     # Lazy loading.
 
     def _load_missing(self, field: Field[Any, Any]) -> Any:
-        """Load ``field`` for this document and the documents of its page that lack it."""
+        """Load ``field`` for this document and the documents of its page that lack it.
+
+        Documents are found by their identifier, with one request per
+        identifier field in use (in practice only ``bibcode``).
+        """
         if not field.stored:
             raise AttributeError(f"Document.{field.name} is search-only and has no value on an instance")
-        if field.name in self._not_lazy or self._data.get("bibcode") is None:
+        if field.name in self._not_lazy or self._key_value() is None:
             return None
         page = self._page
-        documents: list[Document] = [self]
+        candidates: list[Document] = [self]
         if page is not None:
-            documents += [
+            candidates += [
                 member
                 for member in page.members()
-                if isinstance(member, Document)
-                and member is not self
-                and field.name not in member._data
-                and member._data.get("bibcode") is not None
+                if isinstance(member, Document) and member is not self and field.name not in member._data
             ]
+        groups: dict[str, list[Document]] = {}
+        for document in candidates:
+            identity = document._key_value()
+            if identity is not None:
+                groups.setdefault(identity[0], []).append(document)
+        count = sum(len(group) for group in groups.values())
+        requests = "another search request" if len(groups) == 1 else f"{len(groups)} more search requests"
         warnings.warn(
-            f"Document.{field.name} was not fetched; loading it for {len(documents)} document(s) with "
-            f"another search request. Select the fields you need, e.g. "
+            f"Document.{field.name} was not fetched; loading it for {count} document(s) with "
+            f"{requests}. Select the fields you need, e.g. "
             f"Document.select(Document.{field.name}, ...), to avoid this.",
             LazyLoadWarning,
             stacklevel=_outside_package_stacklevel(),
         )
-        bibcodes = [document._data["bibcode"] for document in documents]
-        query = Document.select(field).where(Document.bibcode.in_(bibcodes))
-        loaded = {row._data.get("bibcode"): row for row in query.using(None if page is None else page.client)}
-        for document in documents:
-            row = loaded.get(document._data["bibcode"])
-            document._data[field.name] = None if row is None else row._data.get(field.name)
-            document._related.clear()
+        client = None if page is None else page.client
+        for name, group in groups.items():
+            identifier: FieldExpr = getattr(Document, name)
+            query = Document.select(field).where(identifier.in_([document._data[name] for document in group]))
+            loaded = {row._data.get(name): row for row in query.using(client)}
+            for document in group:
+                row = loaded.get(document._data[name])
+                document._data[field.name] = None if row is None else row._data.get(field.name)
+                document._related.clear()
         return self._data[field.name]
 
 

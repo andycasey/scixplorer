@@ -78,8 +78,9 @@ BIGQUERY_PATH = "/search/bigquery"
 
 _STRATEGIES = ("docs", "bibcodes")
 
-#: Field names that identify a document; sorting by either needs no tiebreaker.
-_IDENTIFYING = frozenset({"id", "bibcode"})
+#: Fields whose values are unique, so that sorting by one needs no tiebreaker.
+#: (``scix_id`` is left out until it is known to be sortable on the server.)
+_UNIQUE = frozenset({"id", "bibcode"})
 
 
 @dataclass(frozen=True)
@@ -472,7 +473,7 @@ def _field_list(query: Query[Any]) -> tuple[tuple[str, ...], str]:
                 raise QueryError(
                     f"{model.__name__}.{field.name} is search-only: ADS can search it but not return it"
                 )
-        wanted = {field.name for field in query.fields} | _IDENTIFYING
+        wanted = {field.name for field in query.fields} | set(_identifiers(model))
         note = f"fetching {len(wanted)} selected field(s); others load on first access"
     else:
         wanted = {name for name, field in model._fields.items() if field.stored and name not in deferred}
@@ -482,6 +483,12 @@ def _field_list(query: Query[Any]) -> tuple[tuple[str, ...], str]:
         )
     fl = tuple(field.solr_name for name, field in model._fields.items() if name in wanted)
     return fl, note
+
+
+def _identifiers(model: type[Model]) -> tuple[str, ...]:
+    """The fields that identify a document, always fetched (``Document._identifiers``, else the model's key)."""
+    identifiers: tuple[str, ...] | None = getattr(model, "_identifiers", None)
+    return (model._key,) if identifiers is None else identifiers
 
 
 def _sort(query: Query[Any]) -> tuple[str, str]:
@@ -505,7 +512,7 @@ def _sort(query: Query[Any]) -> tuple[str, str]:
             f"score desc,{tiebreaker}",
             f"no order given: sorted by relevance (score desc), then {tiebreaker} so pages are stable",
         )
-    if any(order.field.name in _IDENTIFYING for order in query.order):
+    if any(order.field.name in _UNIQUE for order in query.order):
         return given, f"sorted by {given}"
     return f"{given},{tiebreaker}", f"sorted by {given}, then {tiebreaker} so pages are stable"
 

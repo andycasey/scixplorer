@@ -104,6 +104,55 @@ def test_equality_by_bibcode() -> None:
     assert len({Document(bibcode="X"), Document(bibcode="X"), Document(bibcode="Y")}) == 2
 
 
+def test_identifiers_are_declared_once() -> None:
+    assert Document._identifiers == ("bibcode", "scix_id", "id")
+    assert set(Document._identifiers) <= Document._not_lazy
+    assert not hasattr(Document, "_key")
+
+
+def test_identity_is_the_first_identifier_with_a_value() -> None:
+    assert Document(bibcode="X", scix_id="S1", id="1") == Document(bibcode="X", scix_id="S2", id="2")
+    assert Document(scix_id="S", id="1") == Document(scix_id="S", id="2")
+    assert Document(id="1") == Document(id="1")
+    assert Document(bibcode="X", id="1") != Document(bibcode="Y", id="1")
+    assert Document(scix_id="S", id="1") != Document(scix_id="T", id="1")
+    # The same value in a different identifier field is a different identity.
+    assert Document(bibcode="X", id="1") != Document(id="1")
+    assert Document(scix_id="X") != Document(bibcode="X")
+    assert Document(id="1", bibcode=None) == Document(id="1")
+
+
+def test_hash_is_consistent_with_equality() -> None:
+    same = [Document(bibcode="X", id="1"), Document(bibcode="X", id="2")]
+    assert hash(same[0]) == hash(same[1])
+    assert hash(Document(scix_id="S")) == hash(Document(scix_id="S", id="9"))
+    documents = {
+        Document(bibcode="X"),
+        Document(bibcode="X", scix_id="S"),
+        Document(scix_id="S"),
+        Document(scix_id="S", id="1"),
+        Document(id="1"),
+        Document(id="1"),
+        Document(scix_id="1"),
+    }
+    assert len(documents) == 4
+
+
+def test_documents_without_an_identifier_are_equal_only_to_themselves() -> None:
+    first, second = Document(title=["a"]), Document(title=["a"])
+    assert first == first and first != second
+    assert len({first, second}) == 2
+
+
+def test_repr_and_str_use_the_first_identifier() -> None:
+    assert repr(Document(bibcode="X", scix_id="S", id="1")) == "<Document: bibcode='X'>"
+    assert repr(Document(scix_id="S", id="1")) == "<Document: scix_id='S'>"
+    assert repr(Document(id="1")) == "<Document: id='1'>"
+    assert str(Document(bibcode="X", scix_id="S")) == "X"
+    assert str(Document(scix_id="S", id="1")) == "S"
+    assert str(Document(id="1")) == "1"
+
+
 def test_fields_returned_but_not_indexed() -> None:
     assert {name for name, field in Document._fields.items() if not field.indexed} == {"links_data", "page_range"}
     info = {i.name: i for i in Document.describe()}
@@ -138,7 +187,7 @@ def test_fields_not_indexed_can_be_selected_and_read() -> None:
     fake = FakeSearch(make_docs(2, page_range="16-20", links_data=['{"url": "x"}']))
     query = Document.select(Document.page_range, Document.links_data).using(fake.client())
     documents = query.all()
-    assert fake.params()["fl"] == "bibcode,id,links_data,page_range"
+    assert fake.params()["fl"] == "bibcode,id,links_data,page_range,scix_id"
     assert [d.page_range for d in documents] == ["16-20", "16-20"]
     assert documents[0].links_data == ['{"url": "x"}']
 
@@ -283,7 +332,7 @@ def test_lazy_loading_loads_the_whole_page_once() -> None:
     assert len(caught) == 1
     assert caught[0].filename == __file__
     assert len(fake.searches) == 2
-    assert fake.params()["fl"] == "bibcode,id,title"
+    assert fake.params()["fl"] == "bibcode,id,scix_id,title"
     first, second, third = bibcodes(3)
     assert fake.params()["q"] == f'bibcode:("{second}" OR "{first}" OR "{third}")'
     with warnings.catch_warnings():
@@ -387,7 +436,7 @@ def test_document_without_bibcode_loads_nothing(monkeypatch: pytest.MonkeyPatch)
     assert fake.requests == []
 
 
-@pytest.mark.parametrize("name", ["bibcode", "id", "score"])
+@pytest.mark.parametrize("name", ["bibcode", "scix_id", "id", "score"])
 def test_identifiers_and_score_are_never_lazy_loaded(monkeypatch: pytest.MonkeyPatch, name: str) -> None:
     fake = FakeSearch()
     fake.reply = lambda request: httpx.Response(
@@ -400,6 +449,61 @@ def test_identifiers_and_score_are_never_lazy_loaded(monkeypatch: pytest.MonkeyP
         warnings.simplefilter("error")
         assert getattr(document, name) is None
     assert len(fake.requests) == 1
+
+
+def test_document_without_bibcode_loads_through_its_other_identifier(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeSearch([{"scix_id": "S1", "id": "1", "title": ["By scix_id"]}, {"id": "2", "title": ["By id"]}])
+    monkeypatch.setattr("ads.client._default_client", fake.client())
+    with pytest.warns(LazyLoadWarning, match="1 document"):
+        assert Document(scix_id="S1", id="1").title == ["By scix_id"]
+    assert fake.params()["q"] == 'scix_id:"S1"'
+    with pytest.warns(LazyLoadWarning, match="1 document"):
+        assert Document(id="2").title == ["By id"]
+    assert fake.params()["q"] == 'id:"2"'
+
+
+def test_lazy_loading_a_mixed_page_groups_documents_by_identifier() -> None:
+    rows = [
+        {"bibcode": "2020ApJ...00000000A", "scix_id": "S0", "id": "10", "title": ["Paper 0"]},
+        {"scix_id": "S1", "id": "11", "title": ["Paper 1"]},
+        {"id": "12", "title": ["Paper 2"]},
+        {"bibcode": "2020ApJ...00000003A", "id": "13", "title": ["Paper 3"]},
+        {"scix_id": "S4", "id": "14", "title": ["Paper 4"]},
+        {"title": ["Paper 5"]},
+    ]
+    fake = FakeSearch(rows)
+    documents = Document.select(Document.year).using(fake.client()).all()
+    assert [d._key_value() for d in documents] == [
+        ("bibcode", "2020ApJ...00000000A"),
+        ("scix_id", "S1"),
+        ("id", "12"),
+        ("bibcode", "2020ApJ...00000003A"),
+        ("scix_id", "S4"),
+        None,
+    ]
+    with pytest.warns(LazyLoadWarning, match=r"5 document\(s\) with 3 more search requests"):
+        assert documents[1].title == ["Paper 1"]
+    assert [fake.params(i)["q"] for i in (1, 2, 3)] == [
+        'scix_id:("S1" OR "S4")',
+        'bibcode:("2020ApJ...00000000A" OR "2020ApJ...00000003A")',
+        'id:"12"',
+    ]
+    assert len(fake.searches) == 4
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert [d.title for d in documents[:5]] == [[f"Paper {i}"] for i in range(5)]
+        assert documents[5].title is None
+    assert "title" not in documents[5]._data
+    assert len(fake.searches) == 4
+
+
+def test_rows_without_scix_id_have_none_and_do_not_load_it() -> None:
+    fake = FakeSearch(make_docs(2))
+    documents = Document.select(Document.year).using(fake.client()).all()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert [d.scix_id for d in documents] == [None, None]
+    assert len(fake.searches) == 1
 
 
 def test_relation_access_lazy_loads_its_key_once() -> None:
