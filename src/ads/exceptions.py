@@ -58,6 +58,10 @@ class RateLimitExceeded(APIError):
         self.reset = reset
 
 
+class DataNotAvailable(ADSError):
+    """Reference data that is not packaged has not been downloaded yet; the message says how."""
+
+
 class LazyLoadWarning(UserWarning):
     """A field that was not requested by the query is being fetched on demand."""
 
