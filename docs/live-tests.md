@@ -35,8 +35,8 @@ and captured output with `[REDACTED]`.
 ## The request budget
 
 ADS allows about 5000 search requests a day per token, and far fewer for some
-services. The suite is designed to need fewer than 120 requests in the worst
-case and about 60 to 95 in a normal run:
+services. The suite is designed to need fewer than 130 requests in the worst
+case and about 60 to 100 in a normal run:
 
 | Part | Worst case | When everything passes |
 |---|---:|---:|
@@ -49,10 +49,11 @@ case and about 60 to 95 in a normal run:
 | `test_paging.py` | 8 | 8 |
 | `test_services.py` (one request per service) | 6 | 6 |
 | `test_libraries.py` | 2 | 2 |
-| **`--live`** | **83** | **63** |
+| `test_authors.py` (per-author arrays and `pos()`: all checks in one request, then one per check, at most 9) | 10 | 1 |
+| **`--live`** | **93** | **64** |
 | `test_libraries.py` with `--live-library` (paging at most 4) | +10 | +9 |
 | `test_libraries_write.py` with `--live-write` (16 changes, 6 deletions) | +22 | +22 |
-| **With both flags** | **115** | **94** |
+| **With both flags** | **125** | **95** |
 
 Retries are extra: the live client retries a 502/503/504 once, and the retry
 counts. The schema-drift test makes one request to GitHub, which is not counted.
@@ -64,7 +65,7 @@ How the budget is kept, all in `tests/live/support.py` (`LiveTransport`):
 - **Hard limit.** The transport refuses request 151: the test making it fails with `BudgetExhausted` (a `BaseException`, so no `except Exception` can swallow it), and the session stops after that test, running every teardown.
 - **HTTP 429.** After a 429 from any service, that test and every later live test is skipped with "ADS answered HTTP 429 (rate limit exceeded) for SERVICE (it resets at ...)". Nothing more is sent.
 - Library cleanup bypasses both the limit and the 429 stop.
-- Where many fields or probes are checked, one request checks them all together and failing groups are split to find the culprits ("group testing", `support.isolate` and `support.peel`), under a fixed cap of requests. Anything not settled within the cap is reported as undetermined (a skip, or a row of a table).
+- Where many fields or probes are checked, one request checks them all together and failing groups are split to find the culprits ("group testing", `support.isolate` and `support.peel`), under a fixed cap of requests. Anything not settled within the cap is reported as undetermined (a skip, or a row of a table). The per-author checks (`test_authors.py`) instead send everything together and, only if that fails, each check alone: their failures tend to come several at a time (a whole class of fields ignoring positions), where that needs fewer requests and settles every check.
 
 At the end of a `--live` run two sections are printed: **live API requests**
 (requests per service, cache hits, and the rate limits the server last reported)
@@ -179,6 +180,11 @@ What to change when an assumption is broken:
 | `test_services.py::test_resolver_answers_one_link_type_with_json` | `/resolver/<bibcode>/esource` answers 200 JSON, not a redirect | `services.resolver.external_resource` (follow redirects, or return the Location) |
 | `test_services.py::test_vis_author_network` | `/vis/author-network` takes `bibcodes` and answers `data` | `services.vis._request`; `_network` |
 | `test_services.py::test_citation_helper` | `/citation_helper` answers the documented list of dicts | `services.citation_helper` (its docstring) |
+| `test_authors.py::test_per_author_arrays_have_one_entry_per_author` | `aff`, `aff_id`, `email` and the three ORCID arrays have one entry per `author` (the findings show the counts per record) | `scixplorer.model.Collection.records` (`Document.authors`); `Document.affiliation` |
+| `test_authors.py::test_missing_per_author_values_are_a_dash` | An author without a value has `"-"` in those arrays, never null or `""` (the findings also show how several affiliations are written in `aff` and `aff_id`) | `placeholder=` in `scixplorer.models.author.document_authors` |
+| `test_authors.py::test_position_on_per_author_field[...]` | `pos(field:"v", n)` is accepted, matches author n's value and not another author's, on `aff_id`, `aff`, `email`, `orcid` and each ORCID array. A field in `search.POSITIONAL_FIELDS` must pass; for one that is not, a pass means it could be added and an xfail is what the client already assumes. The findings table lists every field | `search.POSITIONAL_FIELDS` |
+| `test_authors.py::test_set_inside_position` | `pos(aff_id:("a" OR "b"), n)` matches when one of the ids is author n's | `search._position` (send one `pos()` per id instead) |
+| `test_authors.py::test_aff_id_matches_each_id_of_an_entry_with_several` | `aff_id:"<id>"` matches a record whose entry for an author is `"<id>; <other>"`, for either id (skipped if no pinned author has several) | `Document.affiliation` / `Author.affiliation` (which send single ids); `separator=` in `document_authors` |
 | `test_schema.py::test_document_matches_the_published_schema` | Every modelled field is in schema.xml with the same class, multivaluedness and storage | The named field in `models/document.py`; `KNOWN_UNSCHEMED` in `tests/live/test_schema.py`; `schema_report.DELIBERATE` |
 
 ## How the tests stay robust as the index changes

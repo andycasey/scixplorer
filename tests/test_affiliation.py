@@ -3,7 +3,6 @@ from __future__ import annotations
 import subprocess
 import sys
 from importlib import resources
-from pathlib import Path
 
 import pytest
 
@@ -47,13 +46,6 @@ def no_default_client(monkeypatch: pytest.MonkeyPatch) -> None:
         raise AssertionError("affiliation queries must not need a client")
 
     monkeypatch.setattr(scixplorer.client, "get_default_client", fail)
-
-
-@pytest.fixture(autouse=True)
-def empty_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Read the packaged snapshot even if the user has downloaded fresher data."""
-    monkeypatch.setenv("SCIX_CACHE_DIR", str(tmp_path / "cache"))
-    affiliation_module._reset()
 
 
 def test_one_affiliation_per_child_id() -> None:

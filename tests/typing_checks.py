@@ -125,6 +125,7 @@ def expressions() -> None:
     assert_type(Paper.author[1].exact("Casey, A"), Expr)
     assert_type(NameField(multivalued=True), NameField[list[str]])
     assert_type(Paper.journal == "ApJ", Expr)
+    assert_type(Paper.journal.any((Journal.title == "x") & (Journal.abbreviation == "y")), Expr)
     assert_type((Paper.year == 2020) & ~(Paper.public == True), Expr)  # noqa: E712
     assert_type(Paper.year.desc(), Order)
     assert_type(Paper.bibcode.asc(), Order)
