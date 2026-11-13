@@ -301,6 +301,15 @@ def test_library_bibcodes_strategy_fetches_each_library_once(monkeypatch: pytest
     assert [path for _, path in fake.calls()] == ["/biblib/libraries/a", "/biblib/libraries/b", "/search/query"]
 
 
+def test_library_bibcodes_strategy_does_not_fetch_irrelevant_libraries(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(_config.config, "library_membership", "bibcodes")
+    fake = FakeSearch(make_docs(3), libraries={"abc": bibcodes(3)})
+    expr = ((Document.journal.title == "No Such Journal") & Document.in_(Library(id="abc"))) | (Document.year == 2020)
+    assert len(Document.select().where(expr).using(fake.client()).all()) == 3
+    assert fake.calls() == [("GET", "/search/query")]
+    assert fake.params()["q"] == "year:2020"
+
+
 def test_library_bibcodes_strategy_unsupported_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_config.config, "library_membership", "bibcodes")
     fake = FakeSearch(make_docs(10), libraries={"abc": bibcodes(80)})

@@ -348,31 +348,31 @@ def _finish(query: Query[Any], resolved: _Resolved, library_bibcodes: Mapping[st
     model = query.model
     bibcode_field = model._fields["bibcode"]
     notes = list(resolved.notes)
-    expr = resolved.expr
+    # Simplified first, so that libraries in branches that cannot match are
+    # neither needed nor fetched (the backend collects ids the same way).
+    expr = simplify(resolved.expr)
     from_libraries: set[Expr] = set()
 
     if _strategy() == "bibcodes":
+        for library_id in _library_ids(resolved):
+            if library_id not in library_bibcodes:
+                raise ValueError(
+                    f"plan() needs the bibcodes of library {library_id!r} "
+                    f"(library_membership='bibcodes'): pass library_bibcodes={{id: bibcodes}}"
+                )
+            count = len(library_bibcodes[library_id])
+            notes.append(f"library {library_id}: {count} bibcode(s), fetched from ADS")
 
         def replace(node: Expr) -> Expr:
             if not isinstance(node, InLibrary):
                 return node
-            try:
-                bibcodes = library_bibcodes[node.library_id]
-            except KeyError:
-                raise ValueError(
-                    f"plan() needs the bibcodes of library {node.library_id!r} "
-                    f"(library_membership='bibcodes'): pass library_bibcodes={{id: bibcodes}}"
-                ) from None
-            notes.append(f"library {node.library_id}: {len(bibcodes)} bibcode(s), fetched from ADS")
-            members = In(bibcode_field, tuple(bibcodes))
+            members = In(bibcode_field, tuple(library_bibcodes[node.library_id]))
             from_libraries.add(members)
             return members
 
-        expr = transform(expr, replace)
+        expr = simplify(transform(expr, replace))
     elif any(isinstance(node, InLibrary) for node in walk(expr)):
         notes.append("library membership is tested by ADS with docs(library/<id>)")
-
-    expr = simplify(expr)
     fl, fl_note = _field_list(query)
     sort, sort_note = _sort(query)
     notes.append(fl_note)

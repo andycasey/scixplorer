@@ -290,6 +290,20 @@ def test_library_bibcodes_strategy(monkeypatch: pytest.MonkeyPatch, library: Lib
         to_solr(Document.in_(library))
 
 
+def test_bibcodes_strategy_skips_libraries_that_cannot_matter(monkeypatch: pytest.MonkeyPatch, library: Library) -> None:
+    monkeypatch.setattr(_config.config, "library_membership", "bibcodes")
+    assert plan_of((Document.journal.title == "No Such Journal") & Document.in_(library)).empty
+    expr = ((Document.journal.title == "No Such Journal") & Document.in_(library)) | (Document.year == 2020)
+    assert plan_of(expr).q == "year:2020"
+
+
+def test_bibcodes_strategy_notes_each_library_once(monkeypatch: pytest.MonkeyPatch, library: Library) -> None:
+    monkeypatch.setattr(_config.config, "library_membership", "bibcodes")
+    expr = (Document.in_(library) & (Document.year == 2020)) | (Document.in_(library) & (Document.year == 2021))
+    notes = plan_of(expr, library_bibcodes={"abc": bibcodes(2)}).notes
+    assert sum(note.startswith("library abc:") for note in notes) == 1
+
+
 def test_empty_library_with_bibcodes_strategy(monkeypatch: pytest.MonkeyPatch, library: Library) -> None:
     monkeypatch.setattr(_config.config, "library_membership", "bibcodes")
     assert plan_of(Document.in_(library), library_bibcodes={"abc": []}).empty
