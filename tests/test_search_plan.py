@@ -234,6 +234,22 @@ def test_foreign_field_with_two_relations_is_ambiguous() -> None:
     assert plan(Query(_Twice).where(_Twice.other_journal == "ApJ")).q == 'other:"ApJ"'
 
 
+class _Curated(Model):
+    _key = "bibcode"
+    _backend = SearchBackend()
+    id = StringField("id")
+    bibcode = StringField("bibcode")
+    library_ids = StringField("library ids", multivalued=True)
+    library = Relation(Library, key="library_ids", related_key="id", resolve=lambda _: None)
+
+
+def test_related_model_needing_requests_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("ads.client._default_client", None)
+    with pytest.raises(UnsupportedQueryError, match="without requests to ADS"):
+        plan(Query(_Curated).where(_Curated.library.name == "Gaia"))
+    assert plan(Query(_Curated).where(_Curated.library == "abc")).q == 'library_ids:"abc"'
+
+
 # Libraries.
 
 
