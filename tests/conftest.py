@@ -35,7 +35,7 @@ class NetworkBlocked(RuntimeError):
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    group = parser.getgroup("live", "tests against the real ADS / SciX API (see docs/live-tests.md)")
+    group = parser.getgroup("live", "tests against the real ADS / SciX API (see docs/content/development/live-tests.md)")
     group.addoption(
         "--live",
         action="store_true",

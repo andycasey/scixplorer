@@ -183,7 +183,7 @@ class Document(Model):
     ``scixplorer.data.refresh("planetary_features")``), except to match ids directly
     (``Document.uat == 498``). Each such condition is about any related
     object; ``.any(...)`` makes several about the same one:
-    ``Document.planetary_feature.any((PlanetaryFeature.target == "Mars") & (PlanetaryFeature.feature_type == "Crater"))``.
+    ``Document.planetary_feature.any((PlanetaryFeature.target == "Titan") & (PlanetaryFeature.feature_type == "Mare"))``.
 
     Per-author conditions: ``doc.authors`` is one
     :class:`~scixplorer.models.author.Author` per author (``.name``, ``.aff``,

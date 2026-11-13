@@ -63,8 +63,8 @@ def to_bibcodes(*items: Any) -> list[str]:
 
     Each item may be a bibcode string (surrounding whitespace is removed), an
     object with a ``bibcode`` attribute (a document), an object with a
-    ``bibcodes`` attribute holding strings (a library; its documents are not
-    fetched), or any other iterable of these (lists, sets, generators, queries),
+    ``bibcodes`` attribute holding strings (a library: its list of bibcodes is
+    used, without fetching each document), or any other iterable of these (lists, sets, generators, queries),
     nested to any depth. Bibcodes are not checked against a pattern, because ADS
     also accepts other identifiers; the server decides what is valid.
 

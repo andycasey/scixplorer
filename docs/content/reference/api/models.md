@@ -80,7 +80,7 @@ Identity: a document is identified by the first of its identifiers (`_identifier
 
 Lazy loading: reading a stored field that was not fetched sends one search request that loads it for every document of the same result page that lacks it, with a `scix.exceptions.LazyLoadWarning`. Documents are found by their identifier (in practice the bibcode; documents of the page identified by another field are loaded with one more request per field). The request is synchronous, even inside async code, so there select the fields you need. The identifiers (always fetched) and `score` (only meaningful for the query that produced the document) are never loaded this way, and a document with no identifier loads nothing.
 
-Relations: `journal` (from the bibcode), `affiliation` (from `aff_id`), `uat` (from `uat_id`) and `planetary_feature` (from `planetary_feature_id`) give `scix.Journal`, `scix.Affiliation`, `scix.UATConcept` and `scix.PlanetaryFeature` objects, and can be searched by their fields (`scix.Document.journal.title.contains("astro")`), as can those models' fields directly (`scix.Journal.title.contains("astro")`). The last two need their data downloaded once (`scix.data.refresh("uat")`, `scix.data.refresh("planetary_features")`), except to match ids directly (`scix.Document.uat == 498`). Each such condition is about any related object; `.any(...)` makes several about the same one: `scix.Document.planetary_feature.any((scix.PlanetaryFeature.target == "Mars") & (scix.PlanetaryFeature.feature_type == "Crater"))`.
+Relations: `journal` (from the bibcode), `affiliation` (from `aff_id`), `uat` (from `uat_id`) and `planetary_feature` (from `planetary_feature_id`) give `scix.Journal`, `scix.Affiliation`, `scix.UATConcept` and `scix.PlanetaryFeature` objects, and can be searched by their fields (`scix.Document.journal.title.contains("astro")`), as can those models' fields directly (`scix.Journal.title.contains("astro")`). The last two need their data downloaded once (`scix.data.refresh("uat")`, `scix.data.refresh("planetary_features")`), except to match ids directly (`scix.Document.uat == 498`). Each such condition is about any related object; `.any(...)` makes several about the same one: `scix.Document.planetary_feature.any((scix.PlanetaryFeature.target == "Titan") & (scix.PlanetaryFeature.feature_type == "Mare"))`.
 
 Per-author conditions: `doc.authors` is one `scix.Author` per author (`.name`, `.aff`, `.affiliation`, `.email`, `.orcid`, ...), built from the per-author arrays `author`, `aff`, `aff_id`, `email` and the ORCID fields. In a search, everything inside one `scix.Document.authors.any(...)` (or `.all(...)`, every author) is about the same author, and an index picks a position:
 
@@ -716,7 +716,7 @@ scix.PlanetaryFeature.select().where(
 ).order_by(scix.PlanetaryFeature.name)
 ```
 
-`name` is matched like SciX text (`==` finds the words as a phrase, ignoring case, so `name == "Gale"` also finds "Gale Dorsa"; use `.exact("Gale")` for the whole name). The other text fields are matched exactly, including case.
+`name` is matched like SciX text (`==` finds the words as a phrase, ignoring case, so `name == "Olympus"` also finds "Olympus Mons"; use `.exact("Olympus Mons")` for the whole name). The other text fields are matched exactly, including case.
 
 ### scixplorer.models.planetary.PlanetaryFeature.lookup
 

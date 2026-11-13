@@ -55,6 +55,6 @@ to_bibcodes(*items)
 
 Collect the bibcodes of everything given, in order, without duplicates.
 
-Each item may be a bibcode string (surrounding whitespace is removed), an object with a `bibcode` attribute (a document), an object with a `bibcodes` attribute holding strings (a library; its documents are not fetched), or any other iterable of these (lists, sets, generators, queries), nested to any depth. Bibcodes are not checked against a pattern, because ADS also accepts other identifiers; the server decides what is valid.
+Each item may be a bibcode string (surrounding whitespace is removed), an object with a `bibcode` attribute (a document), an object with a `bibcodes` attribute holding strings (a library: its list of bibcodes is used, without fetching each document), or any other iterable of these (lists, sets, generators, queries), nested to any depth. Bibcodes are not checked against a pattern, because ADS also accepts other identifiers; the server decides what is valid.
 
 Raises `ValueError` for an empty string or a document whose `bibcode` is `None`, and `TypeError` for anything else.

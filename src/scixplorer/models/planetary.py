@@ -92,8 +92,8 @@ class PlanetaryFeature(Model):
         ).order_by(PlanetaryFeature.name)
 
     ``name`` is matched like SciX text (``==`` finds the words as a phrase,
-    ignoring case, so ``name == "Gale"`` also finds "Gale Dorsa"; use
-    ``.exact("Gale")`` for the whole name). The other text fields are matched
+    ignoring case, so ``name == "Olympus"`` also finds "Olympus Mons"; use
+    ``.exact("Olympus Mons")`` for the whole name). The other text fields are matched
     exactly, including case.
     """
 
