@@ -68,22 +68,18 @@ def journal_page(titles: dict[str, str]) -> str:
     return "<html><body><pre>\n" + "\n".join(rows) + "\n</pre></body></html>\n"
 
 
-def packaged_rows(name: str) -> list[list[str]]:
-    lines = (resources.files("ads") / "data" / name).read_text("utf-8").splitlines()[1:]
-    return [line.split("\t") for line in lines if line.strip()]
+def packaged(name: str) -> bytes:
+    return (resources.files("ads") / "data" / name).read_bytes()
 
 
 def upstream_affiliations(extra: bool = True) -> tuple[str, str]:
-    """The packaged affiliation files rewritten in the current upstream layout, plus one new institution."""
-    parent_child = (resources.files("ads") / "data" / "affiliations.tsv").read_text("utf-8")
-    country_rows = ["ISO Country\tCountry\tParent\tChild\tAbbrev\tCanonical Name"]
-    for country, parent, child, abbreviation, name in packaged_rows("affiliations_country.tsv"):
-        long_name = {"USA": "United States", "UK": "United Kingdom"}.get(country, country)
-        country_rows.append(f"XX\t{long_name}\t{parent}\t{child}\t{abbreviation}\t{name}")
+    """The packaged affiliation files (the upstream ones), plus one new institution if ``extra``."""
+    parent_child = packaged("affiliations.tsv").decode()
+    countries = packaged("affiliations_country.tsv").decode()
     if extra:
         parent_child += "0\tZ00001\tTest Inst\tInstitute of Tests, Narnia\n"
-        country_rows.append("NA\tNarnia\t\tZ00001\tTest Inst\tInstitute of Tests, Narnia")
-    return parent_child, "\n".join(country_rows) + "\n"
+        countries += "NA\tNarnia\t\tZ00001\tTest Inst\tInstitute of Tests, Narnia\n"
+    return parent_child, countries
 
 
 def good_routes() -> dict[str, Route]:
@@ -194,8 +190,8 @@ def test_status_needs_every_file_of_a_dataset(cache: Path) -> None:
     cache.mkdir()
     (cache / "affiliations.tsv").write_text("Parent\tChild\tAbbrev\tCanonical Name\n")
     assert {s.name: s.source for s in data.status()}["affiliations"] == "packaged"
-    assert Affiliation.select().count() == 6862
-    assert data.read_text("affiliations", "affiliations.tsv").count("\n") == 7237
+    assert Affiliation.select().count() == 7382
+    assert data.read_text("affiliations", "affiliations.tsv") == packaged("affiliations.tsv").decode()
 
 
 def test_read_text(cache: Path) -> None:
@@ -262,12 +258,10 @@ def test_refresh_everything_with_no_names(cache: Path) -> None:
     ]
     assert UATConcept.lookup(2).name == "Stars"
     assert PlanetaryFeature.lookup(2071).name == "Gale"
-    # The upstream country file names countries differently from the packaged one.
-    assert Affiliation.lookup("A00211").country == "United States"
-    assert Affiliation.lookup("Z00001").country == "Narnia"
+    assert Affiliation.lookup("Z00001").country_code == "NA"
     data.clear()
     assert list(cache.iterdir()) == []
-    assert Affiliation.lookup("A00211").country == "USA"
+    assert Affiliation.lookup("Z00001") is None
     with pytest.raises(DataNotAvailable):
         UATConcept.lookup(2)
 
@@ -297,6 +291,17 @@ def test_refresh_follows_redirects() -> None:
     [result] = data.refresh("uat", transport=server.transport)
     assert result.ok
     assert [str(request.url) for request in server.requests] == [URLS["uat"][0], moved]
+
+
+def test_packaged_affiliations_are_what_refresh_writes(cache: Path) -> None:
+    before = {(a.id, a.country, a.country_code, a.parent_ids) for a in Affiliation.select()}
+    names = ("affiliations.tsv", "affiliations_country.tsv")
+    upstream: dict[str, Route] = {url: packaged(name) for url, name in zip(URLS["affiliations"], names)}
+    [result] = data.refresh("affiliations", transport=Server(upstream).transport)
+    assert result.ok and result.message == "7382 records (was 7382)"
+    for path, name in zip(result.files, names):
+        assert path.read_bytes() == packaged(name)
+    assert {(a.id, a.country, a.country_code, a.parent_ids) for a in Affiliation.select()} == before
 
 
 def test_refresh_writes_atomically(cache: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -456,7 +461,7 @@ def test_corrupt_cache_names_the_file_that_failed(cache: Path) -> None:
     affiliation_module._reset()
     with pytest.warns(DataWarning, match=f"The cached file {cache / 'affiliations.tsv'} could not be used"):
         assert Affiliation.lookup("Z00001") is None
-    assert Affiliation.select().count() == 6862
+    assert Affiliation.select().count() == 7382
 
 
 def test_corrupt_cache_without_a_snapshot(cache: Path) -> None:

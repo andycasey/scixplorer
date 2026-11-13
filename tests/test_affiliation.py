@@ -9,6 +9,7 @@ import pytest
 
 import ads.client
 import ads.models.affiliation as affiliation_module
+from ads.evaluate import matches
 from ads.exceptions import DoesNotExist
 from ads.models.affiliation import Affiliation
 from ads.query import Query
@@ -21,7 +22,9 @@ def raw_rows(name: str) -> list[list[str]]:
 
 
 AFFILIATIONS = raw_rows("affiliations.tsv")  # parent, child, abbreviation, canonical name
-COUNTRIES = raw_rows("affiliations_country.tsv")  # country, parent ('' for none), child, ...
+# ISO code, country, parent ('' for none), child, abbreviation, canonical name. Counted from
+# the end, the child is always third: one upstream row has an extra empty field before it.
+COUNTRIES = raw_rows("affiliations_country.tsv")
 CHILD_IDS = list(dict.fromkeys(row[1] for row in AFFILIATIONS))
 PARENTS: dict[str, list[str]] = {child: [] for child in CHILD_IDS}
 for _parent, _child, *_ in AFFILIATIONS:
@@ -29,9 +32,9 @@ for _parent, _child, *_ in AFFILIATIONS:
         PARENTS[_child].append(_parent)
 
 
-def expected_country(child: str) -> str | None:
-    """The first non-empty country listed for ``child`` in the country file."""
-    return next((row[0] for row in COUNTRIES if row[2] == child and row[0]), None)
+def expected_country(child: str) -> tuple[str, str] | None:
+    """The first (country, code) listed for ``child`` in the country file."""
+    return next(((row[1], row[0]) for row in COUNTRIES if row[-3] == child and row[1]), None)
 
 
 def ids(affiliations: list[Affiliation]) -> list[str]:
@@ -55,13 +58,13 @@ def empty_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_one_affiliation_per_child_id() -> None:
     affiliations = Affiliation.select().all()
-    assert len(AFFILIATIONS) == 7236
-    assert len(affiliations) == len(CHILD_IDS) == Affiliation.select().count() == 6862
+    assert len(AFFILIATIONS) == len(COUNTRIES) == 7814
+    assert len(affiliations) == len(CHILD_IDS) == Affiliation.select().count() == 7382
     assert ids(affiliations) == CHILD_IDS
 
 
 def test_parent_ids_merge_every_row_in_file_order() -> None:
-    assert sum(1 for parents in PARENTS.values() if len(parents) > 1) == 251
+    assert sum(1 for parents in PARENTS.values() if len(parents) > 1) == 282
     assert {a.id: a.parent_ids for a in Affiliation.select()} == {
         child: tuple(parents) for child, parents in PARENTS.items()
     }
@@ -78,31 +81,47 @@ def test_disagreeing_rows_keep_the_first_names() -> None:
     assert (ames.abbreviation, ames.canonical_name) == (rows[0][2], rows[0][3])
 
 
-def test_trailing_whitespace_is_stripped() -> None:
-    assert Affiliation.lookup("A05860").abbreviation == "George Fox Coll"
-    assert Affiliation.lookup("A05860").country == "USA"
+def test_surrounding_whitespace_is_stripped() -> None:
+    raw = (resources.files("ads") / "data" / "affiliations.tsv").read_text("utf-8")
+    assert "0\tA06826\tDLSU\t De La Salle University, Philippines\n" in raw
+    assert Affiliation.lookup("A06826").canonical_name == "De La Salle University, Philippines"
 
 
-def test_countries() -> None:
+def test_countries_and_codes() -> None:
     affiliations = Affiliation.select().all()
-    assert {a.id: a.country for a in affiliations} == {child: expected_country(child) for child in CHILD_IDS}
-    assert sum(1 for a in affiliations if a.country is not None) == 6835
-    assert Affiliation.select().where(Affiliation.country.like("*")).count() == 6835
+    assert {a.id: (a.country, a.country_code) for a in affiliations} == {
+        child: expected_country(child) or (None, None) for child in CHILD_IDS
+    }
+    assert sum(1 for a in affiliations if a.country is not None) == 7382
+    assert sum(1 for a in affiliations if a.country_code is not None) == 7382
+    assert Affiliation.select().where(Affiliation.country_code.like("*")).count() == 7382
+
+
+def test_countries_are_spelled_out_as_upstream_spells_them() -> None:
+    assert (Affiliation.lookup("A00007").country, Affiliation.lookup("A00007").country_code) == ("United Kingdom", "GB")
+    assert Affiliation.select().where(Affiliation.country == "USA").count() == 0
+    assert Affiliation.select().where(Affiliation.country == "United States").count() == (
+        Affiliation.select().where(Affiliation.country_code == "US").count()
+    ) > 1000
+
+
+def test_row_with_an_extra_empty_field_is_read() -> None:
+    # Upstream has 'PH, Philippines, <empty>, <empty>, A06826, ...': one tab too many.
+    [row] = [row for row in COUNTRIES if "A06826" in row]
+    assert len(row) == 7 and row[2:4] == ["", ""]
+    assert (Affiliation.lookup("A06826").country, Affiliation.lookup("A06826").country_code) == ("Philippines", "PH")
 
 
 def test_country_through_the_parentless_fallback_key() -> None:
     # Harvard is top-level: parent '0' in affiliations.tsv but '' in the country file,
     # so the exact 'parent|child' key misses and '|child' supplies the country.
-    pairs = {(row[1], row[2]) for row in COUNTRIES}
+    pairs = {(row[2], row[3]) for row in COUNTRIES}
     assert ["0", "A00211", "Harvard U", "Harvard University, Massachusetts"] in AFFILIATIONS
     assert ("0", "A00211") not in pairs and ("", "A00211") in pairs
-    assert Affiliation.lookup("A00211").country == "USA"
-
-
-def test_affiliation_without_a_country() -> None:
-    assert [row[0] for row in COUNTRIES if row[2] == "A99999"] == [""]
-    assert Affiliation.lookup("A99999").country is None
-    assert "A99999" in ids(Affiliation.select().where(~Affiliation.country.like("*")).all())
+    assert (Affiliation.lookup("A00211").country, Affiliation.lookup("A00211").country_code) == (
+        "United States",
+        "US",
+    )
 
 
 def test_parents_and_parent() -> None:
@@ -141,9 +160,10 @@ def test_siblings() -> None:
 
 
 def test_where_order_by_limit_and_in() -> None:
-    australian = [child for child in CHILD_IDS if expected_country(child) == "Australia"]
-    query = Affiliation.select().where(Affiliation.country == "Australia")
+    australian = [child for child in CHILD_IDS if expected_country(child) == ("Australia", "AU")]
+    query = Affiliation.select().where(Affiliation.country_code == "AU")
     assert query.count() == len(australian) > 10
+    assert Affiliation.select().where(Affiliation.country == "Australia").all() == query.all()
     by_abbreviation = {a.id: a.abbreviation for a in Affiliation.select()}
     first_three = query.order_by(Affiliation.abbreviation).limit(3).all()
     assert ids(first_three) == sorted(australian, key=by_abbreviation.__getitem__)[:3]
@@ -189,6 +209,8 @@ def test_loader_merges_and_resolves_countries() -> None:
     ).decode()
     loaded = {a.id: a for a in affiliation_module._parse(files.__getitem__)}
     assert list(loaded) == ["A1", "A2", "A3", "A4"]
+    # The older layout has no ISO codes.
+    assert all(a.country_code is None for a in loaded.values())
     assert (loaded["A1"].abbreviation, loaded["A1"].country, loaded["A1"].parent_ids) == ("One", "Narnia", ())
     # Empty country for (A1, A2): the later (A3, A2) row supplies one; names come from the first row.
     assert (loaded["A2"].abbreviation, loaded["A2"].canonical_name) == ("Two", "Second")
@@ -196,6 +218,30 @@ def test_loader_merges_and_resolves_countries() -> None:
     assert loaded["A3"].country is None
     # No (A3, A4) or (, A4) row: the 'parent|' key supplies the parent's country.
     assert (loaded["A4"].country, loaded["A4"].parent_ids) == ("Rohan", ("A3",))
+    assert not matches(Affiliation.country.like("*"), loaded["A3"])
+
+
+def test_loader_reads_the_iso_layout_and_fits_rows_without_guessing() -> None:
+    files = {
+        "affiliations.tsv": "Parent\tChild\tAbbrev\tCanonical Name\n"
+        "0\tA1\tOne\tFirst\n0\tA2\tTwo\tSecond\n0\tA3\tThree\tThird\n0\tA4\tFour\tFourth\n",
+        "affiliations_country.tsv": "ISO Country\tCountry\tParent\tChild\tAbbrev\tCanonical Name\n"
+        # An extra empty field next to the empty parent: dropping either gives the same row.
+        "NA\tNarnia\t\t\tA1\tOne\tFirst\n"
+        # Short rows are padded.
+        "GO\tGondor\t\tA2\n"
+        # Too many fields and the empty ones are not adjacent: which to drop is a guess, so skipped.
+        "RO\tRohan\t\tA3\t\tThree\t\n"
+        # No code.
+        "\tMordor\t\tA4\tFour\tFourth\n",
+    }
+    loaded = {a.id: (a.country, a.country_code) for a in affiliation_module._parse(files.__getitem__)}
+    assert loaded == {
+        "A1": ("Narnia", "NA"),
+        "A2": ("Gondor", "GO"),
+        "A3": (None, None),
+        "A4": ("Mordor", None),
+    }
 
 
 def test_import_reads_no_files() -> None:

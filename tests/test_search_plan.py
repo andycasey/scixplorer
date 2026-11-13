@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 import pytest
@@ -193,10 +194,10 @@ def test_affiliation_abbreviation_and_object() -> None:
 
 
 def test_too_many_related_keys() -> None:
-    n = len(affiliation_ids(Affiliation.country == "USA"))
-    assert n > MAX_RELATED_VALUES
+    [(country, n)] = Counter(a.country for a in Affiliation.select() if a.country).most_common(1)
+    assert n == len(affiliation_ids(Affiliation.country == country)) > MAX_RELATED_VALUES
     with pytest.raises(UnsupportedQueryError, match=f"{n} Affiliation rows matched") as info:
-        plan_of(Document.affiliation.country == "USA")
+        plan_of(Document.affiliation.country == country)
     assert "Narrow" in str(info.value)
 
 
