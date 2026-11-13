@@ -381,6 +381,111 @@ def test_no_retries_when_max_retries_is_zero(harness):
     assert harness.delays == []
 
 
+# --- Idempotency -----------------------------------------------------------
+
+CREATE = Request("POST", "/biblib/libraries", json={"name": "new"})
+
+
+@pytest.mark.parametrize(
+    ("method", "expected"),
+    [
+        ("GET", True),
+        ("HEAD", True),
+        ("PUT", True),
+        ("DELETE", True),
+        ("delete", True),
+        ("POST", False),
+        ("PATCH", False),
+    ],
+)
+def test_idempotency_inferred_from_method(method, expected):
+    assert Request(method, "/x").is_idempotent is expected
+
+
+def test_idempotency_can_be_set_explicitly():
+    assert Request("POST", "/search/bigquery", idempotent=True).is_idempotent is True
+    assert Request("GET", "/x", idempotent=False).is_idempotent is False
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        lambda: httpx.ReadTimeout("slow"),
+        lambda: httpx.WriteTimeout("slow"),
+        lambda: httpx.ReadError("reset"),
+        lambda: httpx.RemoteProtocolError("closed"),
+    ],
+    ids=["ReadTimeout", "WriteTimeout", "ReadError", "RemoteProtocolError"],
+)
+def test_post_not_retried_after_request_may_have_been_sent(harness, error):
+    client = harness.client(error(), reply(200))
+    with pytest.raises(APIError) as info:
+        harness.send(client, CREATE)
+    assert info.value.status_code is None
+    assert isinstance(info.value.__cause__, httpx.TransportError)
+    assert str(info.value).startswith("POST /biblib/libraries: ")
+    assert "may or may not have been applied" in str(info.value)
+    assert len(harness.requests) == 1
+    assert harness.delays == []
+
+
+@pytest.mark.parametrize(
+    "error",
+    [lambda: httpx.ConnectError("refused"), lambda: httpx.ConnectTimeout("timed out")],
+    ids=["ConnectError", "ConnectTimeout"],
+)
+def test_post_retried_when_never_sent(harness, error):
+    client = harness.client(error(), error(), reply(200, {"id": "abc"}))
+    assert harness.send(client, CREATE).data == {"id": "abc"}
+    assert len(harness.requests) == 3
+    assert harness.delays == [1.0, 2.0]
+
+
+def test_post_connect_error_exhaustion(harness):
+    client = harness.client(httpx.ConnectError("a"), httpx.ConnectError("b"), max_retries=1)
+    with pytest.raises(APIError) as info:
+        harness.send(client, CREATE)
+    assert str(info.value) == "POST /biblib/libraries: ConnectError: b (gave up after 2 attempts)"
+
+
+@pytest.mark.parametrize("status", [502, 503, 504])
+def test_post_not_retried_on_transient_status(harness, status):
+    with pytest.raises(APIError) as info:
+        harness.send(harness.client(reply(status), reply(200)), CREATE)
+    assert info.value.status_code == status
+    assert len(harness.requests) == 1
+    assert harness.delays == []
+
+
+@pytest.mark.parametrize(
+    "request_",
+    [
+        Request("POST", "/search/bigquery", content="bibcode\nA", idempotent=True),
+        Request("GET", "/search/query"),
+        Request("PUT", "/biblib/documents/abc", json={"name": "renamed"}),
+        Request("DELETE", "/biblib/documents/abc"),
+    ],
+    ids=["POST-idempotent", "GET", "PUT", "DELETE"],
+)
+def test_idempotent_requests_retried_on_transient_status(harness, request_):
+    assert harness.send(harness.client(reply(503), reply(200)), request_).status_code == 200
+    assert len(harness.requests) == 2
+    assert harness.delays == [1.0]
+
+
+def test_explicitly_idempotent_post_retried_after_read_timeout(harness):
+    request = Request("POST", "/search/bigquery", content="bibcode", idempotent=True)
+    client = harness.client(httpx.ReadTimeout("slow"), reply(200))
+    assert harness.send(client, request).status_code == 200
+    assert harness.delays == [1.0]
+
+
+def test_explicitly_non_idempotent_get_not_retried(harness):
+    with pytest.raises(APIError):
+        harness.send(harness.client(reply(503), reply(200)), Request("GET", "/x", idempotent=False))
+    assert len(harness.requests) == 1
+
+
 # --- Rate limits ------------------------------------------------------------
 
 
