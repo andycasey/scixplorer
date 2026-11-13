@@ -30,6 +30,9 @@ from ads.fields import (
     VirtualField,
 )
 from ads.model import Model, Relation, RelationExpr
+from ads.models.affiliation import Affiliation
+from ads.models.journal import Journal as KnownJournal
+from ads.query import Query, Sender
 
 if TYPE_CHECKING:
     if sys.version_info >= (3, 11):
@@ -149,6 +152,32 @@ def must_not_type_check(paper: Paper) -> None:
     _year: int = paper.year  # type: ignore[assignment]
     TextField(multivalued=True, stord=False)  # type: ignore[call-overload]
     IntegerField(multivalued=1)  # type: ignore[call-overload]
+
+
+async def query_layer(aff: Affiliation) -> None:
+    query = KnownJournal.select()
+    assert_type(query, Query[KnownJournal])
+    assert_type(KnownJournal.select().where(KnownJournal.title.contains("astro")), Query[KnownJournal])
+    for journal in query:
+        assert_type(journal, KnownJournal)
+    async for journal in query:
+        assert_type(journal, KnownJournal)
+    assert_type(query.first(), KnownJournal | None)
+    assert_type(query.get(), KnownJournal)
+    assert_type(query.all(), list[KnownJournal])
+    assert_type(await query.aall(), list[KnownJournal])
+    assert_type(await query.afirst(), KnownJournal | None)
+    assert_type(query.count(), int)
+    assert_type(query[0], KnownJournal)
+    assert_type(query[0:2], list[KnownJournal])
+    assert_type(KnownJournal.get(abbreviation="ApJ"), KnownJournal)
+    assert_type(KnownJournal.lookup("ApJ"), KnownJournal | None)
+    assert_type(Affiliation.lookup("A00211"), Affiliation | None)
+    assert_type(aff.children, Query[Affiliation])
+    assert_type(aff.parents, list[Affiliation])
+    assert_type(query.client, Sender | None)
+    query["ApJ"]  # type: ignore[call-overload]  # noqa: B018
+    query.using("not a client")  # type: ignore[arg-type]
 
 
 def search_only_field(paper: Paper) -> None:

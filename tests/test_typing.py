@@ -1,4 +1,4 @@
-"""Type-check ``tests/typing_checks.py`` with mypy."""
+"""Type-check the package and ``tests/typing_checks.py`` with mypy."""
 
 from __future__ import annotations
 
@@ -12,8 +12,26 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 
+needs_mypy = pytest.mark.skipif(importlib.util.find_spec("mypy") is None, reason="mypy is not installed")
 
-@pytest.mark.skipif(importlib.util.find_spec("mypy") is None, reason="mypy is not installed")
+
+@needs_mypy
+def test_package_type_checks(tmp_path: Path) -> None:
+    """``mypy`` with the project configuration (strict, ``files = ["src/ads"]``) is clean."""
+    command = [
+        sys.executable,
+        "-m",
+        "mypy",
+        "--config-file",
+        str(ROOT / "pyproject.toml"),
+        "--cache-dir",
+        str(tmp_path),
+    ]
+    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+@needs_mypy
 def test_static_types(tmp_path: Path) -> None:
     command = [
         sys.executable,
