@@ -23,6 +23,7 @@ from .expr import (
     Not,
     Or,
     Order,
+    Quantified,
     Range,
     Raw,
     Related,
@@ -66,7 +67,8 @@ _NOTHING = _Fragment("*:* AND -*:*", compound=True)
 def compile(expr: Expr) -> str:
     """Compile a resolved expression to a Solr query string.
 
-    Raises :class:`~ads.exceptions.QueryError` for unresolved ``Related`` nodes.
+    Raises :class:`~ads.exceptions.QueryError` for unresolved ``Related`` and
+    ``Quantified`` nodes.
     """
     return _compile(expr).text
 
@@ -118,6 +120,11 @@ def _compile(expr: Expr) -> _Fragment:
         raise QueryError(
             f"Cannot compile an unresolved relation ({expr.relation!r}); "
             f"the planner must resolve it first"
+        )
+    if isinstance(expr, Quantified):
+        raise QueryError(
+            f"Cannot compile an unresolved per-record condition ({expr.collection.label(expr.positions)}."
+            f"{expr.quantifier}(...)); the planner must translate it first"
         )
     raise TypeError(f"Cannot compile {expr!r}")
 
