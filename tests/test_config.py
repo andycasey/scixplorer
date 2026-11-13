@@ -31,6 +31,7 @@ def test_defaults():
     assert c.page_size == 200
     assert c.max_inline_bibcodes == 50
     assert c.library_membership == "docs"
+    assert c.collection is None
 
 
 def test_module_level_instance():
@@ -197,3 +198,34 @@ def test_no_tokens_anywhere(home):
 
 def test_several_tokens_not_in_repr():
     assert "s3cret" not in repr(Config(token=["s3cret-1", "s3cret-2"]))
+
+
+@pytest.mark.parametrize(
+    ("collection", "expected"),
+    [
+        (None, ()),
+        ("", ()),
+        (" astronomy ", ("astronomy",)),
+        ([], ()),
+        (["  ", ""], ()),
+        (["physics", " astronomy", "", "physics", "astronomy "], ("physics", "astronomy")),
+        (("earthscience",), ("earthscience",)),
+    ],
+)
+def test_resolve_collections(collection, expected):
+    assert Config(collection=collection).resolve_collections() == expected
+
+
+@pytest.mark.parametrize(
+    ("collection", "match"),
+    [
+        (["astronomy", 3], "collection 2 must be a str, not int"),
+        ([None], "collection 1 must be a str, not NoneType"),
+        (b"astronomy", "must be a str or a sequence of str, not bytes"),
+        ({"astronomy"}, "must be a str or a sequence of str, not set"),
+        (3, "must be a str or a sequence of str, not int"),
+    ],
+)
+def test_bad_collection_settings(collection, match):
+    with pytest.raises(TypeError, match=match):
+        Config(collection=collection).resolve_collections()
