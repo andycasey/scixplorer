@@ -107,6 +107,7 @@ def test_quoting_lives_in_one_table():
     assert {t.__name__ for t in QUOTED_FIELD_TYPES} == {
         "TextField",
         "StringField",
+        "NameField",
         "VirtualField",
         "DateTimeField",
     }
@@ -273,3 +274,53 @@ def test_compile_order():
     assert compile_order([P.year.asc()]) == "year asc"
     assert compile_order(()) is None
     assert compile_order(iter([])) is None
+
+
+# --- exact matching per match kind ---------------------------------------------
+
+EXACT_GOLDEN = [
+    (P.author == "Casey, A", 'author:"Casey, A"'),
+    (P.author.exact("Casey, A"), '=author:"Casey, A"'),
+    (P.author[1].exact("Casey, A"), 'pos(=author:"Casey, A", 2)'),
+    (P.author[0] == "Casey, A", 'pos(author:"Casey, A", 1)'),
+    (P.title.exact("star"), '=title:"star"'),
+    (P.bibcode.exact("2005ApJ...622..759G"), 'bibcode:"2005ApJ...622..759G"'),
+    (P.author.in_(["Casey, A", "Ness, M"], exact=True), '=author:"Casey, A" OR =author:"Ness, M"'),
+    (A & P.author.in_(["Casey, A", "Ness, M"], exact=True), 'year:2020 AND (=author:"Casey, A" OR =author:"Ness, M")'),
+    (P.bibcode.in_(["A", "B"], exact=True), 'bibcode:("A" OR "B")'),
+    (~P.author.exact("Casey, A"), '*:* AND -=author:"Casey, A"'),
+]
+
+
+@pytest.mark.parametrize("expr, expected", EXACT_GOLDEN, ids=[g[1] for g in EXACT_GOLDEN])
+def test_exact_golden(expr, expected):
+    assert compile(expr) == expected
+
+
+@pytest.mark.parametrize(
+    "expr, expected",
+    [
+        (P.author.in_(["Casey, A", "Ness, M"]), 'author:("Casey, A" OR "Ness, M")'),
+        (P.author.in_(["Casey, A"], exact=True), '=author:"Casey, A"'),
+        (P.author.not_in(["Casey, A", "Ness, M"], exact=True), '*:* AND -(=author:"Casey, A" OR =author:"Ness, M")'),
+        (P.author[0].in_(["A", "B"], exact=True), "pos(=author:\"A\" OR =author:\"B\", 1)"),
+        (P.full.exact("dark matter"), '=full:"dark matter"'),
+        (P.bibstem.exact("ApJ"), 'bibstem:"ApJ"'),
+        (Match(F["year"], 2020, exact=True), "year:2020"),
+        (In(F["year"], (2019, 2020), exact=True), "year:(2019 OR 2020)"),
+        (In(F["author"], (), exact=True), "*:* AND -*:*"),
+        (P.bibcode.in_(["A"], exact=True), 'bibcode:"A"'),
+    ],
+)
+def test_exact_by_match_kind(expr, expected):
+    assert compile(expr) == expected
+
+
+def test_only_expanded_kinds_get_the_equals_prefix():
+    samples = {str: "x", int: 1, float: 0.5, bool: True}
+    for field in Paper._fields.values():
+        if field.python_type not in samples:
+            continue
+        value = samples[field.python_type]
+        compiled = compile(Match(field, value, exact=True))
+        assert compiled.startswith("=") is (field.match_kind in ("text", "name")), field

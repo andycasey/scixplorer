@@ -139,7 +139,7 @@ class Not(Expr):
 
 @dataclass(frozen=True, slots=True)
 class Match(Expr):
-    """``field`` matches ``value``; ``exact`` requests an exact (``=field:``) match."""
+    """``field`` matches ``value``; ``exact`` disables ADS's expansion (synonyms, name variants)."""
 
     field: Field[Any, Any]
     value: Any
@@ -181,10 +181,11 @@ class Range(Expr):
 
 @dataclass(frozen=True, slots=True)
 class In(Expr):
-    """``field`` matches any of ``values``."""
+    """``field`` matches any of ``values``; ``exact`` as for :class:`Match`."""
 
     field: Field[Any, Any]
     values: tuple[Any, ...]
+    exact: bool = False
 
     def __post_init__(self) -> None:
         if isinstance(self.values, (str, bytes)):
@@ -384,7 +385,7 @@ def _simplify_node(expr: Expr) -> Expr:
         if not expr.values:
             return NOTHING
         if len(expr.values) == 1:
-            return Match(expr.field, expr.values[0])
+            return Match(expr.field, expr.values[0], expr.exact)
     return expr
 
 

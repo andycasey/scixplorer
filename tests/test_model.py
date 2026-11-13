@@ -470,7 +470,13 @@ def test_describe_lists_fields_in_definition_order():
     assert [i.name for i in info] == list(Paper._fields)
     by_name = {i.name: i for i in info}
     assert by_name["bibcode"] == FieldInfo(
-        name="bibcode", type="str", multivalued=False, stored=True, solr_name="bibcode", doc="Bibcode"
+        name="bibcode",
+        type="str",
+        multivalued=False,
+        stored=True,
+        solr_name="bibcode",
+        doc="Bibcode",
+        match_kind="keyword",
     )
     assert by_name["title"].type == "list[str]"
     assert by_name["title"].multivalued is True
@@ -483,7 +489,13 @@ def test_describe_lists_fields_in_definition_order():
     assert by_name["doctype"].stored is False
     assert "journal" not in by_name
     assert Journal.describe()[1] == FieldInfo(
-        name="title", type="str", multivalued=False, stored=True, solr_name="title", doc="Title"
+        name="title",
+        type="str",
+        multivalued=False,
+        stored=True,
+        solr_name="title",
+        doc="Title",
+        match_kind="keyword",
     )
 
 

@@ -10,6 +10,20 @@ Fields are generic in their value type, so type checkers know that
 ``paper.year`` is ``int | None`` and ``paper.title`` (multivalued) is
 ``list[str] | None``. Values read from the API are converted to exactly that
 type or to ``None`` (see :meth:`Field.to_python`).
+
+Matching. Each field class declares how ADS matches its values
+(``Field.match_kind``):
+
+- ``"keyword"`` (:class:`StringField` and all numeric, boolean and date fields):
+  the value is matched literally; there is nothing to expand.
+- ``"text"`` (:class:`TextField`, :class:`VirtualField`): tokenized; ``==``
+  matches the phrase, and ADS also matches its synonyms and acronyms.
+- ``"name"`` (:class:`NameField`): personal names, ``"Last, First M"``; ``==``
+  also matches name variants, so ``author == "Murray, S"`` matches
+  ``"Murray, Stephen S."`` and ``"Murray, Sarah"``.
+
+``.exact(value)`` and ``.in_(values, exact=True)`` mean "match this value with
+no expansion" (Solr ``=field:``). On a keyword field that is the same as ``==``.
 """
 
 from __future__ import annotations
@@ -52,6 +66,7 @@ __all__ = [
     "FieldInfo",
     "FloatField",
     "IntegerField",
+    "NameField",
     "NumericExpr",
     "StringField",
     "TextExpr",
@@ -107,8 +122,8 @@ class FieldExpr:
 
     __hash__ = object.__hash__
 
-    def in_(self, values: Iterable[Any]) -> Expr:
-        """Match any of ``values``."""
+    def _values(self, values: Iterable[Any]) -> tuple[Any, ...]:
+        """Validate the collection given to ``in_`` and return its values."""
         if isinstance(values, (str, bytes)):
             raise TypeError(
                 f"{self!r}.in_() needs a collection of values, not a single string; "
@@ -116,7 +131,11 @@ class FieldExpr:
             )
         if isinstance(values, (FieldExpr, Expr)) or not isinstance(values, Iterable):
             raise TypeError(f"{self!r}.in_() needs a collection of values, not {values!r}")
-        return self._wrap(In(self.field, tuple(self._check(v) for v in values)))
+        return tuple(self._check(v) for v in values)
+
+    def in_(self, values: Iterable[Any]) -> Expr:
+        """Match any of ``values``."""
+        return self._wrap(In(self.field, self._values(values)))
 
     def not_in(self, values: Iterable[Any]) -> Expr:
         """Match none of ``values``."""
@@ -151,11 +170,37 @@ class FieldExpr:
 
 
 class TextExpr(FieldExpr):
-    """Handle on a text or string field: equality, phrase, wildcard and position queries."""
+    """Handle on a text, name or string field: equality, wildcard and position queries."""
+
+    def __eq__(self, value: object) -> Expr:  # type: ignore[override]
+        """Match ``value`` with ADS's default expansion for the field's kind.
+
+        A text field matches the phrase and its synonyms; a name field also
+        matches name variants (``author == "Murray, S"`` matches
+        ``"Murray, Stephen S."`` and ``"Murray, Sarah"``); a string field
+        matches the whole value literally.
+        """
+        return super().__eq__(value)
+
+    __hash__ = FieldExpr.__hash__
 
     def exact(self, value: str) -> Expr:
-        """Match ``value`` exactly (Solr ``=field:"value"``)."""
+        """Match ``value`` with no expansion (Solr ``=field:"value"``).
+
+        A text field then matches the phrase without synonyms; a name field
+        matches only that form of the name, ignoring case and the periods after
+        initials (``author.exact("Murray, S")`` matches ``"Murray, S."`` but not
+        ``"Murray, Stephen"``). On a string field this is the same as ``==``.
+        """
         return self._wrap(Match(self.field, self._check(value), exact=True))
+
+    def in_(self, values: Iterable[Any], *, exact: bool = False) -> Expr:
+        """Match any of ``values``: each as ``==`` would, or as :meth:`exact` would if ``exact``."""
+        return self._wrap(In(self.field, self._values(values), exact=exact))
+
+    def not_in(self, values: Iterable[Any], *, exact: bool = False) -> Expr:
+        """Match none of ``values`` (compared as by :meth:`in_`)."""
+        return ~self.in_(values, exact=exact)
 
     def like(self, pattern: str) -> Expr:
         """Wildcard match: ``*`` (or ``%``) is any run of characters, ``?`` is one character.
@@ -252,6 +297,7 @@ class FieldInfo:
     stored: bool
     solr_name: str
     doc: str
+    match_kind: str
 
 
 class Field(Generic[T, H]):
@@ -270,6 +316,9 @@ class Field(Generic[T, H]):
     expr_class: ClassVar[type[FieldExpr]] = FieldExpr
     #: The Python type of one value (one element, for a multivalued field).
     python_type: ClassVar[type] = object
+    #: How ADS matches values: ``"keyword"`` (literally), ``"text"`` (tokenized,
+    #: with synonyms) or ``"name"`` (with name variants). See the module docstring.
+    match_kind: ClassVar[str] = "keyword"
     name: str
     model: type
 
@@ -315,6 +364,7 @@ class Field(Generic[T, H]):
             stored=self.stored,
             solr_name=self.solr_name,
             doc=self.__doc__ or "",
+            match_kind=self.match_kind,
         )
 
     @overload
@@ -443,7 +493,14 @@ class _StringLikeField(Field[T, TextExpr]):
 
 
 class TextField(_StringLikeField[T]):
-    """Tokenized full text (title, abstract, ...): ``==`` is a phrase match."""
+    """Tokenized full text (title, abstract, ...); match kind ``"text"``.
+
+    ``==`` matches the phrase, and ADS also matches its synonyms and acronyms
+    (``title == "star"`` also finds synonyms of "star"); ``exact`` turns that
+    expansion off.
+    """
+
+    match_kind = "text"
 
     if TYPE_CHECKING:
 
@@ -471,7 +528,13 @@ class TextField(_StringLikeField[T]):
 
 
 class StringField(_StringLikeField[T]):
-    """An untokenized keyword (bibcode, doctype, ...): ``==`` is an exact value match."""
+    """An untokenized keyword (bibcode, doctype, ...); match kind ``"keyword"``.
+
+    ``==`` matches the whole value literally, so ``exact`` changes nothing
+    (and no ``=`` is sent: ADS returns nothing for ``=bibcode:...``).
+    """
+
+    match_kind = "keyword"
 
     if TYPE_CHECKING:
 
@@ -498,8 +561,50 @@ class StringField(_StringLikeField[T]):
         def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
 
+class NameField(_StringLikeField[T]):
+    """A personal name, ``"Last, First M"`` (author, editor, ...); match kind ``"name"``.
+
+    ``==`` matches name variants as ADS does: ``"Murray, S"`` matches
+    ``"Murray, Stephen S."`` and ``"Murray, Sarah"``, while ``"Murray, Stephen"``
+    matches ``"Murray, S. D."`` but not ``"Murray, Sarah"``. ``exact`` matches
+    only that form of the name, ignoring case and the periods after initials:
+    ``exact("Murray, S")`` matches ``"Murray, S."`` and nothing else above.
+    """
+
+    match_kind = "name"
+
+    if TYPE_CHECKING:
+
+        @overload
+        def __init__(
+            self: NameField[str],
+            doc: str = ...,
+            *,
+            multivalued: Literal[False] = ...,
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        @overload
+        def __init__(
+            self: NameField[list[str]],
+            doc: str = ...,
+            *,
+            multivalued: Literal[True],
+            stored: bool = ...,
+            solr_name: str | None = ...,
+        ) -> None: ...
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+
 class VirtualField(_StringLikeField[NoReturn]):
-    """A search-only field (such as ``full``); it never has a value on an instance."""
+    """A search-only text field (such as ``full``); it never has a value on an instance.
+
+    Matched like a :class:`TextField` (match kind ``"text"``).
+    """
+
+    match_kind = "text"
 
     def __init__(self, doc: str = "", *, multivalued: bool = False, solr_name: str | None = None) -> None:
         super().__init__(doc, multivalued=multivalued, stored=False, solr_name=solr_name)

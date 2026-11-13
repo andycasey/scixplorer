@@ -19,6 +19,7 @@ from ads.fields import (
     FieldInfo,
     FloatField,
     IntegerField,
+    NameField,
     NumericExpr,
     StringField,
     TextExpr,
@@ -491,7 +492,13 @@ def test_type_name_and_info():
     assert F["title"].type_name == "list[str]"
     assert F["entry_date"].type_name == "datetime"
     assert F["full"].info() == FieldInfo(
-        name="full", type="str", multivalued=False, stored=False, solr_name="full", doc="Full text"
+        name="full",
+        type="str",
+        multivalued=False,
+        stored=False,
+        solr_name="full",
+        doc="Full text",
+        match_kind="text",
     )
     assert F["norm"].info().solr_name == "citation_count_norm"
 
@@ -633,3 +640,56 @@ def test_any_json_value_converts_to_the_declared_type_or_none(name, multivalued)
             assert all(type(item) is field.python_type for item in value), raw
         else:
             assert type(value) is field.python_type, raw
+
+
+# --- match kinds and exact matching -------------------------------------------
+
+
+class People:
+    author = NameField("Authors", multivalued=True)
+    editor = NameField()
+
+
+def test_match_kind_of_each_field_class():
+    assert TextField.match_kind == "text"
+    assert VirtualField.match_kind == "text"
+    assert NameField.match_kind == "name"
+    assert StringField.match_kind == "keyword"
+    for cls in (IntegerField, FloatField, BooleanField, DateTimeField, DateField):
+        assert cls.match_kind == "keyword"
+    assert People.__dict__["author"].info().match_kind == "name"
+
+
+def test_name_field_is_a_string_field_with_a_text_handle():
+    author = People.__dict__["author"]
+    assert type(People.author) is TextExpr
+    assert NameField.python_type is str
+    assert author.type_name == "list[str]"
+    assert author.to_python("Casey, A") == ["Casey, A"]
+    assert People.__dict__["editor"].to_python(["Ness, M"]) == "Ness, M"
+    with pytest.raises(QueryError, match="needs a str"):
+        People.editor == 3  # noqa: B015
+
+
+def test_in_and_not_in_take_exact_on_text_handles():
+    author = People.__dict__["author"]
+    assert People.author.in_(["A", "B"], exact=True) == In(author, ("A", "B"), exact=True)
+    assert People.author.in_(["A", "B"]) == In(author, ("A", "B"))
+    assert People.author.not_in(["A"], exact=True) == Not(In(author, ("A",), exact=True))
+    assert (People.author.in_(["A"], exact=True) == People.author.in_(["A"])) is False
+    with pytest.raises(TypeError, match="single string"):
+        People.author.in_("A", exact=True)
+    with pytest.raises(TypeError):
+        Rec.year.in_([2020], exact=True)  # type: ignore[call-arg]
+
+
+def test_exact_composes_with_positions():
+    author = People.__dict__["author"]
+    assert People.author[1].exact("Casey, A") == Func("pos", (Match(author, "Casey, A", exact=True), 2, 2))
+    assert People.author[0].in_(["A"], exact=True) == Func("pos", (In(author, ("A",), exact=True), 1, 1))
+
+
+def test_text_handles_still_hash_by_identity():
+    handle = People.author
+    assert hash(handle) == object.__hash__(handle)
+    assert TextExpr.__eq__.__doc__ and "name variants" in TextExpr.__eq__.__doc__

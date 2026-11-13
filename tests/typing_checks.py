@@ -22,6 +22,7 @@ from ads.fields import (
     FieldInfo,
     FloatField,
     IntegerField,
+    NameField,
     NumericExpr,
     StringField,
     TextExpr,
@@ -55,6 +56,8 @@ class Paper(Model):
     _key = "bibcode"
     bibcode = StringField("Bibcode")
     title = TextField("Title", multivalued=True)
+    author = NameField("Authors", multivalued=True)
+    editor = NameField()
     year = IntegerField("Year")
     years = IntegerField(multivalued=True)
     norm = FloatField(solr_name="citation_count_norm")
@@ -70,6 +73,8 @@ class Paper(Model):
 def instance_access(paper: Paper) -> None:
     assert_type(paper.bibcode, str | None)
     assert_type(paper.title, list[str] | None)
+    assert_type(paper.author, list[str] | None)
+    assert_type(paper.editor, str | None)
     assert_type(paper.year, int | None)
     assert_type(paper.years, list[int] | None)
     assert_type(paper.norm, float | None)
@@ -84,6 +89,7 @@ def instance_access(paper: Paper) -> None:
 def class_access() -> None:
     assert_type(Paper.bibcode, TextExpr)
     assert_type(Paper.title, TextExpr)
+    assert_type(Paper.author, TextExpr)
     assert_type(Paper.full, TextExpr)
     assert_type(Paper.year, NumericExpr)
     assert_type(Paper.norm, NumericExpr)
@@ -103,6 +109,9 @@ def expressions() -> None:
     assert_type(Paper.year.in_([2019, 2020]), Expr)
     assert_type(Paper.title.like("JWST*"), Expr)
     assert_type(Paper.title.exact("x"), Expr)
+    assert_type(Paper.author.in_(["Casey, A"], exact=True), Expr)
+    assert_type(Paper.author[1].exact("Casey, A"), Expr)
+    assert_type(NameField(multivalued=True), NameField[list[str]])
     assert_type(Paper.journal == "ApJ", Expr)
     assert_type((Paper.year == 2020) & ~(Paper.public == True), Expr)  # noqa: E712
     assert_type(Paper.year.desc(), Order)
@@ -132,6 +141,7 @@ def must_not_type_check(paper: Paper) -> None:
     Paper.public > True  # type: ignore[operator]  # noqa: B015
     Paper.year.like("19*")  # type: ignore[attr-defined]
     Paper.year.exact(2020)  # type: ignore[attr-defined]
+    Paper.year.in_([2020], exact=True)  # type: ignore[call-arg]
     Paper.year[0]  # type: ignore[index]  # noqa: B018
     paper.year = "2020"  # type: ignore[assignment]
     paper.title = "x"  # type: ignore[assignment]

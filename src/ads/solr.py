@@ -30,13 +30,23 @@ from .expr import (
     Wildcard,
     parse_pattern,
 )
-from .fields import DateTimeField, Field, StringField, TextField, VirtualField
+from .fields import DateTimeField, Field, NameField, StringField, TextField, VirtualField
 
 __all__ = ["QUOTED_FIELD_TYPES", "compile", "compile_order", "format_value", "quote"]
 
 #: Field types whose values are written as double-quoted phrases. Values of all
 #: other field types are written bare. ``SolrLiteral`` values are always bare.
-QUOTED_FIELD_TYPES: tuple[type[Field[Any, Any]], ...] = (TextField, StringField, VirtualField, DateTimeField)
+QUOTED_FIELD_TYPES: tuple[type[Field[Any, Any]], ...] = (
+    TextField,
+    StringField,
+    NameField,
+    VirtualField,
+    DateTimeField,
+)
+
+#: Match kinds that ADS expands by default, so that ``exact`` must be sent as
+#: ``=field:``. On other kinds ``=`` is unnecessary (and breaks ``=bibcode:``).
+EXPANDED_MATCH_KINDS = frozenset({"text", "name"})
 
 _LUCENE_SPECIALS = re.compile(r'([+\-&|!(){}\[\]^"~:\\/*?])')
 _WHITESPACE = re.compile(r"\s")
@@ -90,7 +100,7 @@ def _compile(expr: Expr) -> _Fragment:
     if isinstance(expr, Constant):
         return _EVERYTHING if expr.value else _NOTHING
     if isinstance(expr, Match):
-        prefix = "=" if expr.exact else ""
+        prefix = "=" if _sends_exact(expr.field, expr.exact) else ""
         return _Fragment(f"{prefix}{expr.field.solr_name}:{format_value(expr.field, expr.value)}")
     if isinstance(expr, In):
         return _compile_in(expr)
@@ -145,11 +155,18 @@ def _compile_or(operands: tuple[Expr, ...]) -> _Fragment:
     return _Fragment(" OR ".join(_operand(op) for op in operands), compound=True)
 
 
+def _sends_exact(field: Field[Any, Any], exact: bool) -> bool:
+    """Whether an exact match on ``field`` needs the ``=`` prefix."""
+    return exact and field.match_kind in EXPANDED_MATCH_KINDS
+
+
 def _compile_in(expr: In) -> _Fragment:
     if not expr.values:
         return _NOTHING
     if len(expr.values) == 1:
-        return _compile(Match(expr.field, expr.values[0]))
+        return _compile(Match(expr.field, expr.values[0], expr.exact))
+    if _sends_exact(expr.field, expr.exact):
+        return _compile_or(tuple(Match(expr.field, value, True) for value in expr.values))
     values = " OR ".join(format_value(expr.field, value) for value in expr.values)
     return _Fragment(f"{expr.field.solr_name}:({values})")
 
