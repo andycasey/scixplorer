@@ -547,8 +547,10 @@ def test_missing_token_raises_before_any_request(harness, no_token_env):
     with pytest.raises(AuthenticationError) as info:
         harness.send(client)
     assert info.value.status_code is None
-    assert "ADS_API_TOKEN" in str(info.value)
-    assert "ads.config.token" in str(info.value)
+    message = str(info.value)
+    assert "SCIX_API_TOKEN, ADS_API_TOKEN, ADS_DEV_KEY (checked in that order)" in message
+    assert "~/.scix/token, ~/.ads/token, ~/.ads/dev_key (checked in that order)" in message
+    assert "ads.config.token" in message
     assert harness.requests == []
 
 

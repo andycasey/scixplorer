@@ -8,10 +8,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 #: Environment variables checked for an API token, in order.
-TOKEN_ENV_VARS: tuple[str, ...] = ("ADS_API_TOKEN", "ADS_DEV_KEY")
+TOKEN_ENV_VARS: tuple[str, ...] = ("SCIX_API_TOKEN", "ADS_API_TOKEN", "ADS_DEV_KEY")
 
 #: Files (relative to the home directory) checked for an API token, in order.
-TOKEN_FILES: tuple[str, ...] = (".ads/token", ".ads/dev_key")
+TOKEN_FILES: tuple[str, ...] = (".scix/token", ".ads/token", ".ads/dev_key")
 
 
 @dataclass

@@ -47,9 +47,9 @@ _ASSUMED_RATE_LIMIT_WAIT = timedelta(seconds=60)
 
 _MISSING_TOKEN_MESSAGE = (
     "No API token found. Get one at https://scixplorer.org/user/settings/token "
-    "and then either set ads.config.token = '...', pass token= to Client(), set the "
-    f"{' or '.join(TOKEN_ENV_VARS)} environment variable, or save it as the first line "
-    f"of {' or '.join('~/' + f for f in TOKEN_FILES)}."
+    "and then either set ads.config.token = '...', pass token= to Client(), set one of the "
+    f"environment variables {', '.join(TOKEN_ENV_VARS)} (checked in that order), or save it "
+    f"as the first line of one of {', '.join('~/' + f for f in TOKEN_FILES)} (checked in that order)."
 )
 
 
