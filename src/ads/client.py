@@ -13,16 +13,16 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from collections.abc import Awaitable, Callable, Iterable, Iterator, Mapping
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from types import TracebackType
 from typing import Any
 
 import httpx
 
 from ads import __version__
-from ads._config import TOKEN_ENV_VARS, TOKEN_FILES, Config
+from ads._config import TOKEN_ENV_VARS, TOKEN_FILES, Config, normalise_tokens
 from ads._config import config as _module_config
 from ads.exceptions import APIError, AuthenticationError, RateLimitExceeded
 
@@ -40,6 +40,10 @@ _UNSENT_ERRORS = (httpx.ConnectError, httpx.ConnectTimeout)
 
 #: Longest error-body excerpt included in an exception message.
 _MAX_DETAIL = 500
+
+#: How long a token is left unused for a service after an HTTP 429 that did
+#: not report when the limit resets.
+_ASSUMED_RATE_LIMIT_WAIT = timedelta(seconds=60)
 
 _MISSING_TOKEN_MESSAGE = (
     "No ADS API token found. Get one at https://ui.adsabs.harvard.edu/user/settings/token "
@@ -115,19 +119,72 @@ class RateLimit:
     reset: datetime
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 @dataclass(frozen=True)
 class _Retry:
-    """Outcome of an attempt that should be retried after ``delay`` seconds."""
+    """Outcome of an attempt that should be sent again.
 
-    delay: float
+    ``delay`` is the back-off in seconds before a retry that counts towards
+    ``max_retries``. ``None`` means send again at once with another token
+    (after HTTP 429), which does not count as a retry.
+    """
+
+    delay: float | None
+
+
+@dataclass
+class _Exchange:
+    """The state of one ``send``/``asend`` call, shared by both.
+
+    ``tokens`` are resolved once per call and ``token`` is the one the current
+    attempt uses. ``retries`` counts back-off retries (not token changes).
+    ``rejected`` holds the tokens that got HTTP 429 during this call; they are
+    not tried again in it, even if their reset time has already passed.
+    """
+
+    request: Request
+    tokens: tuple[str, ...] = field(repr=False)
+    token: str = field(default="", repr=False)
+    retries: int = 0
+    rejected: set[str] = field(default_factory=set, repr=False)
+
+    @property
+    def service(self) -> str:
+        return service_for(self.request.path)
+
+    @property
+    def token_label(self) -> str | None:
+        """The current token's position, e.g. ``token 2 of 3``; ``None`` if there is one token."""
+        if len(self.tokens) == 1:
+            return None
+        return f"token {self.tokens.index(self.token) + 1} of {len(self.tokens)}"
+
+
+@dataclass(frozen=True)
+class _Exhaustion:
+    """A token that is not used for a service before ``until``.
+
+    ``reset`` is the reset time ADS reported, or ``None`` if it reported none,
+    in which case ``until`` is an assumed wait.
+    """
+
+    until: datetime
+    reset: datetime | None
 
 
 class Client:
     """Executes :class:`Request` objects against the ADS API, sync or async.
 
-    :param token: API token. If omitted, ``config.resolve_token()`` is used. The
-        token is looked up on every request and never appears in ``repr`` or
-        exception messages.
+    :param token: an API token (``str``) or an iterable of tokens, used in
+        iteration order. If omitted or blank, ``config.resolve_tokens()`` is
+        used. Tokens are resolved on every request and never appear in
+        ``repr`` or exception messages. With several tokens, each request uses
+        the first one that is not currently rate limited for the request's
+        service (after HTTP 429, or a response reporting no remaining
+        requests, until the reported reset time).
     :param config: settings to use; defaults to the module-level ``ads.config``
         (``ads._config.config``). Its ``api_url``, ``timeout``, ``max_retries``
         and ``retry_backoff`` are read on every request.
@@ -135,32 +192,37 @@ class Client:
     :param async_transport: optional ``httpx`` transport for the async client.
     :param sleep: called with the delay between sync retries.
     :param async_sleep: awaited with the delay between async retries.
+    :param now: returns the current time as an aware UTC datetime; compared
+        with rate-limit reset times.
 
     The underlying ``httpx.Client`` and ``httpx.AsyncClient`` are created on
     first use. ``close()`` closes the sync one; ``aclose()`` closes both. A
-    closed ``Client`` creates fresh ones if used again. Lazy creation is not
-    thread-safe; share a ``Client`` across threads only after first use.
+    closed ``Client`` creates fresh ones if used again. A ``Client`` is not
+    thread-safe: lazy creation and the rate-limit bookkeeping are unsynchronised.
     """
 
     def __init__(
         self,
-        token: str | None = None,
+        token: str | Iterable[str] | None = None,
         *,
         config: Config | None = None,
         transport: httpx.BaseTransport | None = None,
         async_transport: httpx.AsyncBaseTransport | None = None,
         sleep: Callable[[float], object] = time.sleep,
         async_sleep: Callable[[float], Awaitable[object]] = asyncio.sleep,
+        now: Callable[[], datetime] = _utcnow,
     ) -> None:
         self.config = config if config is not None else _module_config
         self.rate_limits: dict[str, RateLimit] = {}
-        self._token = token
+        self._token = tuple(token) if isinstance(token, Iterator) else token
         self._transport = transport
         self._async_transport = async_transport
         self._sleep = sleep
         self._async_sleep = async_sleep
+        self._now = now
         self._client: httpx.Client | None = None
         self._async_client: httpx.AsyncClient | None = None
+        self._exhausted: dict[tuple[str, str], _Exhaustion] = {}
 
     def __repr__(self) -> str:
         return f"<Client api_url={self.config.api_url!r}>"
@@ -171,41 +233,44 @@ class Client:
         Idempotent requests are retried after connection errors, timeouts and
         HTTP 502/503/504. Non-idempotent requests (see :attr:`Request.is_idempotent`)
         are retried only if the connection could not be made, since otherwise
-        the server may already have applied them.
+        the server may already have applied them. After HTTP 429 the request is
+        sent again at once if another token is available for its service.
 
         Raises :class:`~ads.exceptions.AuthenticationError` if there is no token
-        or ADS rejects it, :class:`~ads.exceptions.RateLimitExceeded` on HTTP 429,
-        and :class:`~ads.exceptions.APIError` for any other failure.
+        or ADS rejects it, :class:`~ads.exceptions.RateLimitExceeded` when every
+        token is rate limited for the service (without sending the request if
+        that is already known), and :class:`~ads.exceptions.APIError` for any
+        other failure.
         """
-        prepared = self._prepare(request)
-        attempt = 0
+        exchange = _Exchange(request, self._resolve_tokens())
         while True:
+            prepared = self._prepare(exchange)
             result: httpx.Response | httpx.TransportError
             try:
                 result = self._http().send(prepared)
             except httpx.TransportError as exc:
                 result = exc
-            outcome = self._settle(request, result, attempt)
+            outcome = self._settle(exchange, result)
             if not isinstance(outcome, _Retry):
                 return outcome
-            self._sleep(outcome.delay)
-            attempt += 1
+            if outcome.delay is not None:
+                self._sleep(outcome.delay)
 
     async def asend(self, request: Request) -> Response:
         """Asynchronous :meth:`send`; identical behaviour and exceptions."""
-        prepared = self._prepare(request)
-        attempt = 0
+        exchange = _Exchange(request, self._resolve_tokens())
         while True:
+            prepared = self._prepare(exchange)
             result: httpx.Response | httpx.TransportError
             try:
                 result = await self._async_http().send(prepared)
             except httpx.TransportError as exc:
                 result = exc
-            outcome = self._settle(request, result, attempt)
+            outcome = self._settle(exchange, result)
             if not isinstance(outcome, _Retry):
                 return outcome
-            await self._async_sleep(outcome.delay)
-            attempt += 1
+            if outcome.delay is not None:
+                await self._async_sleep(outcome.delay)
 
     def close(self) -> None:
         """Close the underlying sync ``httpx.Client``, if one was created."""
@@ -252,11 +317,23 @@ class Client:
             self._async_client = httpx.AsyncClient(transport=self._async_transport)
         return self._async_client
 
-    def _prepare(self, request: Request) -> httpx.Request:
-        """Build the ``httpx.Request`` for ``request`` (shared by sync and async)."""
-        token = (self._token or "").strip() or self.config.resolve_token()
-        if not token:
+    def _resolve_tokens(self) -> tuple[str, ...]:
+        tokens = normalise_tokens(self._token) or self.config.resolve_tokens()
+        if not tokens:
             raise AuthenticationError(_MISSING_TOKEN_MESSAGE)
+        return tokens
+
+    def _prepare(self, exchange: _Exchange) -> httpx.Request:
+        """Choose this attempt's token and build its ``httpx.Request`` (shared by sync and async).
+
+        Raises :class:`RateLimitExceeded`, without sending anything, if every
+        token is already known to be rate limited for the request's service.
+        """
+        token = self._usable_token(exchange)
+        if token is None:
+            raise self._rate_limit_error(exchange, None)
+        exchange.token = token
+        request = exchange.request
 
         headers = httpx.Headers({"User-Agent": USER_AGENT})
         body: bytes | None = None
@@ -282,28 +359,28 @@ class Client:
 
     def _settle(
         self,
-        request: Request,
+        exchange: _Exchange,
         result: httpx.Response | httpx.TransportError,
-        attempt: int,
     ) -> Response | _Retry:
         """Interpret one attempt (shared by sync and async).
 
         Returns the :class:`Response` on success, a :class:`_Retry` if the
-        attempt failed transiently and retries remain, and otherwise raises.
-        ``attempt`` counts from 0.
+        request should be sent again, and otherwise raises.
 
         Idempotent requests are retried after any transport error and after
         502/503/504. Non-idempotent requests are retried only after errors in
         :data:`_UNSENT_ERRORS`, because otherwise the server may already have
-        applied them.
+        applied them. Any request that gets HTTP 429 is sent again at once with
+        the next usable token, if there is one: ADS did not apply it.
         """
-        retries_left = attempt < self.config.max_retries
+        request = exchange.request
+        retries_left = exchange.retries < self.config.max_retries
         if isinstance(result, httpx.TransportError):
             retryable = request.is_idempotent or isinstance(result, _UNSENT_ERRORS)
             if retryable and retries_left:
-                return _Retry(self._backoff(attempt))
+                return self._backoff(exchange)
             outcome = (
-                f"gave up after {attempt + 1} attempts"
+                f"gave up after {exchange.retries + 1} attempts"
                 if retryable
                 else "not retried: the request is not idempotent and may or may not "
                 "have been applied"
@@ -314,23 +391,95 @@ class Client:
             ) from result
 
         response = _to_response(result)
-        self._record_rate_limit(request.path, response.headers)
-        if 200 <= response.status_code < 300:
+        self._observe(exchange, response)
+        code = response.status_code
+        if 200 <= code < 300:
             return response
-        if response.status_code in RETRY_STATUSES and retries_left and request.is_idempotent:
-            return _Retry(self._backoff(attempt))
-        raise _error_for(request, response)
+        if code == 429:
+            exchange.rejected.add(exchange.token)
+            if self._usable_token(exchange) is not None:
+                return _Retry(None)
+            raise self._rate_limit_error(exchange, response)
+        if code in RETRY_STATUSES and retries_left and request.is_idempotent:
+            return self._backoff(exchange)
+        raise _error_for(request, response, exchange.token_label)
 
-    def _backoff(self, attempt: int) -> float:
-        return self.config.retry_backoff * 2**attempt
+    def _backoff(self, exchange: _Exchange) -> _Retry:
+        delay = self.config.retry_backoff * 2**exchange.retries
+        exchange.retries += 1
+        return _Retry(delay)
 
-    def _record_rate_limit(self, path: str, headers: Mapping[str, str]) -> None:
-        service = service_for(path)
-        limit = _parse_int(headers.get("x-ratelimit-limit"))
-        remaining = _parse_int(headers.get("x-ratelimit-remaining"))
-        reset = _parse_timestamp(headers.get("x-ratelimit-reset"))
+    def _observe(self, exchange: _Exchange, response: Response) -> None:
+        """Record the rate limit a response reports, and whether its token is now exhausted.
+
+        A token is exhausted for the service after HTTP 429 (until the reported
+        reset, or for :data:`_ASSUMED_RATE_LIMIT_WAIT` if none was reported) and
+        after any response reporting zero remaining requests and a reset time.
+        """
+        service = exchange.service
+        limit = _parse_int(response.headers.get("x-ratelimit-limit"))
+        remaining = _parse_int(response.headers.get("x-ratelimit-remaining"))
+        reset = _parse_timestamp(response.headers.get("x-ratelimit-reset"))
         if service and limit is not None and remaining is not None and reset is not None:
             self.rate_limits[service] = RateLimit(limit, remaining, reset)
+
+        key = (exchange.token, service)
+        if response.status_code == 429:
+            until = reset if reset is not None else self._now() + _ASSUMED_RATE_LIMIT_WAIT
+            self._exhausted[key] = _Exhaustion(until, reset)
+        elif remaining == 0 and reset is not None:
+            self._exhausted[key] = _Exhaustion(reset, reset)
+
+    def _usable_token(self, exchange: _Exchange) -> str | None:
+        """The first token, in order, not rejected in this call nor exhausted for its service."""
+        now = self._now()
+        for token in exchange.tokens:
+            if token in exchange.rejected:
+                continue
+            key = (token, exchange.service)
+            exhaustion = self._exhausted.get(key)
+            if exhaustion is None:
+                return token
+            if exhaustion.until <= now:
+                del self._exhausted[key]
+                return token
+        return None
+
+    def _rate_limit_error(
+        self, exchange: _Exchange, response: Response | None
+    ) -> RateLimitExceeded:
+        """The error for when every token is rate limited for the request's service.
+
+        ``reset`` is the earliest reset time ADS reported for any of the tokens,
+        or ``None`` if it reported none. ``limit`` and ``remaining`` come from
+        ``response``; with ``response=None`` the request was not sent, ``limit``
+        is the last one recorded for the service and ``remaining`` is 0.
+        """
+        request = exchange.request
+        service = exchange.service
+        exhaustions = [self._exhausted.get((token, service)) for token in exchange.tokens]
+        reported = [e.reset for e in exhaustions if e is not None and e.reset is not None]
+        reset = min(reported, default=None)
+
+        if response is None:
+            message = f"429 {_describe(request)}: rate limit for {service} exhausted; not sent"
+            known = self.rate_limits.get(service)
+            limit = known.limit if known is not None else None
+            remaining: int | None = 0
+        else:
+            message = f"429 {_describe(request)}: {_error_detail(response)}"
+            limit = _parse_int(response.headers.get("x-ratelimit-limit"))
+            remaining = _parse_int(response.headers.get("x-ratelimit-remaining"))
+        if reset is not None:
+            message += f" (rate limit resets at {reset.isoformat()})"
+        return RateLimitExceeded(
+            message,
+            limit=limit,
+            remaining=remaining,
+            reset=reset,
+            status_code=429,
+            response=response,
+        )
 
 
 def service_for(path: str) -> str:
@@ -387,24 +536,18 @@ def _parse_body(http_response: httpx.Response) -> Any:
         return http_response.text
 
 
-def _error_for(request: Request, response: Response) -> APIError:
-    """Build the exception for a non-2xx response."""
+def _error_for(request: Request, response: Response, token_label: str | None) -> APIError:
+    """Build the exception for a non-2xx response other than 429.
+
+    ``token_label`` (e.g. ``token 2 of 3``) is added to authentication errors.
+    """
     code = response.status_code
     message = f"{code} {_describe(request)}: {_error_detail(response)}"
-    if code == 429:
-        reset = _parse_timestamp(response.headers.get("x-ratelimit-reset"))
-        if reset is not None:
-            message += f" (rate limit resets at {reset.isoformat()})"
-        return RateLimitExceeded(
-            message,
-            limit=_parse_int(response.headers.get("x-ratelimit-limit")),
-            remaining=_parse_int(response.headers.get("x-ratelimit-remaining")),
-            reset=reset,
-            status_code=code,
-            response=response,
-        )
-    error_class = AuthenticationError if code in (401, 403) else APIError
-    return error_class(message, status_code=code, response=response)
+    if code in (401, 403):
+        if token_label is not None:
+            message += f" ({token_label})"
+        return AuthenticationError(message, status_code=code, response=response)
+    return APIError(message, status_code=code, response=response)
 
 
 def _error_detail(response: Response) -> str:
