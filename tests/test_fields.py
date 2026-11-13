@@ -124,7 +124,7 @@ def test_instance_access_and_assignment_delegate_to_instance():
 def test_virtual_field_instance_access_raises():
     rec = Rec()
     with pytest.raises(AttributeError, match="search-only"):
-        rec.full
+        rec.full  # noqa: B018
     with pytest.raises(AttributeError, match="search-only"):
         rec.full = "x"
 
