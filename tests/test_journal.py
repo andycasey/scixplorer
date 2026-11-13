@@ -4,10 +4,12 @@ import json
 import subprocess
 import sys
 from importlib import resources
+from pathlib import Path
 
 import pytest
 
 import ads.client
+import ads.models.journal as journal_module
 from ads.exceptions import DoesNotExist
 from ads.models.journal import Journal
 from ads.query import Query
@@ -21,6 +23,13 @@ def no_default_client(monkeypatch: pytest.MonkeyPatch) -> None:
         raise AssertionError("journal queries must not need a client")
 
     monkeypatch.setattr(ads.client, "get_default_client", fail)
+
+
+@pytest.fixture(autouse=True)
+def empty_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Read the packaged snapshot even if the user has downloaded fresher data."""
+    monkeypatch.setenv("SCIX_CACHE_DIR", str(tmp_path / "cache"))
+    journal_module._reset()
 
 
 def abbreviations(journals: list[Journal]) -> list[str]:
