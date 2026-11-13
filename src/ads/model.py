@@ -150,11 +150,11 @@ class RelationExpr:
             raise TypeError(f"{self!r} can only be compared with {model.__name__} objects or keys")
         return other
 
-    def __eq__(self, other: object) -> Expr:  # type: ignore[override]
+    def __eq__(self, other: object) -> Expr:  # type: ignore[override]  # builds an Expr, not a bool
         key: object = self._key_of(other)
         return self._key_handle() == key
 
-    def __ne__(self, other: object) -> Expr:  # type: ignore[override]
+    def __ne__(self, other: object) -> Expr:  # type: ignore[override]  # builds an Expr, not a bool
         return ~(self == other)
 
     __hash__ = object.__hash__

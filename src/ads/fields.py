@@ -114,10 +114,10 @@ class FieldExpr:
         self.field.to_solr(value)
         return value
 
-    def __eq__(self, value: object) -> Expr:  # type: ignore[override]
+    def __eq__(self, value: object) -> Expr:  # type: ignore[override]  # builds an Expr, not a bool
         return self._wrap(Match(self.field, self._check(value)))
 
-    def __ne__(self, value: object) -> Expr:  # type: ignore[override]
+    def __ne__(self, value: object) -> Expr:  # type: ignore[override]  # builds an Expr, not a bool
         return ~(self == value)
 
     __hash__ = object.__hash__
@@ -172,7 +172,7 @@ class FieldExpr:
 class TextExpr(FieldExpr):
     """Handle on a text, name or string field: equality, wildcard and position queries."""
 
-    def __eq__(self, value: object) -> Expr:  # type: ignore[override]
+    def __eq__(self, value: object) -> Expr:  # type: ignore[override]  # builds an Expr, not a bool
         """Match ``value`` with ADS's default expansion for the field's kind.
 
         A text field matches the phrase and its synonyms; a name field also
