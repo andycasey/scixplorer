@@ -60,3 +60,7 @@ class RateLimitExceeded(APIError):
 
 class LazyLoadWarning(UserWarning):
     """A field that was not requested by the query is being fetched on demand."""
+
+
+class DataWarning(UserWarning):
+    """A value returned by ADS did not have the type its field declares."""
