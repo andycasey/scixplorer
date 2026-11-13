@@ -11,7 +11,7 @@ responses, one API call per method.
 from __future__ import annotations
 
 from collections.abc import Generator, Iterable, Iterator, Mapping
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import quote
 
 from ..client import Client, Request, Response, get_default_client
@@ -21,6 +21,11 @@ from ..fields import BooleanField, DateTimeField, Field, IntegerField, StringFie
 from ..model import Model
 from ..query import Explanation, Query, drive, filter_rows, select_rows
 from ..utils import _require_bibcodes, _response_field, to_bibcodes
+
+if TYPE_CHECKING:
+    # ``ads.models.document`` is written separately. Until it exists, ``Document``
+    # is ``Any`` here; ``unused-ignore`` keeps this line valid once it does.
+    from .document import Document  # type: ignore[import-not-found, unused-ignore]
 
 __all__ = ["DEFAULT_PAGE_SIZE", "Library", "LibraryBackend", "fetch_bibcodes", "fetch_library"]
 
@@ -259,7 +264,7 @@ def _complete(gen: Generator[Request, Response, T], client: Client) -> T:
 # Querying.
 
 
-def _pinned_ids(expr: Expr | None, id_field: Field) -> tuple[str, ...] | None:
+def _pinned_ids(expr: Expr | None, id_field: Field[Any, Any]) -> tuple[str, ...] | None:
     """The library ids a query is restricted to, or ``None`` if it is not restricted.
 
     Only top-level conjuncts ``id == v`` and ``id.in_(vs)`` pin ids (several
@@ -506,7 +511,7 @@ class Library(Model):
         self._bibcodes = None
         return self
 
-    def _load_missing(self, field: Field) -> Any:
+    def _load_missing(self, field: Field[Any, Any]) -> Any:
         """Fetch the metadata once and fill every field that is still missing."""
         if self._metadata_fetched or self._data.get("id") is None:
             return None
@@ -536,12 +541,12 @@ class Library(Model):
         return self._bibcodes
 
     @property
-    def documents(self) -> Query[Any]:
+    def documents(self) -> Query[Document]:
         """A query for the documents in this library, searched on ADS."""
         self._remote_id()
-        from .document import Document
+        from .document import Document  # type: ignore[import-not-found, unused-ignore]  # see top of module
 
-        query: Query[Any] = Document.select().where(Document.in_(self))
+        query: Query[Document] = Document.select().where(Document.in_(self))
         return query
 
     def add(self, *documents: Any, client: Client | None = None) -> int:
