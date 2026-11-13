@@ -60,7 +60,10 @@ from ads.utils import flatten
         ("date", DateTimeField, False),
         ("pubdate", DateField, False),
         ("full", VirtualField, False),
-        ("uat", StringField, True),
+        ("uat_name", StringField, True),
+        ("uat_id", IntegerField, True),
+        ("planetary_feature_name", TextField, True),
+        ("planetary_feature_id", IntegerField, True),
         ("gpn", TextField, True),
     ],
 )

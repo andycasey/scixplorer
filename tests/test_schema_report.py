@@ -88,3 +88,22 @@ def test_report_compares_indexing(tmp_path: Path) -> None:
     assert by_name["doi"].endswith("indexed False -> True")
     assert "links_data" not in by_name
     assert any(line.startswith("virtual") and " full " in line and "indexed=True" in line for line in lines)
+
+
+def test_fields_are_matched_by_solr_name(tmp_path: Path) -> None:
+    # Document.uat_name and Document.planetary_feature_name are the Solr fields uat and planetary_feature.
+    schema = tmp_path / "schema.xml"
+    schema.write_text(
+        SCHEMA.replace(
+            '<field name="secret_new_field" type="string"/>',
+            '<field name="uat" type="ids" multiValued="true"/>'
+            '<field name="uat_id" type="int" multiValued="true"/>'
+            '<field name="planetary_feature" type="ads_text" multiValued="true"/>'
+            '<field name="planetary_feature_id" type="int" multiValued="true"/>',
+        )
+    )
+    lines = load().report(str(schema))
+    for name in ("uat", "uat_id", "planetary_feature", "planetary_feature_id", "uat_name", "planetary_feature_name"):
+        assert not any(line.split()[1:2] == [name] for line in lines if line.startswith(("MISSING", "UNKNOWN"))), name
+    differences = lines[lines.index("# Differences (schema -> Document)") + 1 : lines.index("# copyField")]
+    assert not any(line.split()[:1] in (["uat"], ["planetary_feature"]) for line in differences)

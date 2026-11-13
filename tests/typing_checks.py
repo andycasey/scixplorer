@@ -32,7 +32,10 @@ from ads.fields import (
 )
 from ads.model import Model, Relation, RelationExpr
 from ads.models.affiliation import Affiliation
+from ads.models.document import Document
 from ads.models.journal import Journal as KnownJournal
+from ads.models.planetary import PlanetaryFeature
+from ads.models.uat import UATConcept
 from ads.query import Query, Sender
 
 if TYPE_CHECKING:
@@ -189,6 +192,24 @@ async def query_layer(aff: Affiliation) -> None:
     assert_type(query.client, Sender | None)
     query["ApJ"]  # type: ignore[call-overload]  # noqa: B018
     query.using("not a client")  # type: ignore[arg-type]
+
+
+def vocabularies(document: Document, concept: UATConcept) -> None:
+    assert_type(Document.uat, RelationExpr)
+    assert_type(Document.planetary_feature, RelationExpr)
+    assert_type(document.uat, list[UATConcept])
+    assert_type(document.planetary_feature, list[PlanetaryFeature])
+    assert_type(document.uat_id, list[int] | None)
+    assert_type(document.uat_name, list[str] | None)
+    assert_type(document.planetary_feature_name, list[str] | None)
+    assert_type(Document.uat == concept, Expr)
+    assert_type(Document.uat.in_(concept.descendants), Expr)
+    assert_type(UATConcept.lookup(498), UATConcept | None)
+    assert_type(concept.ancestors, list[UATConcept])
+    assert_type(concept.children, Query[UATConcept])
+    assert_type(PlanetaryFeature.lookup(2071), PlanetaryFeature | None)
+    assert_type(PlanetaryFeature.select(), Query[PlanetaryFeature])
+    _concepts: list[PlanetaryFeature] = document.uat  # type: ignore[assignment]
 
 
 def search_only_field(paper: Paper) -> None:

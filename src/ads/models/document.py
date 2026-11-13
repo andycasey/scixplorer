@@ -34,6 +34,8 @@ from ..utils import parse_bibcode, to_bibcodes
 from .affiliation import Affiliation
 from .journal import Journal
 from .library import Library
+from .planetary import PlanetaryFeature
+from .uat import UATConcept
 
 __all__ = ["Document", "SearchQuery"]
 
@@ -59,7 +61,7 @@ def _affiliations_of(document: Document) -> list[AuthorAffiliation] | None:
     """One entry per author, parsed from ``aff_id``.
 
     ``"-"`` (no affiliation) gives ``None``; ``"A1; A2"`` gives a tuple of the
-    affiliations; ids missing from the packaged data are skipped.
+    affiliations; ids missing from the local affiliation data are skipped.
     """
     entries = document.aff_id
     if entries is None:
@@ -74,6 +76,24 @@ def _author_affiliation(entry: str) -> AuthorAffiliation:
     if not known:
         return None
     return known[0] if len(known) == 1 else tuple(known)
+
+
+def _uat_concepts_of(document: Document) -> list[UATConcept]:
+    """The UAT concepts named by ``uat_id``, in order; unknown ids are skipped.
+
+    Needs the thesaurus (``data.refresh("uat")``) only if there are ids.
+    """
+    found = (UATConcept.lookup(concept_id) for concept_id in document.uat_id or ())
+    return [concept for concept in found if concept is not None]
+
+
+def _planetary_features_of(document: Document) -> list[PlanetaryFeature]:
+    """The planetary features named by ``planetary_feature_id``, in order; unknown ids are skipped.
+
+    Needs the gazetteer (``data.refresh("planetary_features")``) only if there are ids.
+    """
+    found = (PlanetaryFeature.lookup(feature_id) for feature_id in document.planetary_feature_id or ())
+    return [feature for feature in found if feature is not None]
 
 
 def _operand(name: str, expr: Expr | str) -> Expr:
@@ -150,11 +170,23 @@ class Document(Model):
     meaningful for the query that produced the document) are never loaded
     this way, and a document with no identifier loads nothing.
 
-    Relations: :attr:`journal` (from the bibcode) and :attr:`affiliation`
-    (from ``aff_id``) give :class:`~ads.models.journal.Journal` and
-    :class:`~ads.models.affiliation.Affiliation` objects, and can be searched
+    Relations: :attr:`journal` (from the bibcode), :attr:`affiliation` (from
+    ``aff_id``), :attr:`uat` (from ``uat_id``) and :attr:`planetary_feature`
+    (from ``planetary_feature_id``) give :class:`~ads.models.journal.Journal`,
+    :class:`~ads.models.affiliation.Affiliation`,
+    :class:`~ads.models.uat.UATConcept` and
+    :class:`~ads.models.planetary.PlanetaryFeature` objects, and can be searched
     by their fields (``Document.journal.title.contains("astro")``), as can those
-    models' fields directly (``Journal.title.contains("astro")``).
+    models' fields directly (``Journal.title.contains("astro")``). The last two
+    need their data downloaded once (``ads.data.refresh("uat")``,
+    ``ads.data.refresh("planetary_features")``), except to match ids directly
+    (``Document.uat == 498``).
+
+    Names: the Solr fields ``uat`` and ``planetary_feature`` (the names of the
+    concepts and features as text) are :attr:`uat_name` and
+    :attr:`planetary_feature_name` here, so that :attr:`uat` and
+    :attr:`planetary_feature` can be the relations. Queries and ``fl`` use the
+    Solr names (``Field.solr_name``).
     """
 
     #: The fields that can identify a document, in order of preference. Every
@@ -305,8 +337,17 @@ class Document(Model):
         "If page_range is present, it gives the difference between the first and last page numbers in the range."
     )
     page_range = StringField("The page range of the record. Returned, but not searchable.", indexed=False)
-    planetary_feature = TextField("Planetary features mentioned in the record.", multivalued=True)
-    planetary_feature_id = IntegerField("Identifiers of those planetary features.", multivalued=True)
+    planetary_feature_id = IntegerField(
+        "Gazetteer of Planetary Nomenclature feature ids of the planetary features in the record. "
+        "See also: Document.planetary_feature.",
+        multivalued=True,
+    )
+    planetary_feature_name = TextField(
+        "Planetary features mentioned in the record, as text (the Solr field planetary_feature; "
+        "Document.planetary_feature is the relation to PlanetaryFeature).",
+        multivalued=True,
+        solr_name="planetary_feature",
+    )
     property = StringField(
         "An array of miscellaneous flags associated with a record. Examples include: refereed, "
         "notrefereed, article, nonarticle, ads_openaccess, eprint_openaccess, pub_openaccess, "
@@ -334,10 +375,15 @@ class Document(Model):
     simbtype = TextField("Keywords used to describe the SIMBAD type.", multivalued=True)
     thesis = TextField("Thesis information, such as the degree-granting institution.")
     title = TextField("The title of the record (and any other titles it has).", multivalued=True)
-    uat = StringField(
-        "Unified Astronomy Thesaurus (UAT) concepts assigned to the record.", multivalued=True
+    uat_id = IntegerField(
+        "Unified Astronomy Thesaurus concept numbers of the record. See also: Document.uat.", multivalued=True
     )
-    uat_id = IntegerField("Unified Astronomy Thesaurus concept identifiers.", multivalued=True)
+    uat_name = StringField(
+        "Unified Astronomy Thesaurus (UAT) concepts assigned to the record, as text (the Solr field uat; "
+        "Document.uat is the relation to UATConcept).",
+        multivalued=True,
+        solr_name="uat",
+    )
     vizier = StringField("Keywords, 'subject' tags from Vizier.", multivalued=True)
     volume = StringField("The journal volume.")
     year = IntegerField("Year of publication.")
@@ -356,8 +402,29 @@ class Document(Model):
         resolve=_affiliations_of,
         doc=(
             "The curated affiliations, one entry per author: None, an Affiliation, or a tuple of them "
-            "(from aff_id; ids missing from the packaged data are skipped). Use ads.utils.flatten() "
+            "(from aff_id; ids missing from the local affiliation data are skipped). Use ads.utils.flatten() "
             "to scan them."
+        ),
+    )
+    uat: Relation[list[UATConcept]] = Relation(
+        UATConcept,
+        key="uat_id",
+        related_key="id",
+        resolve=_uat_concepts_of,
+        doc=(
+            "The Unified Astronomy Thesaurus concepts of the document (from uat_id; unknown ids are "
+            "skipped, and a document without any gives an empty list). Needs data.refresh('uat') once."
+        ),
+    )
+    planetary_feature: Relation[list[PlanetaryFeature]] = Relation(
+        PlanetaryFeature,
+        key="planetary_feature_id",
+        related_key="id",
+        resolve=_planetary_features_of,
+        doc=(
+            "The planetary features named in the document (from planetary_feature_id; unknown ids are "
+            "skipped, and a document without any gives an empty list). Needs "
+            "data.refresh('planetary_features') once."
         ),
     )
 
@@ -642,8 +709,8 @@ def SearchQuery(
     """A document query from Solr parameters, for those who already have a query string.
 
     :param q: the Solr query.
-    :param fl: field names to fetch (a list, or a comma-separated string); all
-        non-deferred fields if ``None``.
+    :param fl: Solr field names to fetch (a list, or a comma-separated string);
+        all non-deferred fields if ``None``.
     :param sort: e.g. ``"citation_count desc, bibcode asc"``.
     :param rows: the most documents to return (``None`` for all).
     :param start: how many leading documents to skip.
@@ -653,10 +720,11 @@ def SearchQuery(
     limit and offset applied: a query like any other.
     """
     names = [name.strip() for name in fl.split(",")] if isinstance(fl, str) else list(fl or ())
-    try:
-        query = Document.select(*(name for name in names if name))
-    except AttributeError as exc:
-        raise QueryError(str(exc)) from None
+    by_solr_name = {field.solr_name: field for field in Document._fields.values()}
+    unknown = [name for name in names if name and name not in by_solr_name]
+    if unknown:
+        raise QueryError(f"Document has no field {unknown[0]!r}; fields are: {', '.join(by_solr_name)}")
+    query = Document.select(*(by_solr_name[name] for name in names if name))
     filters = [fq] if isinstance(fq, str) else list(fq or ())
     query = query.where(Document.raw(q), *(Document.raw(f) for f in filters))
     if sort is not None:

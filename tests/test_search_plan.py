@@ -423,7 +423,7 @@ def test_sort_by_unsortable_field(field: Any) -> None:
 
 def test_default_fields() -> None:
     fl = plan(Document.select()).fl
-    names = list(Document._fields)
+    names = [field.solr_name for field in Document._fields.values()]
     assert list(fl) == sorted(fl, key=names.index)
     assert {"bibcode", "id", "title", "score", "aff_id", "bibstem"} <= set(fl)
     assert not set(fl) & Document._deferred
