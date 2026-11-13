@@ -1,0 +1,129 @@
+---
+title: Operators
+weight: 9
+description: Search citation networks and SciX's rankings with second-order operators such as citations, references, trending, useful, reviews, similar and top_n.
+---
+
+After this page you can find the papers that cite or are cited by a set of papers, ask SciX for trending,
+useful and review papers on a topic, take the top few papers of a search, and restrict a condition to
+positions in a list.
+
+## Second-order operators
+
+A second-order operator takes a search and returns other documents related to its results. In scixplorer
+each is a class method of `scix.Document` that takes a condition (or a Solr query string) and returns a
+condition, which you combine with others like any condition.
+
+```python
+import scixplorer as scix
+
+cannon = scix.Document.bibcode == "2015ApJ...808...16N"
+scix.search.to_solr(scix.Document.citations(cannon))
+# -> citations(bibcode:"2015ApJ...808...16N")
+```
+
+| Method | Finds | Sent as |
+|---|---|---|
+| `citations(expr)` | documents that cite the documents matching `expr` | `citations(...)` |
+| `references(expr)` | documents cited by the documents matching `expr` | `references(...)` |
+| `trending(expr)` | documents most read by people who recently read papers matching `expr` | `trending(...)` |
+| `useful(expr)` | documents frequently cited by the most relevant papers matching `expr`, usually on methods | `useful(...)` |
+| `reviews(expr)` | documents citing the most relevant papers matching `expr`: the reviews of the field | `reviews(...)` |
+| `instructive(expr)` | a synonym of `reviews` | `instructive(...)` |
+| `similar(expr)` | documents whose abstracts are worded like those matching `expr` | `similar(...)` |
+| `citis(expr)` | as `citations`, using less memory but more slowly | `citis(...)` |
+| `classic_relevance(expr)` | the documents matching `expr`, ranked (almost) as ADS Classic did | `classic_relevance(...)` |
+| `join_citations(expr)`, `join_references(expr)` | as `citations` and `references`, using a Lucene block join | `joincitations(...)`, `joinreferences(...)` |
+| `reviews2(expr)`, `useful2(expr)` | the original implementations of `reviews` and `useful` | `reviews2(...)`, `useful2(...)` |
+
+The ADS help pages describe the
+[citation operators](https://ui.adsabs.harvard.edu/help/search/citations-and-references) and the
+[second-order operators](https://ui.adsabs.harvard.edu/help/search/second-order) in detail.
+
+### Citations and references
+
+To find the papers citing a paper, or the papers it cites, pass a condition that matches it:
+
+```python
+emcee = scix.Document.bibcode == "2013PASP..125..306F"
+citing = scix.Document.select(scix.Document.bibcode).where(scix.Document.citations(emcee))
+[paper.bibcode for paper in citing]
+# -> ['2015ApJ...808...16N', '2016arXiv160303040C']
+```
+
+The argument is a condition, not a document: write `scix.Document.citations(scix.Document.bibcode ==
+paper.bibcode)` for a document you already have. The condition can be any search, so you can follow the
+citations of a whole set of papers:
+
+```python
+first_author_papers = scix.Document.author[0] == "Ness, M"
+citing_others = scix.Document.citations(first_author_papers) & ~(scix.Document.author == "Ness, M")
+scix.search.to_solr(citing_others)
+# -> citations(pos(author:"Ness, M", 1)) AND -author:"Ness, M"
+```
+
+### Topics
+
+`trending`, `useful`, `reviews` and `similar` are most useful with a topic search. They also accept Solr
+syntax as a string:
+
+```python
+scix.search.to_solr(scix.Document.useful(scix.Document.abs == "stellar spectroscopy") & (scix.Document.year >= 2010))
+# -> useful(abs:"stellar spectroscopy") AND year:[2010 TO *]
+scix.search.to_solr(scix.Document.trending("exoplanets"))
+# -> trending(exoplanets)
+```
+
+## The top of a search: `top_n`
+
+`scix.Document.top_n(n, expr, order_by=None)` matches the first `n` documents of a search, ranked by
+relevance or by `order_by`. Unlike `limit()`, it is part of the condition, so you can combine it with
+others or pass it to another operator:
+
+```python
+most_cited = scix.Document.top_n(
+    10,
+    (scix.Document.year == 2020) & (scix.Document.bibstem == "ApJ"),
+    order_by=scix.Document.citation_count.desc(),
+)
+scix.search.to_solr(most_cited)
+# -> topn(10, year:2020 AND bibstem:"ApJ", citation_count desc)
+scix.search.to_solr(scix.Document.references(most_cited))
+# -> references(topn(10, year:2020 AND bibstem:"ApJ", citation_count desc))
+```
+
+`order_by` is a sort key such as `scix.Document.citation_count.desc()`, or a field for ascending order.
+`n` must be at least 1.
+
+## Positions: `pos`
+
+Indexing a field restricts a condition to positions in it: `scix.Document.author[0] == "Ness, M"`. See
+[Matching]({{< ref "guide/matching#positions" >}}). `scix.Document.pos(expr, start, end=None)` does the same
+for a condition written as Solr syntax, or on another multi-valued field. Its positions count from 1 and
+`end` is included:
+
+```python
+scix.search.to_solr(scix.Document.pos('author:"Ness, M"', 1))
+# -> pos(author:"Ness, M", 1)
+scix.search.to_solr(scix.Document.pos(scix.Document.aff == "Heidelberg", 1, 2))
+# -> pos(aff:"Heidelberg", 1, 2)
+```
+
+## What can go inside an operator
+
+Anything SciX can search goes inside an operator, including conditions on journals, affiliations,
+vocabularies and libraries, which the client resolves first:
+
+```python
+scix.search.to_solr(scix.Document.useful(scix.Document.journal == "AJ"))
+# -> useful(bibstem:"AJ")
+```
+
+A per-author condition that the client must check itself (see
+[Authors]({{< ref "guide/authors#where-conditions-are-checked" >}})) cannot go inside an operator, because
+SciX evaluates the operator on its own. That raises `UnsupportedQueryError`, as does a set of more than 50
+bibcodes inside an operator (see [Errors and limits]({{< ref "guide/errors-and-limits#large-sets-of-bibcodes" >}})).
+
+Operators run on the server, so the client cannot check their results. The sample used for the examples on
+this site evaluates only `citations`, `references` and `topn`; the other examples here show the query
+instead of running it.
