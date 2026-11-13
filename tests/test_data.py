@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import os
@@ -514,6 +515,31 @@ def test_uat_reset_drops_every_cache() -> None:
     assert uat_module._load.cache_info().currsize == uat_module._children.cache_info().currsize == 1
     data.clear("uat")
     assert uat_module._load.cache_info().currsize == uat_module._children.cache_info().currsize == 0
+
+
+# Licence notice
+
+
+def test_notice_and_gpl_text_are_package_resources() -> None:
+    folder = resources.files("ads.data")
+    for name in ("NOTICE.md", "LICENSE-GPL-3.0.txt", "journals.json", "affiliations.tsv", "affiliations_country.tsv"):
+        assert (folder / name).is_file(), name
+    gpl = (folder / "LICENSE-GPL-3.0.txt").read_bytes()
+    assert gpl.startswith(b"                    GNU GENERAL PUBLIC LICENSE\n                       Version 3, 29 June 2007")
+    # The standard text, as published at https://www.gnu.org/licenses/gpl-3.0.txt.
+    assert hashlib.sha256(gpl).hexdigest() == "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+
+
+def test_notices() -> None:
+    text = data.notices()
+    assert text == (resources.files("ads.data") / "NOTICE.md").read_text("utf-8")
+    flat = " ".join(text.split())
+    assert "not covered by the MIT licence" in flat
+    for dataset in data.DATASETS.values():
+        assert f"Licence: {dataset.licence}" in flat, dataset.name
+    for name in ("affiliations.tsv", "affiliations_country.tsv"):
+        assert hashlib.sha256(packaged(name)).hexdigest() in flat, name
+    assert "LICENSE-GPL-3.0.txt" in flat and "42b44d1a6f6b9e391170622f2b4ff2e5faca7bb7" in flat
 
 
 # The journal list converter

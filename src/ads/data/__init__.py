@@ -11,6 +11,9 @@ never sends the SciX API token, because the sources are third-party hosts.
 Downloads are checked by the same parser the model uses before they replace
 the data in use, and are written atomically.
 
+The packaged data files are not covered by this package's MIT licence: the
+affiliation files are GPL-3.0. :func:`notices` returns the details.
+
 The cache directory is ``$SCIX_CACHE_DIR`` if set, else
 ``$XDG_CACHE_HOME/scixplorer``, else ``~/Library/Caches/scixplorer`` on macOS
 and ``~/.cache/scixplorer`` elsewhere.
@@ -49,6 +52,7 @@ __all__ = [
     "cache_dir",
     "clear",
     "load",
+    "notices",
     "read_text",
     "refresh",
     "register",
@@ -82,7 +86,8 @@ class Dataset:
     """A collection of reference data and where it comes from.
 
     ``files`` is empty if there is no public source to refresh it from.
-    ``packaged`` says whether a snapshot ships with this library.
+    ``packaged`` says whether a snapshot ships with this library. ``licence``
+    is the data's licence, as :func:`notices` states it.
     """
 
     name: str
@@ -269,6 +274,16 @@ def _cached_paths(dataset: Dataset, directory: Path) -> tuple[Path, ...] | None:
 
 def _read_packaged(filename: str) -> str:
     return (resources.files(__name__) / filename).read_text(encoding="utf-8")
+
+
+def notices() -> str:
+    """The licence notice for the data files packaged with this library (``NOTICE.md``).
+
+    It says where each file comes from and under which licence; the packaged
+    data is not covered by the package's MIT licence. The GPL-3.0 text it
+    refers to is the package resource ``LICENSE-GPL-3.0.txt`` beside it.
+    """
+    return _read_packaged("NOTICE.md")
 
 
 def read_text(dataset: str, filename: str) -> str:
