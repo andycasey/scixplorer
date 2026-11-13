@@ -8,19 +8,22 @@ so that fields keep plain identity equality while handles overload ``==``.
 
 Fields are generic in their value type, so type checkers know that
 ``paper.year`` is ``int | None`` and ``paper.title`` (multivalued) is
-``list[str] | None``.
+``list[str] | None``. Values read from the API are converted to exactly that
+type or to ``None`` (see :meth:`Field.to_python`).
 """
 
 from __future__ import annotations
 
 import math
 import re
+import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, NoReturn, Protocol, TypeVar, cast, overload
 
-from .exceptions import QueryError
+from .exceptions import DataWarning, QueryError
 from .expr import (
     BOOL_ERROR,
     Expr,
@@ -230,6 +233,9 @@ def _model_name(field: Field[Any, Any]) -> str:
 T = TypeVar("T")
 H = TypeVar("H", bound=FieldExpr)
 
+_UNCONVERTIBLE = (ValueError, TypeError, ArithmeticError)
+
+
 class _Record(Protocol):
     """What a field's owner instances provide (``Model`` does)."""
 
@@ -331,24 +337,47 @@ class Field(Generic[T, H]):
         instance._set_value(self, value)
 
     def to_python(self, raw: Any) -> T | None:
-        """Convert a value from the API to Python, element-wise for lists.
+        """Convert a value from the API to ``T | None``; never returns anything else.
 
-        ADS data is not perfectly regular, so a value that cannot be converted
-        is returned unchanged rather than failing the whole result set.
+        Safe, lossless coercions are applied (see each field class). A scalar
+        given for a multivalued field becomes a one-element list, and a
+        one-element list given for a scalar field becomes its element. A value
+        that still cannot be converted, including a list with any unconvertible
+        or ``None`` element, becomes ``None`` with a
+        :class:`~ads.exceptions.DataWarning`.
         """
         if raw is None:
             return None
-        if self.multivalued and isinstance(raw, (list, tuple)):
-            return cast(T, [self._convert(item) for item in raw])
-        return cast(T, self._convert(raw))
+        try:
+            if self.multivalued:
+                items = raw if isinstance(raw, (list, tuple)) else [raw]
+                return cast(T, [self._convert(item) for item in items])
+            if isinstance(raw, (list, tuple)):
+                if len(raw) != 1:
+                    raise ValueError("expected a single value")
+                if raw[0] is None:
+                    return None
+                raw = raw[0]
+            return cast(T, self._convert(raw))
+        except _UNCONVERTIBLE:
+            text = repr(raw)
+            if len(text) > 80:
+                text = text[:77] + "..."
+            warnings.warn(
+                f"{self._label()}: cannot convert {text} to {self.type_name}; using None",
+                DataWarning,
+                stacklevel=2,
+            )
+            return None
 
     def _convert(self, raw: Any) -> Any:
+        """Convert one non-list value, raising ValueError/TypeError if it cannot be."""
         if raw is None:
-            return None
-        try:
-            return self._to_python(raw)
-        except (ValueError, TypeError):
-            return raw
+            raise TypeError("None is not a value")
+        value = self._to_python(raw)
+        if not isinstance(value, self.python_type):
+            raise TypeError(f"converted to {type(value).__name__}")
+        return value
 
     def _to_python(self, raw: Any) -> Any:
         return raw
@@ -396,6 +425,14 @@ class _StringLikeField(Field[T, TextExpr]):
 
     expr_class = TextExpr
     python_type = str
+
+    def _to_python(self, raw: Any) -> Any:
+        """Accept a str, or an int/float (ADS sometimes returns numbers for string fields)."""
+        if isinstance(raw, str):
+            return raw
+        if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+            return str(raw)
+        raise TypeError("not a string")
 
     def _to_solr(self, value: Any) -> str:
         if not isinstance(value, str):
@@ -483,7 +520,7 @@ class VirtualField(_StringLikeField[NoReturn]):
 
 
 class IntegerField(Field[T, NumericExpr]):
-    """An integer."""
+    """An integer. Integral floats and strings from the API (``12.0``, ``"12"``) are accepted."""
 
     expr_class = NumericExpr
     python_type = int
@@ -513,7 +550,20 @@ class IntegerField(Field[T, NumericExpr]):
         def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
-        return int(raw)
+        if isinstance(raw, bool):
+            raise TypeError("a bool is not an int")
+        if isinstance(raw, int):
+            return raw
+        if isinstance(raw, float):
+            if raw.is_integer():
+                return int(raw)
+            raise ValueError("not integral")
+        if isinstance(raw, str):
+            number = Decimal(raw)
+            if number.is_finite() and number == number.to_integral_value():
+                return int(number)
+            raise ValueError("not integral")
+        raise TypeError("not a number")
 
     def _to_solr(self, value: Any) -> str:
         if isinstance(value, bool) or not isinstance(value, int):
@@ -527,7 +577,7 @@ class IntegerField(Field[T, NumericExpr]):
 
 
 class FloatField(Field[T, NumericExpr]):
-    """A floating-point number."""
+    """A floating-point number. Ints and numeric strings from the API are accepted."""
 
     expr_class = NumericExpr
     python_type = float
@@ -557,6 +607,8 @@ class FloatField(Field[T, NumericExpr]):
         def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
+        if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
+            raise TypeError("not a number")
         return float(raw)
 
     def _to_solr(self, value: Any) -> str:
@@ -566,7 +618,7 @@ class FloatField(Field[T, NumericExpr]):
 
 
 class BooleanField(Field[T, FieldExpr]):
-    """A boolean."""
+    """A boolean. ``"true"``/``"false"`` strings (any case) from the API are accepted."""
 
     python_type = bool
 
@@ -595,9 +647,11 @@ class BooleanField(Field[T, FieldExpr]):
         def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     def _to_python(self, raw: Any) -> Any:
-        if isinstance(raw, str):
+        if isinstance(raw, bool):
+            return raw
+        if isinstance(raw, str) and raw.lower() in ("true", "false"):
             return raw.lower() == "true"
-        return bool(raw)
+        raise TypeError("not a boolean")
 
     def _to_solr(self, value: Any) -> str:
         if not isinstance(value, bool):
@@ -647,6 +701,8 @@ class DateTimeField(Field[T, NumericExpr]):
     def _to_python(self, raw: Any) -> Any:
         if isinstance(raw, date):
             return as_utc(raw)
+        if not isinstance(raw, str):
+            raise TypeError("not a timestamp")
         text = raw[:-1] if raw.endswith("Z") else raw
         for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
             try:
