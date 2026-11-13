@@ -33,7 +33,7 @@ which endpoint to use. It is pure (no I/O) and runs these passes in order:
 from __future__ import annotations
 
 import weakref
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -847,24 +847,19 @@ class SearchBackend:
             return
         page_size = _page_size()
         model = query.model
-        bibcode_name = model._fields["bibcode"].solr_name
         requested = [name for name, field in model._fields.items() if field.solr_name in search.fl]
-        exclude = search.exclude_bibcodes
+        local = _LocalFilter.of(search, model)
         remaining = query.limit_
-        if exclude is None:
-            start, skip = query.offset_, 0
-        else:
-            start, skip = 0, query.offset_
+        start, skip = (query.offset_, 0) if local is None else (0, query.offset_)
         while remaining is None or remaining > 0:
-            rows = page_size if remaining is None or exclude is not None else min(page_size, remaining)
+            rows = page_size if remaining is None or local is not None else min(page_size, remaining)
             request = search.request(start, rows)
             response = yield request
             docs, found = _read_page(request, response)
             start += len(docs)
-            kept: list[dict[str, Any]] = []
-            for doc in docs:
-                if exclude is not None and doc.get(bibcode_name) in exclude:
-                    continue
+            candidates = ((doc, None) for doc in docs) if local is None else local.survivors(docs, requested)
+            kept: list[Model] = []
+            for doc, document in candidates:
                 if skip:
                     skip -= 1
                     continue
@@ -872,35 +867,41 @@ class SearchBackend:
                     if remaining == 0:
                         break
                     remaining -= 1
-                kept.append(doc)
+                kept.append(_document(model, doc, requested) if document is None else document)
             if kept:
                 page = ResultPage(query.client)
-                yield [_document(model, doc, requested, page) for doc in kept]
+                for document in kept:
+                    page.attach(document)
+                yield kept
             if not docs or start >= found:
                 return
 
     def count(self, query: Query[Any]) -> Generator[Request, Response, int]:
         """Return the number of matching documents, ignoring offset and limit.
 
-        One request with ``rows=0``, unless bibcodes are excluded locally: then
-        every matching bibcode is fetched and the survivors counted.
+        One request with ``rows=0``, unless results are filtered locally
+        (excluded bibcodes, or a refinement): then every matching document is
+        fetched, with only the fields the filtering reads, and the survivors counted.
         """
         search = yield from self._plan(query)
         if search.empty:
             return 0
-        exclude = search.exclude_bibcodes
-        if exclude is None:
-            request = search.request(0, 0, fl=(query.model._fields["bibcode"].solr_name,))
+        model = query.model
+        bibcode_name = model._fields["bibcode"].solr_name
+        local = _LocalFilter.of(search, model)
+        if local is None:
+            request = search.request(0, 0, fl=(bibcode_name,))
             response = yield request
             return _read_page(request, response)[1]
         page_size = _page_size()
-        bibcode_name = query.model._fields["bibcode"].solr_name
+        fl = (bibcode_name, *search.refinement_fl)
+        requested = [name for name, field in model._fields.items() if field.solr_name in fl]
         total = start = 0
         while True:
-            request = search.request(start, page_size, fl=(bibcode_name,))
+            request = search.request(start, page_size, fl=fl)
             response = yield request
             docs, found = _read_page(request, response)
-            total += sum(1 for doc in docs if doc.get(bibcode_name) not in exclude)
+            total += sum(1 for _ in local.survivors(docs, requested))
             start += len(docs)
             if not docs or start >= found:
                 return total
@@ -924,7 +925,7 @@ class SearchBackend:
         if query.limit_ == 0:
             return Explanation("No request is made: the limit is 0.", (), search.notes)
         page_size = _page_size()
-        if search.exclude_bibcodes is None:
+        if not search.filters_locally:
             start = query.offset_
             rows = page_size if query.limit_ is None else min(page_size, query.limit_)
         else:
@@ -944,8 +945,8 @@ def _first_request(gen: Generator[Request, Response, Any]) -> Request:
         gen.close()
 
 
-def _document(model: type[Model], row: Mapping[str, Any], requested: list[str], page: ResultPage) -> Model:
-    """A document from one result row, attached to its page.
+def _document(model: type[Model], row: Mapping[str, Any], requested: list[str]) -> Model:
+    """A document from one result row.
 
     Fields that were requested but are absent from the row (ADS omits empty
     values) are set to ``None``, so reading them does not load them again.
@@ -953,5 +954,38 @@ def _document(model: type[Model], row: Mapping[str, Any], requested: list[str], 
     document = model._from_row(row)
     for name in requested:
         document._data.setdefault(name, None)
-    page.attach(document)
     return document
+
+
+class _LocalFilter:
+    """What a plan drops while streaming: excluded bibcodes, and documents failing its refinement.
+
+    Running and counting share it, so both keep exactly the same rows.
+    """
+
+    def __init__(self, search: SearchPlan, model: type[Model]) -> None:
+        self.model = model
+        self.exclude = search.exclude_bibcodes
+        self.bibcode_name = model._fields["bibcode"].solr_name
+        self.test: Callable[[Any], bool] | None = (
+            None if search.refinement is None else evaluate.predicate(search.refinement)
+        )
+
+    @classmethod
+    def of(cls, search: SearchPlan, model: type[Model]) -> _LocalFilter | None:
+        """The filter for ``search``, or ``None`` if it filters nothing locally."""
+        return cls(search, model) if search.filters_locally else None
+
+    def survivors(
+        self, rows: list[dict[str, Any]], requested: list[str]
+    ) -> Iterator[tuple[dict[str, Any], Model | None]]:
+        """The rows that are kept, each with its document if one was built to test it."""
+        for row in rows:
+            if self.exclude is not None and row.get(self.bibcode_name) in self.exclude:
+                continue
+            if self.test is None:
+                yield row, None
+                continue
+            document = _document(self.model, row, requested)
+            if self.test(document):
+                yield row, document
