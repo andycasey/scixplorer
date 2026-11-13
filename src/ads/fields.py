@@ -185,6 +185,13 @@ class FieldExpr:
     def __iter__(self) -> Any:
         raise TypeError(f"{self!r} is not iterable; use .in_(values) to match several values")
 
+    if not TYPE_CHECKING:
+        # Runtime only, so that type checkers still flag unknown attributes.
+        def __getattr__(self, name: str) -> NoReturn:
+            if name in ("any", "all"):
+                raise AttributeError(_quantifier_hint(self.__dict__.get("field"), name, self.__dict__.get("via")))
+            raise AttributeError(f"{type(self).__name__!r} object has no attribute {name!r}")
+
     def __repr__(self) -> str:
         if self.via is not None:
             owner = self.via.owner.__name__ + "." + self.via.name
@@ -311,6 +318,48 @@ def parse_positions(index: int | slice) -> tuple[int, int]:
 def _model_name(field: Field[Any, Any]) -> str:
     model = getattr(field, "model", None)
     return model.__name__ if model is not None else "?"
+
+
+def _quantifier_hint(field: Field[Any, Any] | None, name: str, via: Relation[Any] | None = None) -> str:
+    """Why a field (or relation) handle has no ``.any()``/``.all()``, and what to write instead.
+
+    ``via`` is the relation the handle goes through, if any; ``field`` is
+    ``None`` for a relation handle itself.
+    """
+    if via is not None:
+        owner: Any = via.owner
+        label = f"{owner.__name__}.{via.name}" + ("" if field is None else f".{field.name}")
+        key = owner._fields.get(via.key)
+        multivalued = key is None or key.multivalued
+        name_on_owner = via.key
+    elif field is not None:
+        owner = getattr(field, "model", None)
+        label = field._label()
+        multivalued = field.multivalued
+        name_on_owner = field.name
+    else:
+        return f"no attribute {name!r}"
+    collections = [
+        collection
+        for collection in getattr(owner, "_collections", {}).values()
+        if name_on_owner in collection.owner_fields()
+        or any(source.search == name_on_owner for source in collection.sources.values())
+    ]
+    if multivalued or collections:
+        message = (
+            f"{label} has no .{name}(): a comparison on a multivalued field already means "
+            f'"any value" ({label} == x matches when any of its values does).'
+        )
+    else:
+        message = f"{label} has no .{name}(): it holds a single value, so compare it directly."
+    for collection in collections:
+        record = collection.record_model.__name__
+        message += (
+            f" To say several things about the same {record.lower()}, or about every one, use "
+            f"{owner.__name__}.{collection.name}.{name}(...) with conditions on {record} fields: "
+            f"everything inside one .{name}(...) is about one {record.lower()}."
+        )
+    return message
 
 
 T = TypeVar("T")

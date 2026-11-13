@@ -425,6 +425,62 @@ def test_author_field_outside_any_points_to_authors() -> None:
         to_solr(Author.name == "Casey, A")
 
 
+# Hints on field handles.
+
+
+@pytest.mark.parametrize(
+    ("build", "about"),
+    [
+        (lambda: Document.author.any(Document.author == "x"), "Document.author has no .any()"),
+        (lambda: Document.author.all, "Document.author has no .all()"),
+        (lambda: Document.aff_id.any, "Document.aff_id has no .any()"),
+        (lambda: Document.author[0].any, "Document.author has no .any()"),
+        (lambda: Document.orcid.any, "Document.orcid has no .any()"),
+        (lambda: Document.affiliation.any, "Document.affiliation has no .any()"),
+        (lambda: Document.affiliation.country.all, "Document.affiliation.country has no .all()"),
+    ],
+)
+def test_any_on_a_per_author_field_points_to_authors(build: Any, about: str) -> None:
+    with pytest.raises(AttributeError) as info:
+        build()
+    message = str(info.value)
+    assert message.startswith(about)
+    assert 'already means "any value"' in message
+    name = "all" if ".all()" in about else "any"
+    assert f"use Document.authors.{name}(...)" in message
+
+
+@pytest.mark.parametrize(
+    ("build", "expected"),
+    [
+        (lambda: Document.year.any, "Document.year has no .any(): it holds a single value, so compare it directly."),
+        (
+            lambda: Document.title.all,
+            'Document.title has no .all(): a comparison on a multivalued field already means "any value" '
+            "(Document.title == x matches when any of its values does).",
+        ),
+        (
+            lambda: Journal.title.any,
+            "Journal.title has no .any(): it holds a single value, so compare it directly.",
+        ),
+    ],
+)
+def test_any_on_other_fields(build: Any, expected: str) -> None:
+    with pytest.raises(AttributeError) as info:
+        build()
+    assert str(info.value) == expected
+
+
+def test_hints_leave_attribute_access_alone() -> None:
+    handle = Document.author[0]
+    assert not hasattr(handle, "any") and hasattr(handle, "like")
+    with pytest.raises(AttributeError, match="'TextExpr' object has no attribute 'nothing'"):
+        handle.nothing  # type: ignore[attr-defined]  # noqa: B018
+    assert repr(copy.copy(handle)) == repr(copy.deepcopy(handle)) == "<Document.author[0]>"
+    assert repr(pickle.loads(pickle.dumps(Document.year))) == "<Document.year>"
+    assert (copy.copy(handle) == "Casey, A") == (handle == "Casey, A")
+
+
 # Evaluation.
 
 

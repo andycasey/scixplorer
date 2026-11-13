@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, NoReturn, Typ
 
 from . import exceptions
 from .expr import BOOL_ERROR, And, Constant, Expr, Func, In, InLibrary, Like, Match, Not, Or, Quantified, Range, Raw, Related
-from .fields import Field, FieldExpr, FieldInfo, Scope, parse_positions
+from .fields import Field, FieldExpr, FieldInfo, Scope, _quantifier_hint, parse_positions
 
 if TYPE_CHECKING:
     from .query import Backend, Query
@@ -126,6 +126,8 @@ class RelationExpr:
         model = self._relation.related_model
         field = model._fields.get(name)
         if field is None:
+            if name in ("any", "all"):
+                raise AttributeError(_quantifier_hint(None, name, self._relation))
             raise AttributeError(
                 f"{model.__name__} has no field {name!r}; fields are: {', '.join(model._fields)}"
             )
