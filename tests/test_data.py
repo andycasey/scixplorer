@@ -522,7 +522,8 @@ def test_uat_reset_drops_every_cache() -> None:
 
 def test_notice_and_gpl_text_are_package_resources() -> None:
     folder = resources.files("ads.data")
-    for name in ("NOTICE.md", "LICENSE-GPL-3.0.txt", "journals.json", "affiliations.tsv", "affiliations_country.tsv"):
+    names = ("NOTICE.md", "LICENSE-GPL-3.0.txt", "journals.json", "affiliations.tsv", "affiliations_country.tsv")
+    for name in names:
         assert (folder / name).is_file(), name
     gpl = (folder / "LICENSE-GPL-3.0.txt").read_bytes()
     assert gpl.startswith(b"                    GNU GENERAL PUBLIC LICENSE\n                       Version 3, 29 June 2007")
