@@ -69,10 +69,12 @@ __all__ = [
     "NameField",
     "NumericExpr",
     "NumericStringField",
+    "Scope",
     "StringField",
     "TextExpr",
     "TextField",
     "VirtualField",
+    "parse_positions",
 ]
 
 
@@ -84,6 +86,9 @@ class FieldExpr:
         resulting expressions are wrapped in :class:`~ads.expr.Related`.
     :param position: 1-indexed inclusive ``(start, end)`` positions within a
         multivalued field; the resulting expressions are wrapped in ``pos()``.
+    :param scope: the record(s) of a collection the field belongs to, such as
+        ``Document.authors[0]`` for ``Document.authors[0].name``; the resulting
+        expressions are wrapped in :class:`~ads.expr.Quantified` by it.
     """
 
     def __init__(
@@ -92,10 +97,12 @@ class FieldExpr:
         *,
         via: Relation[Any] | None = None,
         position: tuple[int, int] | None = None,
+        scope: Scope | None = None,
     ):
         self.field = field
         self.via = via
         self.position = position
+        self.scope = scope
         self.__doc__ = field.__doc__
 
     def _searchable(self) -> None:
@@ -118,6 +125,8 @@ class FieldExpr:
             node = Func("pos", (node, *self.position))
         if self.via is not None:
             node = Related(self.via, node)
+        if self.scope is not None:
+            node = self.scope._enclose(node)
         return node
 
     def _check(self, value: Any) -> Any:
@@ -158,7 +167,7 @@ class FieldExpr:
 
     def _order(self, descending: bool) -> Order:
         self._searchable()
-        if self.via is not None or self.position is not None:
+        if self.via is not None or self.position is not None or self.scope is not None:
             raise QueryError(f"Cannot sort by {self!r}; sort by a field of the model itself")
         return Order(self.field, descending)
 
@@ -177,7 +186,12 @@ class FieldExpr:
         raise TypeError(f"{self!r} is not iterable; use .in_(values) to match several values")
 
     def __repr__(self) -> str:
-        owner = self.via.owner.__name__ + "." + self.via.name if self.via else _model_name(self.field)
+        if self.via is not None:
+            owner = self.via.owner.__name__ + "." + self.via.name
+            if self.scope is not None:
+                owner = f"{self.scope._label()}.{self.via.name}"
+        else:
+            owner = _model_name(self.field) if self.scope is None else self.scope._label()
         text = f"{owner}.{self.field.name}"
         if self.position is not None:
             start, end = self.position
@@ -245,25 +259,7 @@ class TextExpr(FieldExpr):
             raise TypeError(f"{self!r} is not multivalued, so it cannot be indexed")
         if self.position is not None:
             raise TypeError(f"{self!r} is already restricted to a position")
-        if isinstance(index, slice):
-            start, stop, step = index.start, index.stop, index.step
-            if step not in (None, 1):
-                raise QueryError("Position slices cannot have a step")
-            start = 0 if start is None else start
-            if not isinstance(start, int) or not isinstance(stop, (int, type(None))):
-                raise TypeError(f"Position slice bounds must be ints, not {index!r}")
-            if start < 0 or stop is None or stop < 0:
-                raise QueryError("ADS cannot search by position from the end")
-            if stop <= start:
-                raise QueryError(f"Empty position slice [{start}:{stop}]")
-            position = (start + 1, stop)
-        elif isinstance(index, int) and not isinstance(index, bool):
-            if index < 0:
-                raise QueryError("ADS cannot search by position from the end")
-            position = (index + 1, index + 1)
-        else:
-            raise TypeError(f"Positions must be ints or slices, not {index!r}")
-        return type(self)(self.field, via=self.via, position=position)
+        return type(self)(self.field, via=self.via, position=parse_positions(index), scope=self.scope)
 
 
 class NumericExpr(FieldExpr):
@@ -286,6 +282,32 @@ class NumericExpr(FieldExpr):
         return self._wrap(Range(self.field, self._check(lo), self._check(hi)))
 
 
+def parse_positions(index: int | slice) -> tuple[int, int]:
+    """The 1-indexed inclusive ``(start, end)`` positions selected by ``index``: ``[0]``, ``[0:3]``.
+
+    Raises ``TypeError`` for an index that is not an int or a slice of ints, and
+    :class:`~ads.exceptions.QueryError` for a negative or open-ended one (ADS
+    cannot search by position from the end), an empty slice or a step.
+    """
+    if isinstance(index, slice):
+        start, stop, step = index.start, index.stop, index.step
+        if step not in (None, 1):
+            raise QueryError("Position slices cannot have a step")
+        start = 0 if start is None else start
+        if not isinstance(start, int) or not isinstance(stop, (int, type(None))):
+            raise TypeError(f"Position slice bounds must be ints, not {index!r}")
+        if start < 0 or stop is None or stop < 0:
+            raise QueryError("ADS cannot search by position from the end")
+        if stop <= start:
+            raise QueryError(f"Empty position slice [{start}:{stop}]")
+        return (start + 1, stop)
+    if isinstance(index, int) and not isinstance(index, bool):
+        if index < 0:
+            raise QueryError("ADS cannot search by position from the end")
+        return (index + 1, index + 1)
+    raise TypeError(f"Positions must be ints or slices, not {index!r}")
+
+
 def _model_name(field: Field[Any, Any]) -> str:
     model = getattr(field, "model", None)
     return model.__name__ if model is not None else "?"
@@ -301,6 +323,18 @@ class _Record(Protocol):
     """What a field's owner instances provide (``Model`` does)."""
 
     def _get_value(self, field: Field[Any, Any], /) -> Any: ...
+
+
+class Scope(Protocol):
+    """Record(s) of a collection that a field handle is restricted to (``Document.authors[0]``)."""
+
+    def _enclose(self, node: Expr, /) -> Expr:
+        """Wrap a condition on one record's field into a condition on the owner."""
+        ...
+
+    def _label(self) -> str:
+        """How the scope is written, e.g. ``"Document.authors[0]"``."""
+        ...
 
 
 @dataclass(frozen=True)
