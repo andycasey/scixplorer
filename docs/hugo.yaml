@@ -1,0 +1,82 @@
+# Hugo configuration for the scixplorer documentation site.
+# Build with: hugo --source docs --gc --minify
+# The theme is Hextra, a Hugo module pinned in go.mod / go.sum.
+
+title: scixplorer
+# Deployment must set the real base URL, e.g. hugo --baseURL https://example.org/scixplorer/
+baseURL: /
+languageCode: en-gb
+enableRobotsTXT: true
+enableGitInfo: false
+disableKinds: [taxonomy, term]
+# A broken {{< ref >}} link fails the build.
+refLinksErrorLevel: ERROR
+
+module:
+  imports:
+    - path: github.com/imfing/hextra
+
+markup:
+  goldmark:
+    renderer:
+      # The pages contain HTML comments (<!-- docs-test: ... -->) read by the example tests.
+      unsafe: true
+  highlight:
+    noClasses: false
+    style: github
+  tableOfContents:
+    startLevel: 2
+    endLevel: 3
+
+# Every page uses the documentation layout, with the sidebar built from the content tree.
+cascade:
+  - type: docs
+
+menu:
+  main:
+    - name: Getting started
+      pageRef: /getting-started
+      weight: 1
+    - name: Guide
+      pageRef: /guide
+      weight: 2
+    - name: Reference
+      pageRef: /reference
+      weight: 3
+    - name: Search
+      weight: 4
+      params:
+        type: search
+    - name: Theme
+      weight: 5
+      params:
+        type: theme-toggle
+
+params:
+  description: A Python client for SciX (Science Explorer), the successor to NASA/ADS.
+  navbar:
+    displayTitle: true
+    displayLogo: false
+  theme:
+    default: system
+    displayToggle: true
+  search:
+    enable: true
+    type: flexsearch
+    flexsearch:
+      index: content
+  highlight:
+    copy:
+      enable: true
+      display: hover
+  editURL:
+    # No public repository URL yet.
+    enable: false
+  page:
+    width: normal
+  footer:
+    enable: true
+    displayCopyright: false
+  displayUpdatedDate: false
+  toc:
+    displayTags: false

@@ -7,3 +7,9 @@ build/
 *.egg-info/
 .DS_Store
 .mypy_cache/
+
+# Hugo build output (docs site)
+docs/public/
+docs/resources/
+.hugo_build.lock
+docs/.hugo_build.lock
