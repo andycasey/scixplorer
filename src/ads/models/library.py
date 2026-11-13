@@ -443,9 +443,9 @@ class Library(Model):
     ) -> Library:
         """Create a library on ADS and return it.
 
-        :param name: the name, which must be unique among your libraries
-            (ADS chooses one if ``None``).
-        :param description: the description (ADS chooses one if ``None``).
+        :param name: the name, which must be unique among your libraries;
+            if ``None`` it is not sent and ADS assigns one.
+        :param description: the description; if ``None`` it is not sent.
         :param public: whether anyone may read the library.
         :param documents: bibcodes, documents, libraries, or iterables of these.
         :param client: the client to use; it is also remembered as ``client``
@@ -463,7 +463,9 @@ class Library(Model):
     ) -> Library:
         """The library ADS just created: what it returned, plus what was sent."""
         data = _object(request, response)
-        _check_id(_response_field(request, response, "id"))
+        library_id = _response_field(request, response, "id")
+        if not isinstance(library_id, str) or not library_id.strip():
+            raise _unexpected(request, response, f"'id' is {library_id!r}")
         library = cls._from_row(data)
         for key, value in sent.items():
             if value is not None and key not in library._data:

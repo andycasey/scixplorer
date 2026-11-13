@@ -491,9 +491,10 @@ def test_create_without_name_lets_ads_choose(server: FakeADS, client: Client) ->
     assert library.description == "Untitled library"
 
 
-def test_create_needs_an_id_in_the_response(server: FakeADS, client: Client) -> None:
-    server.on("POST", "/biblib/libraries", {"name": "Mine"})
-    with pytest.raises(APIError, match="id"):
+@pytest.mark.parametrize("body", [{"name": "Mine"}, {"id": ""}, {"id": 3}, ["new"]])
+def test_create_needs_an_id_in_the_response(server: FakeADS, client: Client, body: Any) -> None:
+    server.on("POST", "/biblib/libraries", body)
+    with pytest.raises(APIError, match="unexpected response"):
         Library.create("Mine", client=client)
 
 
