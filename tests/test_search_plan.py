@@ -429,9 +429,15 @@ def test_default_fields() -> None:
     assert "lang" not in fl and "full" not in fl and "abs" not in fl
 
 
-def test_selected_fields_always_include_bibcode_and_id() -> None:
-    assert plan(Document.select(Document.title, "citation_count")).fl == ("bibcode", "citation_count", "id", "title")
-    assert plan(Document.select(Document.citation)).fl == ("bibcode", "citation", "id")
+def test_selected_fields_always_include_the_identifiers() -> None:
+    assert plan(Document.select(Document.title, "citation_count")).fl == (
+        "bibcode",
+        "citation_count",
+        "id",
+        "scix_id",
+        "title",
+    )
+    assert plan(Document.select(Document.citation)).fl == ("bibcode", "citation", "id", "scix_id")
 
 
 @pytest.mark.parametrize("field", ["lang", "full"])
@@ -453,7 +459,7 @@ def test_search_query() -> None:
     )
     search = plan(query)
     assert search.q == "author:'Ness, M' AND year:2018"
-    assert search.fl == ("bibcode", "id", "title")
+    assert search.fl == ("bibcode", "id", "scix_id", "title")
     assert search.sort == "citation_count desc,id asc"
     assert (query.limit_, query.offset_) == (5, 0)
 

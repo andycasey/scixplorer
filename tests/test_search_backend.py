@@ -38,7 +38,7 @@ def test_query_request(page_size: None) -> None:
     assert request.method == "GET" and request.url.path == "/v1/search/query"
     assert dict(request.url.params) == {
         "q": 'author:"Ness, M"',
-        "fl": "bibcode,id,title",
+        "fl": "bibcode,id,scix_id,title",
         "sort": "score desc,id asc",
         "start": "0",
         "rows": "200",
@@ -434,7 +434,7 @@ def test_search_query_request(page_size: None) -> None:
     assert len(query.using(fake.client()).all()) == 5
     assert fake.params() == {
         "q": "author:'Ness, M' AND year:2018",
-        "fl": "bibcode,id,title",
+        "fl": "bibcode,id,scix_id,title",
         "sort": "citation_count desc,id asc",
         "start": "0",
         "rows": "5",

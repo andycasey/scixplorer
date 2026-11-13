@@ -21,6 +21,7 @@ from ads.fields import (
     IntegerField,
     NameField,
     NumericExpr,
+    NumericStringField,
     StringField,
     TextExpr,
     TextField,
@@ -693,3 +694,96 @@ def test_text_handles_still_hash_by_identity():
     handle = People.author
     assert hash(handle) == object.__hash__(handle)
     assert TextExpr.__eq__.__doc__ and "name variants" in TextExpr.__eq__.__doc__
+
+
+# --- fields that are returned but not indexed --------------------------------
+
+
+class Returned:
+    """An owner of fields that can be returned but not searched."""
+
+    pages = StringField("Pages", indexed=False)
+    links = TextField("Links", multivalued=True, indexed=False)
+    count = IntegerField("Count", indexed=False)
+    kept = StringField("Kept")
+
+
+def test_indexed_is_stored_on_the_field_and_described():
+    assert Returned.__dict__["kept"].indexed is True
+    assert Returned.__dict__["pages"].indexed is False
+    assert VirtualField().indexed is True
+    assert Returned.__dict__["pages"].info().indexed is False
+    assert F["full"].info().indexed is True
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: Returned.pages == "1-2",
+        lambda: Returned.pages != "1-2",
+        lambda: Returned.pages.in_(["1-2"]),
+        lambda: Returned.pages.not_in(["1-2"]),
+        lambda: Returned.pages.in_(["1-2"], exact=True),
+        lambda: Returned.pages.exact("1-2"),
+        lambda: Returned.pages.like("1*"),
+        lambda: Returned.pages.startswith("1"),
+        lambda: Returned.pages.contains("1"),
+        lambda: Returned.links[0] == "x",
+        lambda: Returned.links[0:2].exact("x"),
+        lambda: Returned.count == 1,
+        lambda: Returned.count < 1,
+        lambda: Returned.count <= 1,
+        lambda: Returned.count > 1,
+        lambda: Returned.count >= 1,
+        lambda: Returned.count.between(1, 2),
+        lambda: Returned.pages.asc(),
+        lambda: Returned.count.desc(),
+    ],
+)
+def test_fields_that_are_not_indexed_cannot_be_searched_or_sorted(build):
+    with pytest.raises(QueryError, match=r"Returned\.(pages|links|count) can be returned but not searched"):
+        build()
+
+
+def test_handles_on_fields_that_are_not_indexed_can_still_be_made():
+    assert isinstance(Returned.pages, TextExpr)
+    assert Returned.links[0].position == (1, 1)
+    assert (Returned.kept == "x") == Match(Returned.__dict__["kept"], "x")
+
+
+# --- strings of digits --------------------------------------------------------
+
+
+class Numbered:
+    """An owner of a string-of-digits field."""
+
+    recid = NumericStringField("Record id")
+
+
+def test_numeric_string_field_normalises_non_negative_ints():
+    field = Numbered.__dict__["recid"]
+    assert isinstance(field, StringField) and field.python_type is str and not field.multivalued
+    assert field.normalise(12) == "12" and field.normalise(0) == "0"
+    assert field.normalise("12") == "12"
+    assert field.normalise(-1) == -1 and field.normalise(True) is True
+    assert field.to_solr(12) == field.to_solr("12") == "12"
+    assert field.to_python(12) == "12"
+
+
+@pytest.mark.parametrize("value", [-1, True, 1.5, 2.0, b"1", ""])
+def test_numeric_string_field_rejects_other_values(value):
+    with pytest.raises(QueryError, match="needs a"):
+        Numbered.__dict__["recid"].to_solr(value)
+
+
+def test_numeric_string_handles_store_the_string():
+    field = Numbered.__dict__["recid"]
+    assert (Numbered.recid == 7) == Match(field, "7")
+    assert Numbered.recid.in_([7, "8"]) == In(field, ("7", "8"))
+    assert Numbered.recid.exact(7) == Match(field, "7", exact=True)  # type: ignore[arg-type]
+
+
+def test_other_fields_hold_values_as_given():
+    assert F["bibcode"].normalise(5) == 5
+    with pytest.raises(QueryError):
+        Rec.bibcode == 5  # noqa: B015

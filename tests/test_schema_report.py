@@ -37,6 +37,9 @@ SCHEMA = """<?xml version="1.0" ?>
   <field name="aff_id" type="ids" multiValued="true"/>
   <field name="volume" type="int"/>
   <field name="lang" type="keyword" stored="${storeAll:true}"/>
+  <field name="page_range" type="string"/>
+  <field name="links_data" type="string" multiValued="true" indexed="false"/>
+  <field name="doi" type="string" multiValued="true" indexed="${indexAll:false}"/>
   <field name="secret_new_field" type="string"/>
   <field name="title_facet" type="string" stored="false"/>
   <copyField source="id" dest="recid"/>
@@ -65,7 +68,7 @@ def test_report(tmp_path: Path) -> None:
     assert "volume" in text and "class IntegerField -> StringField" in text
     assert "lang" in text and "stored True -> False" in text
     differences = lines[lines.index("# Differences (schema -> Document)") + 1 : lines.index("# copyField")]
-    for name in ("id ", "bibcode ", "title ", "author ", "aff_id "):
+    for name in ("id ", "bibcode ", "title ", "author ", "aff_id ", "links_data "):
         assert not any(line.startswith(name) for line in differences), name
     assert "id -> recid" in text
 
@@ -73,3 +76,15 @@ def test_report(tmp_path: Path) -> None:
 def test_usage(capsys: pytest.CaptureFixture[str]) -> None:
     assert load().main(["schema_report.py"]) == 2
     assert "usage:" in capsys.readouterr().err
+
+
+def test_report_compares_indexing(tmp_path: Path) -> None:
+    schema = tmp_path / "schema.xml"
+    schema.write_text(SCHEMA)
+    lines = load().report(str(schema))
+    differences = lines[lines.index("# Differences (schema -> Document)") + 1 : lines.index("# copyField")]
+    by_name = {line.split()[0]: line for line in differences if line}
+    assert by_name["page_range"].endswith("indexed True -> False")
+    assert by_name["doi"].endswith("indexed False -> True")
+    assert "links_data" not in by_name
+    assert any(line.startswith("virtual") and " full " in line and "indexed=True" in line for line in lines)

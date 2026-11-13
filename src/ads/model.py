@@ -292,8 +292,8 @@ class Model(metaclass=ModelMeta):
         return None
 
     def _set_value(self, field: Field[Any, Any], value: Any) -> None:
-        """Store ``value`` for ``field``, discarding cached related objects."""
-        self._data[field.name] = value
+        """Store ``value`` (as the field normalises it) for ``field``, discarding cached related objects."""
+        self._data[field.name] = field.normalise(value)
         self._related.clear()
 
     def _key_value(self) -> Any:

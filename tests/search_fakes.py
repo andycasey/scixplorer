@@ -12,6 +12,7 @@ from ads.client import Client
 
 PREFIX = "/v1"
 _QUOTED = re.compile(r'"((?:[^"\\]|\\.)*)"')
+_IDENTIFIER_QUERY = re.compile(r"(bibcode|scix_id|id):")
 
 
 def bibcodes(n: int, prefix: str = "2020ApJ...") -> list[str]:
@@ -30,8 +31,9 @@ def make_docs(n: int, **fields: Any) -> list[dict[str, Any]]:
 class FakeSearch:
     """Serves ``/search/query``, ``/search/bigquery`` and library listings, recording every request.
 
-    The query string is not evaluated, except a top-level ``bibcode:(...)`` or
-    ``bibcode:"..."`` which restricts the documents (as lazy loading sends).
+    The query string is not evaluated, except a leading ``bibcode:(...)`` or
+    ``bibcode:"..."`` (or the same on ``scix_id`` or ``id``) which restricts the
+    documents (as lazy loading sends).
     A bigquery restricts to the uploaded bibcodes. Only fields named in ``fl``
     are returned. ``reply`` replaces the search response entirely.
     """
@@ -73,9 +75,10 @@ class FakeSearch:
         params = request.url.params
         docs = self.docs
         q = params["q"]
-        if q.startswith("bibcode:"):
+        identifier = _IDENTIFIER_QUERY.match(q)
+        if identifier is not None:
             wanted = {m.group(1) for m in _QUOTED.finditer(q)}
-            docs = [doc for doc in docs if doc.get("bibcode") in wanted]
+            docs = [doc for doc in docs if doc.get(identifier.group(1)) in wanted]
         if path == "/search/bigquery":
             uploaded = set(request.content.decode().split("\n")[1:])
             docs = [doc for doc in docs if doc.get("bibcode") in uploaded]

@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
 #: Environment variables checked for an API token, in order.
-TOKEN_ENV_VARS: tuple[str, ...] = ("ADS_API_TOKEN", "ADS_DEV_KEY")
+TOKEN_ENV_VARS: tuple[str, ...] = ("SCIX_API_TOKEN", "ADS_API_TOKEN", "ADS_DEV_KEY")
 
 #: Files (relative to the home directory) checked for an API token, in order.
-TOKEN_FILES: tuple[str, ...] = (".ads/token", ".ads/dev_key")
+TOKEN_FILES: tuple[str, ...] = (".scix/token", ".ads/token", ".ads/dev_key")
 
 
 @dataclass
@@ -26,6 +26,10 @@ class Config:
     when assigned. With several tokens, each request uses the first one that is
     not currently rate limited for the request's service. The token is
     excluded from ``repr`` so it never ends up in logs or tracebacks.
+
+    ``collection`` limits open document searches to one SciX collection
+    (``"astronomy"``) or several (``["astronomy", "physics"]``); ``None``, the
+    default, searches them all. See :meth:`resolve_collections`.
     """
 
     token: str | Iterable[str] | None = field(default=None, repr=False)
@@ -36,6 +40,7 @@ class Config:
     page_size: int = 200
     max_inline_bibcodes: int = 50
     library_membership: str = "docs"
+    collection: str | Sequence[str] | None = None
 
     def __setattr__(self, name: str, value: object) -> None:
         if name == "token" and isinstance(value, Iterator):
@@ -72,6 +77,27 @@ class Config:
         tokens = self.resolve_tokens()
         return tokens[0] if tokens else None
 
+    def resolve_collections(self) -> tuple[str, ...]:
+        """Return the collections that open document searches are limited to; empty for all.
+
+        :attr:`collection` is ``None``, a ``str`` or a sequence of ``str``.
+        Names are whitespace-stripped, blank ones dropped and duplicates
+        dropped keeping the first; they are not checked against the
+        collections SciX has. Raises ``TypeError`` for any other value.
+        """
+        value = self.collection
+        if value is None:
+            return ()
+        if isinstance(value, str):
+            names: Sequence[object] = (value,)
+        elif isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray, memoryview)):
+            names = value
+        else:
+            raise TypeError(
+                f"ads.config.collection must be a str or a sequence of str, not {type(value).__name__}"
+            )
+        return _distinct_strings(names, "collection")
+
 
 def normalise_tokens(value: object) -> tuple[str, ...]:
     """Return the tokens in a token setting: ``None``, a ``str``, or an iterable of ``str``.
@@ -92,13 +118,22 @@ def normalise_tokens(value: object) -> tuple[str, ...]:
             "an API token setting must be a str or an iterable of str, "
             f"not {type(value).__name__}"
         )
-    tokens: dict[str, None] = {}
+    return _distinct_strings(items, "API token")
+
+
+def _distinct_strings(items: Iterable[object], label: str) -> tuple[str, ...]:
+    """The stripped, non-blank strings in ``items``, without duplicates, in order.
+
+    Raises ``TypeError`` naming ``label``, the position and the type (never the
+    value) for an item that is not a ``str``.
+    """
+    found: dict[str, None] = {}
     for position, item in enumerate(items, start=1):
         if not isinstance(item, str):
-            raise TypeError(f"API token {position} must be a str, not {type(item).__name__}")
+            raise TypeError(f"{label} {position} must be a str, not {type(item).__name__}")
         if item.strip():
-            tokens.setdefault(item.strip())
-    return tuple(tokens)
+            found.setdefault(item.strip())
+    return tuple(found)
 
 
 def _first_line(path: Path) -> str:

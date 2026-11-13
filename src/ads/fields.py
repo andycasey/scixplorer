@@ -68,6 +68,7 @@ __all__ = [
     "IntegerField",
     "NameField",
     "NumericExpr",
+    "NumericStringField",
     "StringField",
     "TextExpr",
     "TextField",
@@ -97,8 +98,22 @@ class FieldExpr:
         self.position = position
         self.__doc__ = field.__doc__
 
+    def _searchable(self) -> None:
+        """Refuse a field that is not indexed: it can be returned but not searched or sorted by."""
+        if not self.field.indexed:
+            label = self.field._label()
+            raise QueryError(
+                f"{label} can be returned but not searched or sorted by: SciX does not index it. "
+                f"To read it, select it: {_model_name(self.field)}.select({label}, ...)"
+            )
+
     def _wrap(self, node: Expr) -> Expr:
-        """Apply this handle's position and relation to a node built on its field."""
+        """Apply this handle's position and relation to a node built on its field.
+
+        Every expression a handle builds passes through here, so this is also
+        where a field that cannot be searched is refused.
+        """
+        self._searchable()
         if self.position is not None:
             node = Func("pos", (node, *self.position))
         if self.via is not None:
@@ -112,7 +127,7 @@ class FieldExpr:
         if isinstance(value, (FieldExpr, Expr)):
             raise TypeError(f"{self!r} can only be compared with values, not with {value!r}")
         self.field.to_solr(value)
-        return value
+        return self.field.normalise(value)
 
     def __eq__(self, value: object) -> Expr:  # type: ignore[override]  # builds an Expr, not a bool
         return self._wrap(Match(self.field, self._check(value)))
@@ -142,6 +157,7 @@ class FieldExpr:
         return ~self.in_(values)
 
     def _order(self, descending: bool) -> Order:
+        self._searchable()
         if self.via is not None or self.position is not None:
             raise QueryError(f"Cannot sort by {self!r}; sort by a field of the model itself")
         return Order(self.field, descending)
@@ -298,6 +314,7 @@ class FieldInfo:
     solr_name: str
     doc: str
     match_kind: str
+    indexed: bool = True
 
 
 class Field(Generic[T, H]):
@@ -310,6 +327,9 @@ class Field(Generic[T, H]):
     :param doc: help text, shown by ``help()``.
     :param multivalued: the field holds a list of values.
     :param stored: the field can be returned by the API (``False`` for search-only fields).
+    :param indexed: the field can be searched and sorted by (``False`` for fields that
+        are only returned); building an expression or sort key on it raises
+        :class:`~ads.exceptions.QueryError`.
     :param solr_name: the field's name in Solr, if different from the attribute name.
     """
 
@@ -328,11 +348,13 @@ class Field(Generic[T, H]):
         *,
         multivalued: bool = False,
         stored: bool = True,
+        indexed: bool = True,
         solr_name: str | None = None,
     ) -> None:
         self.__doc__ = doc
         self.multivalued = multivalued
         self.stored = stored
+        self.indexed = indexed
         self._solr_name = solr_name
 
     def __set_name__(self, owner: type, name: str) -> None:
@@ -365,6 +387,7 @@ class Field(Generic[T, H]):
             solr_name=self.solr_name,
             doc=self.__doc__ or "",
             match_kind=self.match_kind,
+            indexed=self.indexed,
         )
 
     @overload
@@ -431,6 +454,14 @@ class Field(Generic[T, H]):
 
     def _to_python(self, raw: Any) -> Any:
         return raw
+
+    def normalise(self, value: Any) -> Any:
+        """The form in which this field holds ``value``, in expressions and on instances.
+
+        Most fields hold values exactly as given; a field accepting several
+        spellings of one value (:class:`NumericStringField`) returns its canonical form.
+        """
+        return value
 
     def step(self, value: Any, direction: int) -> Any:
         """The adjacent value above (``direction=1``) or below (``-1``) ``value``.
@@ -511,6 +542,7 @@ class TextField(_StringLikeField[T]):
             *,
             multivalued: Literal[False] = ...,
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -521,6 +553,7 @@ class TextField(_StringLikeField[T]):
             *,
             multivalued: Literal[True],
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -545,6 +578,7 @@ class StringField(_StringLikeField[T]):
             *,
             multivalued: Literal[False] = ...,
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -555,10 +589,42 @@ class StringField(_StringLikeField[T]):
             *,
             multivalued: Literal[True],
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
         def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+
+class NumericStringField(StringField[str]):
+    """A string of digits, such as ``Document.id``; queries also accept a non-negative int.
+
+    The value is a ``str`` (as the API returns it), and an int given in a query
+    or set on an instance is held as its decimal string, so
+    ``Document.id == 12312494`` is the same condition as ``Document.id == "12312494"``.
+    Bools, floats and negative ints are refused.
+    """
+
+    def __init__(
+        self,
+        doc: str = "",
+        *,
+        stored: bool = True,
+        indexed: bool = True,
+        solr_name: str | None = None,
+    ) -> None:
+        super().__init__(doc, stored=stored, indexed=indexed, solr_name=solr_name)
+
+    def normalise(self, value: Any) -> Any:
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+            return str(value)
+        return value
+
+    def _to_solr(self, value: Any) -> str:
+        value = self.normalise(value)
+        if not isinstance(value, str):
+            raise self._reject(value, "a str or a non-negative int")
+        return super()._to_solr(value)
 
 
 class NameField(_StringLikeField[T]):
@@ -582,6 +648,7 @@ class NameField(_StringLikeField[T]):
             *,
             multivalued: Literal[False] = ...,
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -592,6 +659,7 @@ class NameField(_StringLikeField[T]):
             *,
             multivalued: Literal[True],
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -639,6 +707,7 @@ class IntegerField(Field[T, NumericExpr]):
             *,
             multivalued: Literal[False] = ...,
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -649,6 +718,7 @@ class IntegerField(Field[T, NumericExpr]):
             *,
             multivalued: Literal[True],
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -696,6 +766,7 @@ class FloatField(Field[T, NumericExpr]):
             *,
             multivalued: Literal[False] = ...,
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -706,6 +777,7 @@ class FloatField(Field[T, NumericExpr]):
             *,
             multivalued: Literal[True],
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -736,6 +808,7 @@ class BooleanField(Field[T, FieldExpr]):
             *,
             multivalued: Literal[False] = ...,
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -746,6 +819,7 @@ class BooleanField(Field[T, FieldExpr]):
             *,
             multivalued: Literal[True],
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -788,6 +862,7 @@ class DateTimeField(Field[T, NumericExpr]):
             *,
             multivalued: Literal[False] = ...,
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -798,6 +873,7 @@ class DateTimeField(Field[T, NumericExpr]):
             *,
             multivalued: Literal[True],
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -840,6 +916,7 @@ class DateField(Field[T, NumericExpr]):
             *,
             multivalued: Literal[False] = ...,
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 
@@ -850,6 +927,7 @@ class DateField(Field[T, NumericExpr]):
             *,
             multivalued: Literal[True],
             stored: bool = ...,
+            indexed: bool = ...,
             solr_name: str | None = ...,
         ) -> None: ...
 

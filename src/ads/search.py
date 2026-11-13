@@ -13,10 +13,13 @@ which endpoint to use. It is pure (no I/O) and runs these passes in order:
 3. Library membership: left to ADS as ``docs(library/<id>)``, or (with
    ``config.library_membership = "bibcodes"``) replaced by the library's bibcodes.
 4. Simplify; a filter that can never match needs no request at all.
-5. Move large bibcode sets out of the query string: a top-level positive set is
+5. The default collection (``config.collection``): an open search is limited
+   to it by a final top-level ``database:`` condition, unless the filter names
+   the collection itself or names specific documents (see :func:`_collection_scope`).
+6. Move large bibcode sets out of the query string: a top-level positive set is
    sent to ``/search/bigquery`` and a top-level negated set is excluded while
    streaming.
-6. Compile, adding a final sort key so that pages are stable.
+7. Compile, adding a final sort key so that pages are stable.
 
 :class:`SearchBackend` executes plans in the sans-IO protocol of :mod:`ads.query`.
 """
@@ -45,6 +48,7 @@ from .expr import (
     Or,
     Order,
     Range,
+    Raw,
     Related,
     simplify,
     transform,
@@ -78,8 +82,18 @@ BIGQUERY_PATH = "/search/bigquery"
 
 _STRATEGIES = ("docs", "bibcodes")
 
-#: Field names that identify a document; sorting by either needs no tiebreaker.
-_IDENTIFYING = frozenset({"id", "bibcode"})
+#: Fields besides the identifiers (``Document._identifiers``) whose values name
+#: specific documents: a top-level condition on one exempts a search from the
+#: default collection.
+_ALSO_NAMING = ("identifier", "doi", "alternate_bibcode")
+
+#: Fields through which a filter names the collection itself, and how raw Solr text does.
+_COLLECTION_FIELDS = ("database", "collection")
+_COLLECTION_TEXT = ("database:", "collection:")
+
+#: Fields whose values are unique, so that sorting by one needs no tiebreaker.
+#: (``scix_id`` is left out until it is known to be sortable on the server.)
+_UNIQUE = frozenset({"id", "bibcode"})
 
 
 @dataclass(frozen=True)
@@ -344,7 +358,7 @@ def _library_ids(resolved: _Resolved) -> list[str]:
 
 
 def _finish(query: Query[Any], resolved: _Resolved, library_bibcodes: Mapping[str, Sequence[str]]) -> SearchPlan:
-    """Passes 3 to 7: libraries, simplification, large bibcode sets, compilation, fields."""
+    """Passes 3 to 7: libraries, simplification, collection, large bibcode sets, compilation, fields."""
     model = query.model
     bibcode_field = model._fields["bibcode"]
     notes = list(resolved.notes)
@@ -380,6 +394,9 @@ def _finish(query: Query[Any], resolved: _Resolved, library_bibcodes: Mapping[st
     if expr == NOTHING:
         notes.append("the filter can never match, so no request is made")
         return SearchPlan(solr.compile(NOTHING), fl, sort, empty=True, notes=tuple(notes))
+    scope, scope_note = _collection_scope(expr, model)
+    if scope_note is not None:
+        notes.append(scope_note)
 
     limit = _config.config.max_inline_bibcodes
     conjuncts = expr.operands if isinstance(expr, And) else (expr,)
@@ -427,6 +444,8 @@ def _finish(query: Query[Any], resolved: _Resolved, library_bibcodes: Mapping[st
         )
 
     remaining = rest[0] if len(rest) == 1 else And(tuple(rest)) if rest else EVERYTHING
+    if scope is not None:
+        remaining = simplify(And((remaining, scope)))
     return SearchPlan(
         q=solr.compile(remaining),
         fl=fl,
@@ -435,6 +454,42 @@ def _finish(query: Query[Any], resolved: _Resolved, library_bibcodes: Mapping[st
         exclude_bibcodes=exclude,
         notes=tuple(notes),
     )
+
+
+def _collection_scope(expr: Expr, model: type[Model]) -> tuple[Expr | None, str | None]:
+    """Pass 5: the condition limiting ``expr`` to the default collection, and a note.
+
+    ``(None, None)`` when no collection is configured. ``(None, note)`` when
+    the search is exempt: it names the collection itself (a condition on
+    ``database`` or ``collection`` anywhere, or raw Solr text containing
+    ``database:`` or ``collection:``), or it names specific documents (a
+    top-level ``&`` condition that is a positive ``==``/``in_`` on an
+    identifying field, or a library). ``expr`` is the simplified filter.
+    """
+    names = _config.config.resolve_collections()
+    database = model._fields.get("database")
+    if not names or database is None:
+        return None, None
+    setting = names[0] if len(names) == 1 else list(names)
+    skipped = f"collection {setting!r} (ads.config.collection) not applied"
+    for node in walk(expr):
+        if isinstance(node, (Match, In, Like, Range)) and _is_field(model, node.field, _COLLECTION_FIELDS):
+            return None, f"{skipped}: the filter names a collection itself ({node.field.name})"
+        if isinstance(node, Raw) and any(text in node.query.lower() for text in _COLLECTION_TEXT):
+            return None, f"{skipped}: the raw query names a collection itself"
+    naming = (*_identifiers(model), *_ALSO_NAMING)
+    for conjunct in expr.operands if isinstance(expr, And) else (expr,):
+        if isinstance(conjunct, InLibrary):
+            return None, f"{skipped}: the filter asks for the documents of library {conjunct.library_id}"
+        if isinstance(conjunct, (Match, In)) and _is_field(model, conjunct.field, naming):
+            return None, f"{skipped}: the filter names specific documents by {conjunct.field.name}"
+    scope = Match(database, names[0]) if len(names) == 1 else In(database, names)
+    return scope, f"limited to collection {setting!r} (ads.config.collection): {solr.compile(scope)} is added"
+
+
+def _is_field(model: type[Model], field: Field[Any, Any], names: Sequence[str]) -> bool:
+    """Whether ``field`` is the field of ``model`` with one of ``names``."""
+    return any(model._fields.get(name) is field for name in names)
 
 
 def _large_set(expr: Expr, bibcode_field: Field[Any, Any], limit: int) -> In | None:
@@ -472,7 +527,7 @@ def _field_list(query: Query[Any]) -> tuple[tuple[str, ...], str]:
                 raise QueryError(
                     f"{model.__name__}.{field.name} is search-only: ADS can search it but not return it"
                 )
-        wanted = {field.name for field in query.fields} | _IDENTIFYING
+        wanted = {field.name for field in query.fields} | set(_identifiers(model))
         note = f"fetching {len(wanted)} selected field(s); others load on first access"
     else:
         wanted = {name for name, field in model._fields.items() if field.stored and name not in deferred}
@@ -484,14 +539,26 @@ def _field_list(query: Query[Any]) -> tuple[tuple[str, ...], str]:
     return fl, note
 
 
+def _identifiers(model: type[Model]) -> tuple[str, ...]:
+    """The fields that identify a document, always fetched (``Document._identifiers``, else the model's key)."""
+    identifiers: tuple[str, ...] | None = getattr(model, "_identifiers", None)
+    return (model._key,) if identifiers is None else identifiers
+
+
 def _sort(query: Query[Any]) -> tuple[str, str]:
     """Pass 6: the ``sort`` parameter, always ending in a unique key so paging is stable."""
     model = query.model
     for order in query.order:
         field = order.field
-        if isinstance(field, VirtualField) or field.multivalued:
-            kind = "search-only" if isinstance(field, VirtualField) else "multivalued"
-            raise QueryError(f"Cannot sort by {model.__name__}.{field.name}: it is {kind}")
+        if isinstance(field, VirtualField):
+            kind = "search-only"
+        elif field.multivalued:
+            kind = "multivalued"
+        elif not field.indexed:
+            kind = "not indexed: it can be returned but not searched or sorted by"
+        else:
+            continue
+        raise QueryError(f"Cannot sort by {model.__name__}.{field.name}: it is {kind}")
     tiebreaker = solr.compile_order((Order(model._fields["id"]),))
     given = solr.compile_order(query.order)
     if given is None:
@@ -499,7 +566,7 @@ def _sort(query: Query[Any]) -> tuple[str, str]:
             f"score desc,{tiebreaker}",
             f"no order given: sorted by relevance (score desc), then {tiebreaker} so pages are stable",
         )
-    if any(order.field.name in _IDENTIFYING for order in query.order):
+    if any(order.field.name in _UNIQUE for order in query.order):
         return given, f"sorted by {given}"
     return f"{given},{tiebreaker}", f"sorted by {given}, then {tiebreaker} so pages are stable"
 
