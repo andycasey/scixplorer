@@ -43,7 +43,7 @@ scix.Affiliation.lookup("A01400")
 
 `country` holds the name as the upstream data writes it, for example `"United States"` or
 `"United Kingdom"`, and those spellings can change between releases of the data. A condition such as
-`country == "USA"` simply matches nothing. Filter on `country_code` for a condition that stays stable:
+`country == "USA"` matches nothing. Filter on `country_code` for a condition that stays stable:
 
 ```python
 scix.Affiliation.select().where(scix.Affiliation.country == "USA").count()
