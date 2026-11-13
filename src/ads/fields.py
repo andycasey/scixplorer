@@ -74,6 +74,7 @@ __all__ = [
     "TextExpr",
     "TextField",
     "VirtualField",
+    "noun",
     "parse_positions",
 ]
 
@@ -320,23 +321,49 @@ def _model_name(field: Field[Any, Any]) -> str:
     return model.__name__ if model is not None else "?"
 
 
+def noun(model: type) -> str:
+    """A model's name as words for messages: ``"planetary feature"``, ``"UAT concept"``, ``"author"``."""
+    words = re.findall(r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z0-9]+|[A-Z]+", model.__name__)
+    return " ".join(word if word.isupper() else word.lower() for word in words)
+
+
 def _quantifier_hint(field: Field[Any, Any] | None, name: str, via: Relation[Any] | None = None) -> str:
-    """Why a field (or relation) handle has no ``.any()``/``.all()``, and what to write instead.
+    """Why a handle has no ``.any()``/``.all()`` (a relation handle: no ``.all()``), and what to write instead.
 
     ``via`` is the relation the handle goes through, if any; ``field`` is
     ``None`` for a relation handle itself.
     """
     if via is not None:
         owner: Any = via.owner
-        label = f"{owner.__name__}.{via.name}" + ("" if field is None else f".{field.name}")
-        key = owner._fields.get(via.key)
-        multivalued = key is None or key.multivalued
+        relation = f"{owner.__name__}.{via.name}"
+        related = via.related_model
+        words = noun(related)
         name_on_owner = via.key
+        if field is None:
+            message = (
+                f'{relation} has no .{name}(): a condition on "every related {words}" cannot be searched. '
+                f"Use {relation}.any(...) for conditions on one {words}: everything inside it is "
+                f"about the same {words}, e.g. {relation}.any(({related.__name__}.<field> == x) & "
+                f"({related.__name__}.<field> == y))."
+            )
+        else:
+            label = f"{relation}.{field.name}"
+            message = (
+                f"{label} has no .{name}(): a comparison through a relation already means "
+                f'"any related {words}" ({label} == x matches when any of them does). '
+                f"To say several things about the same {words}, use {relation}.any(...) with "
+                f"conditions on {related.__name__} fields."
+            )
     elif field is not None:
         owner = getattr(field, "model", None)
         label = field._label()
-        multivalued = field.multivalued
         name_on_owner = field.name
+        message = (
+            f"{label} has no .{name}(): a comparison on a multivalued field already means "
+            f'"any value" ({label} == x matches when any of its values does).'
+            if field.multivalued
+            else f"{label} has no .{name}(): it holds a single value, so compare it directly."
+        )
     else:
         return f"no attribute {name!r}"
     collections = [
@@ -345,13 +372,11 @@ def _quantifier_hint(field: Field[Any, Any] | None, name: str, via: Relation[Any
         if name_on_owner in collection.owner_fields()
         or any(source.search == name_on_owner for source in collection.sources.values())
     ]
-    if multivalued or collections:
+    if collections and field is not None and via is None and not field.multivalued:
         message = (
-            f"{label} has no .{name}(): a comparison on a multivalued field already means "
+            f"{label} has no .{name}(): a comparison on it already means "
             f'"any value" ({label} == x matches when any of its values does).'
         )
-    else:
-        message = f"{label} has no .{name}(): it holds a single value, so compare it directly."
     for collection in collections:
         record = collection.record_model.__name__
         message += (

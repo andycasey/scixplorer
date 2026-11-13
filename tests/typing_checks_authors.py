@@ -58,6 +58,8 @@ def expressions() -> None:
     assert_type(Document.authors[0].any(Author.name == "x"), Expr)
     assert_type(Document.authors[0:3].any((Author.name == "x") & (Author.aff == "y")), Expr)
     assert_type(Document.authors.any(Author.name == "x") & (Document.year == 2020), Expr)
+    assert_type(Author.affiliation.any(Affiliation.country == "Chile"), Expr)
+    assert_type(Document.authors[0].affiliation.any(Affiliation.country == "Chile"), Expr)
 
 
 def must_not_type_check(doc: Document) -> None:

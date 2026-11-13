@@ -8,12 +8,22 @@ from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, NoReturn, Typ
 
 from . import exceptions
 from .expr import BOOL_ERROR, And, Constant, Expr, Func, In, InLibrary, Like, Match, Not, Or, Quantified, Range, Raw, Related
-from .fields import Field, FieldExpr, FieldInfo, Scope, _quantifier_hint, parse_positions
+from .fields import Field, FieldExpr, FieldInfo, Scope, _quantifier_hint, noun, parse_positions
 
 if TYPE_CHECKING:
     from .query import Backend, Query
 
-__all__ = ["Collection", "CollectionExpr", "Model", "ModelMeta", "RecordExpr", "Relation", "RelationExpr", "Source"]
+__all__ = [
+    "Collection",
+    "CollectionExpr",
+    "Model",
+    "ModelMeta",
+    "RecordExpr",
+    "Relation",
+    "RelationExpr",
+    "Source",
+    "check_predicate",
+]
 
 M = TypeVar("M", bound="Model")
 R = TypeVar("R")
@@ -106,7 +116,9 @@ class RelationExpr:
     """A handle on a relation, used to build expressions over related objects.
 
     ``Document.journal.title`` is a handle on the related model's field, and
-    ``Document.journal == journal`` matches by the related object's key.
+    ``Document.journal == journal`` matches by the related object's key. Each
+    such condition is about any related object; :meth:`any` combines several
+    conditions about the same one.
     """
 
     __slots__ = ("_relation", "_scope")
@@ -135,6 +147,29 @@ class RelationExpr:
 
     def __dir__(self) -> Iterable[str]:
         return sorted({*object.__dir__(self), *self._relation.related_model._fields})
+
+    def any(self, predicate: Expr) -> Expr:
+        """Rows with at least one related object satisfying ``predicate``, a condition on the related model's fields.
+
+        Everything inside is about the same related object, so ::
+
+            Document.planetary_feature.any(
+                (PlanetaryFeature.target == "Mars") & (PlanetaryFeature.feature_type == "Crater")
+            )
+
+        finds documents mentioning a Mars crater, whereas
+        ``(Document.planetary_feature.target == "Mars") & (Document.planetary_feature.feature_type == "Crater")``
+        finds those mentioning some Mars feature and some crater (perhaps elsewhere).
+        A condition on "every related object" cannot be searched, so there is no ``all``.
+        """
+        call = f"{self._label()}.any"
+        check_predicate(predicate, self._relation.related_model, owner=self._relation.owner, call=call)
+        node: Expr = Related(self._relation, predicate)
+        return node if self._scope is None else self._scope._enclose(node)
+
+    def _label(self) -> str:
+        owner = self._relation.owner.__name__ if self._scope is None else self._scope._label()
+        return f"{owner}.{self._relation.name}"
 
     def _key_handle(self) -> FieldExpr:
         field = self._relation.related_field
@@ -181,8 +216,79 @@ class RelationExpr:
         raise TypeError(f"{self!r} is not iterable; use .in_(objects) to match several objects")
 
     def __repr__(self) -> str:
-        owner = self._relation.owner.__name__ if self._scope is None else self._scope._label()
-        return f"<{owner}.{self._relation.name}>"
+        return f"<{self._label()}>"
+
+
+def check_predicate(predicate: Any, model: type[Model], *, owner: type | None, call: str, positions: str = "") -> Expr:
+    """``predicate``, checked to be a condition on one ``model`` object, for ``call`` (``"Document.authors.any"``).
+
+    Its leaves must be on ``model``'s fields, or go through ``model``'s
+    relations. Raises ``TypeError`` for something other than an expression
+    (with the and/or/not hint for a ``bool``) and
+    :class:`~ads.exceptions.QueryError` for a condition on another model's
+    field, or an operator, ``pos()``, raw query or library condition.
+    ``owner`` is the model whose rows the call selects, named in the message
+    about its fields; ``positions`` is advice on choosing positions, if any.
+    """
+    name = model.__name__
+    if isinstance(predicate, bool):
+        raise TypeError(
+            f"{call}(...) got the bool {predicate!r} instead of an expression. This usually means "
+            f"and/or/not, `is` or a comparison between plain values was used: combine expressions "
+            f"with & | ~ and wrap each comparison in parentheses, e.g. "
+            f"{call}(({name}.<field> == x) & ({name}.<field> == y))."
+        )
+    if not isinstance(predicate, Expr):
+        raise TypeError(f"{call}(...) needs an expression over {name} fields, not {predicate!r}")
+    _check_node(predicate, model, owner, f"{call}(...)", positions)
+    return predicate
+
+
+def _check_node(node: Expr, model: type[Model], owner: type | None, call: str, positions: str) -> None:
+    if isinstance(node, (And, Or)):
+        for operand in node.operands:
+            _check_node(operand, model, owner, call, positions)
+    elif isinstance(node, Not):
+        _check_node(node.operand, model, owner, call, positions)
+    elif isinstance(node, Related):
+        if model._relations.get(node.relation.name) is not node.relation:
+            raise exceptions.QueryError(
+                f"{call}: {node.relation!r} is not a relation of {model.__name__}; inside it, "
+                f"use {model.__name__}'s fields and relations ({', '.join([*model._fields, *model._relations])})"
+            )
+    elif isinstance(node, (Match, In, Like, Range)):
+        if model._fields.get(node.field.name) is not node.field:
+            raise exceptions.QueryError(_foreign(node.field, model, owner, call))
+    elif isinstance(node, Func) and node.name == "pos":
+        raise exceptions.QueryError(
+            f"{call} cannot restrict positions within one {noun(model)}'s values" + (f"; {positions}" if positions else "")
+        )
+    elif not isinstance(node, Constant):
+        kind = {Func: "an operator", Raw: "raw Solr text", InLibrary: "a library condition"}
+        raise exceptions.QueryError(
+            f"{call} cannot contain {kind.get(type(node), 'a nested .any()/.all()')} ({node!r}): "
+            f"everything inside it is a condition on one {noun(model)}, built from "
+            f"{model.__name__} fields and relations."
+        )
+
+
+def _foreign(field: Field[Any, Any], model: type[Model], owner: type | None, call: str) -> str:
+    """Why a leaf on ``field`` (not a field of ``model``) cannot be in ``call``."""
+    other = getattr(field, "model", None)
+    name = f"{other.__name__ if other else '?'}.{field.name}"
+    if other is not None and owner is not None and issubclass(owner, other):
+        return (
+            f"{name} is a field of {other.__name__}, not of {model.__name__}: everything inside "
+            f"{call} is about one {noun(model)}. Put conditions on the "
+            f"{noun(other)} outside it, e.g. {call} & ({name} == ...)"
+        )
+    through = [rel for rel in model._relations.values() if rel.related_model is other]
+    if through:
+        return (
+            f"{name} is not a field of {model.__name__}; reach it through the relation "
+            f"{model.__name__}.{through[0].name}, e.g. {model.__name__}.{through[0].name}.{field.name} == ..."
+        )
+    return f"{name} is not a field of {model.__name__}; inside {call} use: {', '.join(model._fields)}"
 
 
 @dataclass(frozen=True)
@@ -372,67 +478,14 @@ class Collection(Generic[M, H]):
         through a relation of the record model), or an operator, raw query or
         library condition.
         """
-        call = f"{self.label(positions)}.{quantifier}(...)"
-        record = self.record_model.__name__
-        if isinstance(predicate, bool):
-            raise TypeError(
-                f"{call} got the bool {predicate!r} instead of an expression. This usually means "
-                f"and/or/not, `is` or a comparison between plain values was used: combine expressions "
-                f"with & | ~ and wrap each comparison in parentheses, e.g. "
-                f"{self.label(positions)}.{quantifier}(({record}.<field> == x) & ({record}.<field> == y))."
-            )
-        if not isinstance(predicate, Expr):
-            raise TypeError(f"{call} needs an expression over {record} fields, not {predicate!r}")
-        self._check(predicate, call)
+        record = noun(self.record_model)
+        advice = (
+            f"choose {record}s by position by indexing the collection: "
+            f"{self.label()}[0].any(...), {self.label()}[0:3].any(...)"
+        )
+        call = f"{self.label(positions)}.{quantifier}"
+        check_predicate(predicate, self.record_model, owner=self.owner, call=call, positions=advice)
         return Quantified(self, predicate, quantifier, positions)
-
-    def _check(self, node: Expr, call: str) -> None:
-        model = self.record_model
-        if isinstance(node, (And, Or)):
-            for operand in node.operands:
-                self._check(operand, call)
-        elif isinstance(node, Not):
-            self._check(node.operand, call)
-        elif isinstance(node, Related):
-            if model._relations.get(node.relation.name) is not node.relation:
-                raise exceptions.QueryError(
-                    f"{call}: {node.relation!r} is not a relation of {model.__name__}; inside it, "
-                    f"use {model.__name__}'s fields and relations ({', '.join([*model._fields, *model._relations])})"
-                )
-        elif isinstance(node, (Match, In, Like, Range)):
-            if model._fields.get(node.field.name) is not node.field:
-                raise exceptions.QueryError(self._foreign(node.field, call))
-        elif isinstance(node, Func) and node.name == "pos":
-            raise exceptions.QueryError(
-                f"{call} cannot restrict positions within one {model.__name__.lower()}'s values; "
-                f"choose {model.__name__.lower()}s by position by indexing the collection: "
-                f"{self.label()}[0].any(...), {self.label()}[0:3].any(...)"
-            )
-        elif not isinstance(node, Constant):
-            kind = {Func: "an operator", Raw: "raw Solr text", InLibrary: "a library condition"}
-            raise exceptions.QueryError(
-                f"{call} cannot contain {kind.get(type(node), 'a nested .any()/.all()')} ({node!r}): "
-                f"everything inside it is a condition on one {model.__name__.lower()}, built from "
-                f"{model.__name__} fields and relations."
-            )
-
-    def _foreign(self, field: Field[Any, Any], call: str) -> str:
-        """Why a leaf on ``field`` (not a field of the record model) cannot be in ``call``."""
-        model, other = self.record_model, getattr(field, "model", None)
-        name = f"{other.__name__ if other else '?'}.{field.name}"
-        if other is not None and issubclass(self.owner, other):
-            return (
-                f"{name} is a field of {other.__name__}, not of {model.__name__}: everything inside "
-                f"{call} is about one {model.__name__.lower()}. Put conditions on the "
-                f"{other.__name__.lower()} outside it, e.g. {call} & ({name} == ...)"
-            )
-        through = [rel for rel in model._relations.values() if rel.related_model is other]
-        if through:
-            return (
-                f"{name} is not a field of {model.__name__}; reach it through the relation "
-                f"{model.__name__}.{through[0].name}, e.g. {model.__name__}.{through[0].name}.{field.name} == ..."
-            )
-        return f"{name} is not a field of {model.__name__}; inside {call} use: {', '.join(model._fields)}"
 
     def __repr__(self) -> str:
         return f"<Collection {self.label()}>"
