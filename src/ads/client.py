@@ -46,7 +46,7 @@ _MAX_DETAIL = 500
 _ASSUMED_RATE_LIMIT_WAIT = timedelta(seconds=60)
 
 _MISSING_TOKEN_MESSAGE = (
-    "No ADS API token found. Get one at https://ui.adsabs.harvard.edu/user/settings/token "
+    "No API token found. Get one at https://scixplorer.org/user/settings/token "
     "and then either set ads.config.token = '...', pass token= to Client(), set the "
     f"{' or '.join(TOKEN_ENV_VARS)} environment variable, or save it as the first line "
     f"of {' or '.join('~/' + f for f in TOKEN_FILES)}."

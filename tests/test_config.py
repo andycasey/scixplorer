@@ -24,7 +24,7 @@ def write_token(home: Path, name: str, text: str) -> None:
 def test_defaults():
     c = Config()
     assert c.token is None
-    assert c.api_url == "https://api.adsabs.harvard.edu/v1"
+    assert c.api_url == "https://api.scixplorer.org/v1"
     assert c.timeout == 30.0
     assert c.max_retries == 3
     assert c.retry_backoff == 1.0

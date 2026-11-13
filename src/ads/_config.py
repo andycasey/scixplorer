@@ -29,7 +29,7 @@ class Config:
     """
 
     token: str | Iterable[str] | None = field(default=None, repr=False)
-    api_url: str = "https://api.adsabs.harvard.edu/v1"
+    api_url: str = "https://api.scixplorer.org/v1"
     timeout: float = 30.0
     max_retries: int = 3
     retry_backoff: float = 1.0
