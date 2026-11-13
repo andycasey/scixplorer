@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import ast
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import scixplorer
 
@@ -49,6 +51,21 @@ def test_vocabulary_models_and_data_are_exported():
     for name in ("refresh", "status", "clear", "cache_dir", "notices", "DATASETS"):
         assert hasattr(scixplorer.data, name), name
     assert scixplorer.data.DATASETS["uat"].packaged is False
+
+
+def test_author_is_exported():
+    from scixplorer.models.author import Author
+
+    assert scixplorer.Author is Author and scixplorer.models.Author is Author
+    assert "Author" in scixplorer.__all__ and "Author" in scixplorer.models.__all__
+    assert scixplorer.search.to_solr(scixplorer.Document.authors.any(scixplorer.Author.name == "Casey, A")) == 'author:"Casey, A"'
+
+
+def test_version_is_defined_before_any_import():
+    tree = ast.parse(Path(scixplorer.__file__).read_text("utf-8"))
+    statements = [node for node in tree.body if not (isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant))]
+    first = statements[0]
+    assert isinstance(first, ast.Assign) and [t.id for t in first.targets if isinstance(t, ast.Name)] == ["__version__"]
 
 
 def test_import_reads_no_data_files_and_opens_no_sockets(tmp_path):

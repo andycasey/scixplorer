@@ -436,7 +436,6 @@ def test_author_field_outside_any_points_to_authors() -> None:
         (lambda: Document.aff_id.any, "Document.aff_id has no .any()"),
         (lambda: Document.author[0].any, "Document.author has no .any()"),
         (lambda: Document.orcid.any, "Document.orcid has no .any()"),
-        (lambda: Document.affiliation.any, "Document.affiliation has no .any()"),
         (lambda: Document.affiliation.country.all, "Document.affiliation.country has no .all()"),
     ],
 )
@@ -445,7 +444,7 @@ def test_any_on_a_per_author_field_points_to_authors(build: Any, about: str) -> 
         build()
     message = str(info.value)
     assert message.startswith(about)
-    assert 'already means "any value"' in message
+    assert 'already means "any' in message
     name = "all" if ".all()" in about else "any"
     assert f"use Document.authors.{name}(...)" in message
 

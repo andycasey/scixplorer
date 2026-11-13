@@ -26,7 +26,7 @@ import pytest
 from scixplorer.client import Client, RateLimit, service_for
 from scixplorer.models.library import Library
 
-#: Requests after which no more are sent and the session stops (the suite is designed to need fewer than 120).
+#: Requests after which no more are sent and the session stops (the suite is designed to need fewer than 130).
 HARD_LIMIT = 150
 
 #: What a secret is replaced with in any text the suite shows.
@@ -171,7 +171,7 @@ class LiveTransport(httpx.BaseTransport):
             if self.total >= self.limit:
                 raise BudgetExhausted(
                     f"live tests stopped: {self.total} requests already sent, and the hard limit is "
-                    f"{self.limit} (the suite is designed to need fewer than 120). Not sent: "
+                    f"{self.limit} (the suite is designed to need fewer than 130). Not sent: "
                     f"{request.method} {service}."
                 )
         self.counts[service] += 1

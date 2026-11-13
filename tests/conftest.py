@@ -1,13 +1,21 @@
-"""Command-line options and markers for the opt-in live tests (``tests/live``), and a network guard.
+"""Command-line options and markers for the opt-in live tests (``tests/live``), a network guard, and an empty data cache.
 
 Without ``--live`` every live test is skipped, and the whole run is guarded:
 any attempt to resolve a host name or connect a network socket raises
 :class:`NetworkBlocked`, so a test that reaches for the network fails.
+
+Every run (with or without ``--live``) reads reference data from an empty
+temporary cache directory (``SCIX_CACHE_DIR``), so data a developer has
+refreshed locally cannot change the results; see :func:`isolated_cache`.
 """
 
 from __future__ import annotations
 
+import os
+import shutil
 import socket
+import tempfile
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -15,8 +23,11 @@ import pytest
 
 LIVE_DIR = Path(__file__).parent / "live"
 
+CACHE_ENV = "SCIX_CACHE_DIR"
+
 _INET = (socket.AF_INET, socket.AF_INET6)
 _originals: dict[str, Any] = {}
+_cache: dict[str, Any] = {}
 
 
 class NetworkBlocked(RuntimeError):
@@ -51,10 +62,47 @@ def pytest_configure(config: pytest.Config) -> None:
         raise pytest.UsageError("--live-write only works together with --live")
     if not config.getoption("live"):
         _block_network()
+    _isolate_cache()
 
 
 def pytest_unconfigure(config: pytest.Config) -> None:
     _restore_network()
+    _restore_cache()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def isolated_cache() -> Iterator[Path]:
+    """The empty data cache of the whole run: ``SCIX_CACHE_DIR`` points at it unless a test sets its own.
+
+    A test that sets ``SCIX_CACHE_DIR`` with ``monkeypatch.setenv`` gets it for
+    that test only, and this directory back afterwards. The variable is first
+    set in ``pytest_configure``, before test modules are imported, because some
+    of them read reference data (affiliation ids) at import time.
+    """
+    directory = _cache["directory"]
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv(CACHE_ENV, str(directory))
+        yield directory
+
+
+def _isolate_cache() -> None:
+    """Point ``SCIX_CACHE_DIR`` at a new empty directory for this run."""
+    if _cache:
+        return
+    _cache["previous"] = os.environ.get(CACHE_ENV)
+    _cache["directory"] = Path(tempfile.mkdtemp(prefix="scix-test-cache-"))
+    os.environ[CACHE_ENV] = str(_cache["directory"])
+
+
+def _restore_cache() -> None:
+    if not _cache:
+        return
+    previous = _cache.pop("previous")
+    if previous is None:
+        os.environ.pop(CACHE_ENV, None)
+    else:
+        os.environ[CACHE_ENV] = previous
+    shutil.rmtree(_cache.pop("directory"), ignore_errors=True)
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
