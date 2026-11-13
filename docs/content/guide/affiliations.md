@@ -103,15 +103,28 @@ scix.search.to_solr(scix.Document.inst == "CfA")
 # -> inst:"CfA"
 ```
 
-To say several things about the same affiliation, use `.any()`. Two separate conditions could be met by
-two different affiliations:
+### Several conditions on one affiliation
+
+Each condition through `scix.Document.affiliation` is resolved on its own, so two conditions can be met by
+two different affiliations. To find papers from a physics department in Australia, put both conditions in
+one `.any(...)`:
 
 ```python
-heidelberg = scix.Document.affiliation.any(
-    (scix.Affiliation.country_code == "DE") & scix.Affiliation.canonical_name.contains("Astronomy, Heidelberg")
+one = scix.Document.affiliation.any(
+    (scix.Affiliation.country_code == "AU") & (scix.Affiliation.abbreviation == "Dep Phy")
 )
-scix.search.to_solr(heidelberg)
-# -> aff_id:"A01570"
+scix.search.to_solr(one)
+# -> aff_id:("A11677" OR "A00307" OR "A11671" OR "A00733")
+```
+
+The same conditions written separately mean "some affiliation is in Australia, and some affiliation is a
+physics department anywhere". They match a paper with an Australian astronomer and a co-author in a German
+physics department, and send two long lists instead of four identifiers:
+
+```python
+separate = (scix.Document.affiliation.country_code == "AU") & (scix.Document.affiliation.abbreviation == "Dep Phy")
+scix.search.to_solr(separate).count(" OR ") + 2
+# -> 324
 ```
 
 `scix.Document.affiliation` matches if *any* author has a matching affiliation. To tie an affiliation to

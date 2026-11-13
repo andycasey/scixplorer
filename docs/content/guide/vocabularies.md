@@ -153,45 +153,49 @@ Each condition through a relation is resolved on its own. Two conditions therefo
 meets the first, and some feature meets the second", and those can be different features. `.any(...)`
 makes everything inside it about one feature.
 
-Compare a search for papers about the Martian crater Copernicus, written both ways:
+To find papers about the crater Copernicus on Mars (not the one on the Moon), put both conditions in one
+`.any()`:
 
 ```python
-separate = (scix.Document.planetary_feature.target == "Mars") & (
-    scix.Document.planetary_feature.name.exact("Copernicus")
-)
-scix.search.to_solr(separate)
-# -> planetary_feature_id:(16115 OR 1297 OR 2071 OR 14300 OR 4453 OR 6288) AND planetary_feature_id:(1297 OR 1296)
-one_feature = scix.Document.planetary_feature.any(
+martian_copernicus = scix.Document.planetary_feature.any(
     (scix.PlanetaryFeature.target == "Mars") & scix.PlanetaryFeature.name.exact("Copernicus")
 )
-scix.search.to_solr(one_feature)
+scix.search.to_solr(martian_copernicus)
 # -> planetary_feature_id:1297
 ```
 
-The first also matches a paper about Gale crater on Mars that mentions the lunar crater Copernicus. The
-second matches only papers about the Martian Copernicus. The identifier lists come from your copy of the
-gazetteer, so the first list is longer with the full data.
-
-`.any()` works on every relation: `scix.Document.uat`, `scix.Document.journal`,
-`scix.Document.affiliation`, and `scix.Author.affiliation` inside
-[`scix.Document.authors.any()`]({{< ref "guide/authors" >}}). There is no `.all()` on a relation: "every
-related feature" cannot be searched, and `.all` raises an `AttributeError` that says so.
+Written as two separate conditions, `(scix.Document.planetary_feature.target == "Mars") &
+(scix.Document.planetary_feature.name.exact("Copernicus"))`, it would also match a paper about Gale
+crater on Mars that mentions the lunar Copernicus. With the full gazetteer it is refused in any case: Mars
+alone has more than 1000 named features, more than one search request can carry (see
+[Limits]({{< ref "guide/vocabularies#limits" >}})). [Affiliations]({{< ref "guide/affiliations#several-conditions-on-one-affiliation" >}})
+shows the two forms side by side.
 
 ```python
 query = scix.Document.select(scix.Document.bibcode).where(
     scix.Document.planetary_feature.any(
-        (scix.PlanetaryFeature.target == "Mars") & (scix.PlanetaryFeature.feature_type == "Crater")
+        (scix.PlanetaryFeature.target == "Mars") & scix.PlanetaryFeature.name.exact("Gale")
     )
 )
 [paper.bibcode for paper in query]
 # -> ['2010GeoRL..3704201M']
 ```
 
+`.any()` works on every relation: `scix.Document.uat`, `scix.Document.journal`,
+`scix.Document.affiliation`, and `scix.Author.affiliation` inside
+[`scix.Document.authors.any()`]({{< ref "guide/authors" >}}). There is no `.all()` on a relation: "every
+related feature" cannot be searched, and `.all` raises an `AttributeError` that says so.
+
 A condition directly on `scix.UATConcept` or `scix.PlanetaryFeature` fields can also be used in a document
 search, and is read as going through the relation.
 
-At most 1000 concepts or features may match one condition; see
-[Errors and limits]({{< ref "guide/errors-and-limits#related-values" >}}).
+## Limits
+
+At most 1000 concepts or features may match one condition, because their identifiers must fit in one
+search request; a larger match raises `UnsupportedQueryError`. The gazetteer is large: in the current
+export, Mars has 2064 named features, 1218 of them craters, so `target == "Mars"` on its own, or Martian
+craters as a whole, are refused. Narrow such a condition with a name, a feature type with fewer members, or
+an approval year. See [Errors and limits]({{< ref "guide/errors-and-limits#related-values" >}}).
 
 ## Licences
 
