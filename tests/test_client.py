@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -52,6 +53,7 @@ class Harness:
         self.replies: list[httpx.Response | Exception] = []
         self.requests: list[httpx.Request] = []
         self.delays: list[float] = []
+        self.clock = datetime.fromtimestamp(RESET - 3600, tz=timezone.utc)
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
@@ -63,7 +65,7 @@ class Harness:
     def client(
         self,
         *replies: httpx.Response | Exception,
-        token: str | None = TOKEN,
+        token: str | Iterable[str] | None = TOKEN,
         config: Config | None = None,
         **settings: Any,
     ) -> Client:
@@ -80,7 +82,12 @@ class Harness:
             async_transport=transport,
             sleep=self.delays.append,
             async_sleep=async_sleep,
+            now=lambda: self.clock,
         )
+
+    def add(self, *replies: httpx.Response | Exception) -> None:
+        """Queue more replies for a client created earlier."""
+        self.replies.extend(replies)
 
     def send(self, client: Client, request: Request = SEARCH) -> Response:
         if self.mode == "sync":
@@ -96,6 +103,11 @@ class Harness:
     @property
     def last(self) -> httpx.Request:
         return self.requests[-1]
+
+    @property
+    def auths(self) -> list[str]:
+        """The ``Authorization`` header of every request the server received."""
+        return [r.headers["Authorization"] for r in self.requests]
 
 
 @pytest.fixture(params=["sync", "async"])
@@ -584,6 +596,201 @@ def test_token_never_in_repr_or_messages(harness, outcome):
         harness.send(client)
     assert TOKEN not in str(info.value)
     assert TOKEN not in repr(info.value)
+
+
+# --- Several tokens ---------------------------------------------------------
+
+T1, T2, T3 = "s3cret-one", "s3cret-two", "s3cret-three"
+EXPORT = Request("GET", "/export/bibtex/2020ApJ...1A")
+
+
+def bearer(*tokens: str) -> list[str]:
+    return [f"Bearer {token}" for token in tokens]
+
+
+def limited(reset: int | None = RESET) -> httpx.Response:
+    """An HTTP 429, reporting ``reset`` unless it is ``None`` (then no rate-limit headers)."""
+    if reset is None:
+        return reply(429, {"error": "Too many requests"})
+    headers = {**RATE_HEADERS, "X-RateLimit-Remaining": "0", "X-RateLimit-Reset": str(reset)}
+    return reply(429, {"error": "Too many requests"}, headers=headers)
+
+
+def at(timestamp: float) -> datetime:
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc)
+
+
+def assert_no_token_text(client: Client, error: BaseException | None = None) -> None:
+    texts = [repr(client), repr(client.config)]
+    if error is not None:
+        texts += [str(error), repr(error), repr(getattr(error, "response", None))]
+    assert not any("s3cret" in text for text in texts)
+
+
+def test_token_iterable_stripped_deduplicated_blanks_dropped(harness):
+    client = harness.client(limited(), reply(), token=["", f" {T2} ", T2, "  ", T1])
+    harness.send(client)
+    assert harness.auths == bearer(T2, T1)
+
+
+def test_token_generator_consumed_once(harness):
+    client = harness.client(reply(), reply(), token=(t for t in [T1, T2]))
+    harness.send(client)
+    harness.send(client)
+    assert harness.auths == bearer(T1, T1)
+
+
+@pytest.mark.parametrize("token", [b"s3cret-bytes", [T1, b"s3cret-bytes"], [T1, 12345]])
+def test_bad_token_types_raise_type_error_before_sending(harness, token):
+    client = harness.client(reply(), token=token)
+    with pytest.raises(TypeError) as info:
+        harness.send(client)
+    assert harness.requests == []
+    assert "12345" not in str(info.value)
+    assert_no_token_text(client, info.value)
+
+
+def test_429_rotates_to_next_token_without_sleeping(harness):
+    second = {**RATE_HEADERS, "X-RateLimit-Remaining": "4999"}
+    client = harness.client(limited(), reply(200, {"ok": 1}, headers=second), token=[T1, T2])
+    response = harness.send(client)
+    assert response.data == {"ok": 1}
+    assert harness.auths == bearer(T1, T2)
+    assert harness.delays == []
+    assert client.rate_limits["search/query"].remaining == 4999
+
+
+def test_post_rotates_on_429(harness):
+    client = harness.client(limited(), reply(200, {"id": "abc"}), token=[T1, T2])
+    assert harness.send(client, Request("POST", "/biblib/libraries", json={})).data == {"id": "abc"}
+    assert harness.auths == bearer(T1, T2)
+
+
+def test_exhaustion_is_per_service(harness):
+    client = harness.client(limited(), reply(), reply(), reply(), token=[T1, T2])
+    harness.send(client)
+    harness.send(client, EXPORT)
+    harness.send(client)
+    assert harness.auths == bearer(T1, T2, T1, T2)
+
+
+def test_exhaustion_expires_at_reset(harness):
+    client = harness.client(limited(RESET), reply(), reply(), reply(), token=[T1, T2])
+    harness.send(client)
+    harness.clock = at(RESET - 1)
+    harness.send(client)
+    harness.clock = at(RESET)
+    harness.send(client)
+    assert harness.auths == bearer(T1, T2, T2, T1)
+
+
+def test_missing_reset_header_assumes_sixty_seconds(harness):
+    start = harness.clock
+    client = harness.client(limited(None), reply(), reply(), reply(), token=[T1, T2])
+    harness.send(client)
+    harness.clock = start + timedelta(seconds=59)
+    harness.send(client)
+    harness.clock = start + timedelta(seconds=60)
+    harness.send(client)
+    assert harness.auths == bearer(T1, T2, T2, T1)
+
+
+def test_all_tokens_exhausted(harness):
+    client = harness.client(limited(RESET + 100), limited(RESET + 50), token=[T1, T2])
+    with pytest.raises(RateLimitExceeded) as info:
+        harness.send(client)
+    error = info.value
+    assert error.status_code == 429
+    assert error.response is not None and error.response.status_code == 429
+    assert (error.limit, error.remaining, error.reset) == (5000, 0, at(RESET + 50))
+    assert harness.auths == bearer(T1, T2)
+    assert_no_token_text(client, error)
+
+    with pytest.raises(RateLimitExceeded) as info:
+        harness.send(client)
+    error = info.value
+    assert len(harness.requests) == 2
+    assert error.response is None
+    assert error.status_code == 429
+    assert (error.limit, error.remaining, error.reset) == (5000, 0, at(RESET + 50))
+    assert str(error).startswith("429 GET /search/query: ")
+    assert_no_token_text(client, error)
+
+    harness.clock = at(RESET + 50)
+    harness.add(reply())
+    harness.send(client)
+    assert harness.auths == bearer(T1, T2, T2)
+
+
+
+def test_429_with_past_reset_does_not_loop(harness):
+    """A reset already passed by the local clock (skew) must not cause endless re-sends."""
+    past = RESET - 7200
+    client = harness.client(limited(past), limited(past), token=[T1, T2])
+    with pytest.raises(RateLimitExceeded) as info:
+        harness.send(client)
+    assert harness.auths == bearer(T1, T2)
+    assert info.value.reset == at(past)
+
+def test_single_exhausted_token_not_sent_until_reset(harness):
+    client = harness.client(limited(RESET), token=T1)
+    with pytest.raises(RateLimitExceeded):
+        harness.send(client)
+    with pytest.raises(RateLimitExceeded) as info:
+        harness.send(client)
+    assert info.value.response is None
+    assert info.value.reset == at(RESET)
+    assert len(harness.requests) == 1
+    harness.clock = at(RESET)
+    harness.add(reply())
+    harness.send(client)
+    assert len(harness.requests) == 2
+
+
+def test_zero_remaining_rotates_proactively(harness):
+    last_call = {**RATE_HEADERS, "X-RateLimit-Remaining": "0"}
+    client = harness.client(reply(headers=last_call), reply(), token=[T1, T2])
+    harness.send(client)
+    harness.send(client)
+    assert harness.auths == bearer(T1, T2)
+
+
+def test_rotation_does_not_consume_retries(harness):
+    client = harness.client(
+        reply(503), limited(), reply(503), reply(200, {"ok": 1}), token=[T1, T2], max_retries=2
+    )
+    assert harness.send(client).data == {"ok": 1}
+    assert harness.auths == bearer(T1, T1, T2, T2)
+    assert harness.delays == [1.0, 2.0]
+
+
+def test_retries_still_bounded_after_rotation(harness):
+    client = harness.client(
+        reply(503), limited(), reply(503), reply(503), token=[T1, T2], max_retries=2
+    )
+    with pytest.raises(APIError) as info:
+        harness.send(client)
+    assert info.value.status_code == 503
+    assert len(harness.requests) == 4
+    assert harness.delays == [1.0, 2.0]
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_auth_error_not_rotated_past(harness, status):
+    client = harness.client(
+        limited(), reply(status, {"error": "Unauthorized"}), reply(), token=[T1, T2, T3]
+    )
+    with pytest.raises(AuthenticationError) as info:
+        harness.send(client)
+    assert harness.auths == bearer(T1, T2)
+    assert str(info.value) == f"{status} GET /search/query: Unauthorized (token 2 of 3)"
+    assert_no_token_text(client, info.value)
+
+
+def test_single_token_auth_error_has_no_position(harness):
+    with pytest.raises(AuthenticationError) as info:
+        harness.send(harness.client(reply(401, {"error": "Unauthorized"}), token=[T1]))
+    assert str(info.value) == "401 GET /search/query: Unauthorized"
 
 
 # --- Lifecycle --------------------------------------------------------------
