@@ -1,8 +1,14 @@
-"""Institutions known to ADS, from the packaged ``data/affiliations*.tsv`` files.
+"""Institutions known to SciX, from ``affiliations.tsv`` and ``affiliations_country.tsv``:
+the copies downloaded by :func:`ads.data.refresh` if there are any, else the
+packaged snapshot.
 
 ``affiliations.tsv`` has one row per (parent, child) pair, with parent ``0``
 meaning "no parent"; an affiliation listed under several parents is merged into
-one :class:`Affiliation`. Countries come from ``affiliations_country.tsv``.
+one :class:`Affiliation`. Countries come from ``affiliations_country.tsv``,
+whose columns are found by name: the packaged snapshot has ``Country,
+[Aff_id_parent], Aff_id_child, ...`` and the current upstream file has ``ISO
+Country, Country, Parent, Child, ...`` (with country names such as "United
+States" where the snapshot has "USA").
 """
 
 from __future__ import annotations
@@ -11,9 +17,9 @@ import csv
 import dataclasses
 import functools
 from collections.abc import Iterator
-from importlib import resources
 from typing import ClassVar
 
+from .. import data
 from ..expr import NOTHING
 from ..fields import StringField
 from ..model import Model
@@ -25,15 +31,46 @@ __all__ = ["Affiliation"]
 NO_PARENT = "0"
 
 
-def _read_tsv(name: str) -> Iterator[list[str]]:
-    """Yield the whitespace-stripped fields of each non-blank data row of a packaged TSV file."""
-    text = (resources.files("ads") / "data" / name).read_text(encoding="utf-8")
+#: Header of ``affiliations.tsv``.
+AFFILIATION_COLUMNS = ["Parent", "Child", "Abbrev", "Canonical Name"]
+
+#: Accepted headings of the country file's columns, by meaning.
+COUNTRY_COLUMNS = {
+    "country": ("Country",),
+    "parent": ("Parent", "[Aff_id_parent]"),
+    "child": ("Child", "Aff_id_child"),
+}
+
+
+def _read_tsv(text: str) -> tuple[list[str], Iterator[list[str]]]:
+    """The header of a TSV file and an iterator over its non-blank data rows (fields stripped)."""
     rows = csv.reader(text.splitlines(), delimiter="\t", quoting=csv.QUOTE_NONE)
-    next(rows, None)
+    header = [value.strip() for value in next(rows, [])]
+
+    def data_rows() -> Iterator[list[str]]:
+        for row in rows:
+            row = [value.strip() for value in row]
+            if any(row):
+                yield row
+
+    return header, data_rows()
+
+
+def _countries(text: str) -> dict[str, str]:
+    """Map ``"parent|child"`` to country from the country file, finding its columns by heading."""
+    header, rows = _read_tsv(text)
+    index = {}
+    for meaning, headings in COUNTRY_COLUMNS.items():
+        found = [header.index(heading) for heading in headings if heading in header]
+        if not found:
+            raise ValueError(f"affiliations_country.tsv has no {' or '.join(headings)} column: {header}")
+        index[meaning] = found[0]
+    width = max(index.values()) + 1
+    countries: dict[str, str] = {}
     for row in rows:
-        row = [value.strip() for value in row]
-        if any(row):
-            yield row
+        row += [""] * (width - len(row))
+        countries[f"{row[index['parent']]}|{row[index['child']]}"] = row[index["country"]]
+    return countries
 
 
 def _country(countries: dict[str, str], parent: str, child: str) -> str | None:
@@ -61,15 +98,15 @@ class _Merged:
     country: str | None = None
 
 
-@functools.lru_cache(maxsize=None)
-def _load() -> tuple[Affiliation, ...]:
-    """Read and merge every affiliation from the packaged data files (once)."""
-    countries: dict[str, str] = {}
-    for country, parent, child, *_ in _read_tsv("affiliations_country.tsv"):
-        countries[f"{parent}|{child}"] = country
+def _parse(read: data.Reader) -> tuple[Affiliation, ...]:
+    """Read and merge every affiliation from the two data files."""
+    countries = _countries(read("affiliations_country.tsv"))
 
+    header, rows = _read_tsv(read("affiliations.tsv"))
+    if header != AFFILIATION_COLUMNS:
+        raise ValueError(f"affiliations.tsv should have the columns {AFFILIATION_COLUMNS}, not {header}")
     merged: dict[str, _Merged] = {}
-    for parent, child, abbreviation, canonical_name in _read_tsv("affiliations.tsv"):
+    for parent, child, abbreviation, canonical_name in rows:
         entry = merged.setdefault(child, _Merged(abbreviation, canonical_name))
         if parent and parent != NO_PARENT and parent not in entry.parent_ids:
             entry.parent_ids.append(parent)
@@ -86,6 +123,18 @@ def _load() -> tuple[Affiliation, ...]:
         )
         for child, entry in merged.items()
     )
+
+
+@functools.lru_cache(maxsize=None)
+def _load() -> tuple[Affiliation, ...]:
+    """Every affiliation, read once (until :func:`_reset`)."""
+    return data.load("affiliations", _parse)
+
+
+def _reset() -> None:
+    """Forget the loaded affiliations, so the next query reads the data again."""
+    _load.cache_clear()
+    Affiliation._backend.clear()
 
 
 class Affiliation(Model):
@@ -155,3 +204,6 @@ class Affiliation(Model):
             return super().__repr__()
         name = f" ({self.abbreviation})" if self.abbreviation else ""
         return f"<Affiliation: id={self.id!r}{name}>"
+
+
+data.register("affiliations", _parse, _reset)

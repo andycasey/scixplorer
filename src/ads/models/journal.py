@@ -1,12 +1,13 @@
-"""Journals known to ADS, from the packaged ``data/journals.json``."""
+"""Journals known to SciX, from ``journals.json``: the copy downloaded by
+:func:`ads.data.refresh` if there is one, else the packaged snapshot."""
 
 from __future__ import annotations
 
 import functools
 import json
-from importlib import resources
 from typing import ClassVar
 
+from .. import data
 from ..fields import StringField
 from ..model import Model
 from ..query import MemoryBackend
@@ -14,11 +15,24 @@ from ..query import MemoryBackend
 __all__ = ["Journal"]
 
 
+def _parse(read: data.Reader) -> tuple[Journal, ...]:
+    """Build every journal from ``journals.json``, a JSON object ``{abbreviation: title}``."""
+    titles = json.loads(read("journals.json"))
+    if not isinstance(titles, dict) or not all(isinstance(title, str) for title in titles.values()):
+        raise ValueError("journals.json must be a JSON object mapping abbreviations to titles")
+    return tuple(Journal(abbreviation=abbreviation, title=title) for abbreviation, title in titles.items())
+
+
 @functools.lru_cache(maxsize=None)
 def _load() -> tuple[Journal, ...]:
-    """Read every journal from the packaged data file (once)."""
-    text = (resources.files("ads") / "data" / "journals.json").read_text(encoding="utf-8")
-    return tuple(Journal(abbreviation=abbreviation, title=title) for abbreviation, title in json.loads(text).items())
+    """Every journal, read once (until :func:`_reset`)."""
+    return data.load("journals", _parse)
+
+
+def _reset() -> None:
+    """Forget the loaded journals, so the next query reads the data again."""
+    _load.cache_clear()
+    Journal._backend.clear()
 
 
 class Journal(Model):
@@ -46,3 +60,6 @@ class Journal(Model):
 
     def __str__(self) -> str:
         return self.abbreviation if self.abbreviation is not None else repr(self)
+
+
+data.register("journals", _parse, _reset)
