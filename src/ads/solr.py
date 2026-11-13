@@ -32,7 +32,7 @@ from .expr import (
 )
 from .fields import DateTimeField, Field, IntegerField, StringField, TextField, VirtualField
 
-__all__ = ["compile", "compile_order"]
+__all__ = ["QUOTED_FIELD_TYPES", "compile", "compile_order", "format_value", "quote"]
 
 #: Field types whose values are written as double-quoted phrases. Values of all
 #: other field types are written bare. ``SolrLiteral`` values are always bare.
