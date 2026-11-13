@@ -185,10 +185,12 @@ issubclass(scix.exceptions.RateLimitExceeded, scix.exceptions.SciXError)
 
 ## What stayed the same
 
-- Searches start with `Document.select()` and use `where`, `order_by` and `limit`.
+- Searches start with `select()` on the document model (`scix.Document.select()`) and use `where`,
+  `order_by` and `limit`.
 - `&`, `|` and `~` combine conditions, and each comparison needs its own parentheses.
-- `Document.journal`, `Document.affiliation` and the operators such as `Document.citations()` and
-  `Document.top_n()` work as before.
+- `scix.Document.journal`, `scix.Document.affiliation` and the operators such as
+  `scix.Document.citations()` and `scix.Document.top_n()` work as before, except that an operator takes a
+  condition, not a document: `scix.Document.citations(scix.Document.bibcode == paper.bibcode)`.
 - `SearchQuery` still exists for Solr query strings you already have. It returns an ordinary query:
 
 ```python
