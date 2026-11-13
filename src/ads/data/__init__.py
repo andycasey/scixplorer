@@ -193,7 +193,7 @@ DATASETS: Mapping[str, Dataset] = MappingProxyType(
                 ),
             ),
             packaged=False,
-            licence="Public domain (USGS Gazetteer of Planetary Nomenclature); copy from an MIT-licensed adsabs repository",
+            licence="Public domain (USGS Gazetteer of Planetary Nomenclature), via an MIT-licensed adsabs repository",
             description="Named planetary surface features (IAU/USGS gazetteer export used by ADS, about 0.9 MB).",
         ),
     }
@@ -272,7 +272,8 @@ def _read_packaged(filename: str) -> str:
 
 
 def read_text(dataset: str, filename: str) -> str:
-    """The text of one file of a dataset: the cached copy if present, else the packaged one.
+    """The text of one file of a dataset: the cached copy if every file of the
+    dataset is cached (as :func:`load` and :func:`status` decide), else the packaged one.
 
     Raises :class:`~ads.exceptions.DataNotAvailable` if neither exists. The
     text is not checked; :func:`load` checks it and falls back if it is bad.
@@ -281,9 +282,9 @@ def read_text(dataset: str, filename: str) -> str:
     if filename not in {remote.filename for remote in found.files}:
         names = ", ".join(remote.filename for remote in found.files)
         raise ValueError(f"{dataset!r} has no file {filename!r}; its files are: {names}")
-    path = cache_dir() / filename
-    if path.is_file():
-        return path.read_text(encoding="utf-8")
+    directory = cache_dir()
+    if _cached_paths(found, directory) is not None:
+        return (directory / filename).read_text(encoding="utf-8")
     if found.packaged:
         return _read_packaged(filename)
     raise _not_available(found)
