@@ -15,6 +15,7 @@ from ads.expr import (
     NOTHING,
     And,
     Func,
+    In,
     InLibrary,
     Like,
     Match,
@@ -373,3 +374,97 @@ def test_sort_normalises_dates():
 def test_sort_by_search_only_field_is_not_locally_evaluable():
     with pytest.raises(NotLocallyEvaluable):
         sort_rows([Paper()], [P.full.asc()])
+
+
+# --- matching by kind: names, text, keywords ---------------------------------
+
+RECORDS = [
+    "Murray, Stephen S.",
+    "Murray, Stephen",
+    "Murray, S. S.",
+    "Murray, S.",
+    "Murray, Stephen D.",
+    "Murray, S. D.",
+    "Murray, Sarah S.",
+    "Murray, Scott",
+]
+
+# The examples on the ADS search-syntax help page: query -> records it matches.
+ADS_NAME_TABLE = {
+    ("murray, s", False): set(RECORDS),
+    ("murray, stephen", False): set(RECORDS[:6]),
+    ("murray, stephen s", False): set(RECORDS[:4]),
+    ("murray, s", True): {"Murray, S."},
+    ("murray, stephen", True): {"Murray, Stephen"},
+    ("murray, stephen s", True): {"Murray, Stephen S."},
+}
+
+
+@pytest.mark.parametrize(
+    "query, exact, record, expected",
+    [
+        (query, exact, record, record in matched)
+        for (query, exact), matched in ADS_NAME_TABLE.items()
+        for record in RECORDS
+    ],
+)
+def test_name_matching_reproduces_the_ads_table(query, exact, record, expected):
+    expr = P.author.exact(query) if exact else P.author == query
+    assert matches(expr, Paper(author=[record])) is expected
+
+
+@pytest.mark.parametrize(
+    "query, record, expected",
+    [
+        ("Murray", "Murray, Stephen S.", True),
+        ("murray", "Murray", True),
+        ("Murray, S", "Murray", True),
+        ("Murray, S", "Murrays, S.", False),
+        ("Murray, S", "Stephen, Murray", False),
+        ("van der Berg, A", "Van  der Berg, Anna", True),
+        ("Murray, S S", "Murray, S.S.", True),
+        ("Murray, Stephen Scott", "Murray, S. Sam", False),
+        ("Murray, S. D.", "Murray, Stephen", True),
+    ],
+)
+def test_name_matching_edge_cases(query, record, expected):
+    assert matches(P.author == query, Paper(author=[record])) is expected
+
+
+def test_exact_name_ignores_case_periods_and_spacing_only():
+    assert matches(P.author.exact("MURRAY,  s."), Paper(author=["Murray, S."]))
+    assert matches(P.author.exact("Murray, S S"), Paper(author=["Murray, S.S."]))
+    assert not matches(P.author.exact("Murray, S"), Paper(author=["Murray, S. S."]))
+    assert not matches(P.author.exact("Murray"), Paper(author=["Murray, S."]))
+
+
+def test_name_matching_is_any_over_multivalued_and_positions_are_not_local():
+    paper = Paper(author=["Casey, Andrew R.", "Ness, Melissa"])
+    assert matches(P.author == "Ness, M", paper)
+    assert not matches(P.author.exact("Ness, M"), paper)
+    with pytest.raises(NotLocallyEvaluable):
+        matches(P.author[1].exact("Ness, M"), paper)
+
+
+def test_in_honours_exact():
+    paper = Paper(author=["Murray, Stephen S."])
+    assert matches(P.author.in_(["Ness, M", "Murray, S"]), paper)
+    assert not matches(P.author.in_(["Ness, M", "Murray, S"], exact=True), paper)
+    assert matches(P.author.in_(["Ness, M", "murray, stephen s."], exact=True), paper)
+    assert matches(P.author.not_in(["Murray, S"], exact=True), paper)
+
+
+def test_text_exact_is_whole_value_without_phrase_containment():
+    paper = Paper(title=["The  Big Bang"])
+    assert matches(P.title == "big bang", paper)
+    assert not matches(P.title.exact("big bang"), paper)
+    assert matches(P.title.exact("the big BANG"), paper)
+    assert matches(P.title.in_(["nothing", "the big bang"], exact=True), paper)
+
+
+def test_keyword_exact_is_plain_equality():
+    paper = Paper(bibcode="2005ApJ...622..759G", bibstem=["ApJ"])
+    assert matches(P.bibcode.exact("2005ApJ...622..759G"), paper)
+    assert not matches(P.bibcode.exact("2005apj...622..759g"), paper)
+    assert matches(P.bibstem.in_(["ApJ", "AJ"], exact=True), paper)
+    assert matches(In(F["year"], (2019, 2020), exact=True), Paper(year=2020))

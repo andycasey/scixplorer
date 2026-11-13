@@ -34,7 +34,7 @@ from .expr import (
     Wildcard,
     parse_pattern,
 )
-from .fields import DateField, DateTimeField, Field, StringField, TextField, as_utc
+from .fields import DateField, DateTimeField, Field, as_utc
 
 __all__ = ["matches", "predicate", "sort_rows"]
 
@@ -106,7 +106,7 @@ def _value_test(expr: Match | In | Like | Range) -> Predicate:
     if isinstance(expr, Match):
         return _match_test(field, expr.value, expr.exact)
     if isinstance(expr, In):
-        tests = [_match_test(field, value, False) for value in expr.values]
+        tests = [_match_test(field, value, expr.exact) for value in expr.values]
         return lambda value: any(test(value) for test in tests)
     if isinstance(expr, Like):
         regex = _pattern_regex(expr.pattern)
@@ -115,15 +115,19 @@ def _value_test(expr: Match | In | Like | Range) -> Predicate:
 
 
 def _match_test(field: Field[Any, Any], target: Any, exact: bool) -> Predicate:
+    """Test one value against ``target`` according to the field's match kind."""
     _require_local(target)
-    if isinstance(field, TextField):
+    if field.match_kind == "text":
         if exact:
             wanted = _normalise_space(target)
             return lambda value: _normalise_space(value) == wanted
         needle = _tokens(target)
         return lambda value: _contains_run(_tokens(value), needle)
-    if isinstance(field, StringField):
-        return lambda value: value == target
+    if field.match_kind == "name":
+        name = _parse_name(target)
+        if exact:
+            return lambda value: _parse_name(value) == name
+        return lambda value: _names_match(name, _parse_name(value))
     key = _comparable(field, target)
     return lambda value: _comparable(field, value) == key
 
@@ -183,6 +187,31 @@ def _contains_run(haystack: list[str], needle: list[str]) -> bool:
 
 def _normalise_space(text: str) -> str:
     return " ".join(str(text).split()).casefold()
+
+
+def _parse_name(name: Any) -> tuple[str, tuple[str, ...]]:
+    """Split ``"Last, Given1 Given2"`` into a last name and given-name tokens.
+
+    Case is folded, periods are read as spaces (so ``"S.S."`` is two initials)
+    and whitespace is collapsed. A name without a comma is all last name.
+    """
+    last, _, given = str(name).casefold().replace(".", " ").partition(",")
+    return " ".join(last.split()), tuple(given.split())
+
+
+def _names_match(query: tuple[str, tuple[str, ...]], record: tuple[str, tuple[str, ...]]) -> bool:
+    """ADS's default author matching, with name variants.
+
+    The last names must be equal. Given names are compared in order for as
+    many positions as both have; a pair is compatible if equal, or if either is
+    an initial and both start with the same letter. Extra given names on
+    either side are ignored.
+    """
+    if query[0] != record[0]:
+        return False
+    return all(
+        a == b or ((len(a) == 1 or len(b) == 1) and a[0] == b[0]) for a, b in zip(query[1], record[1], strict=False)
+    )
 
 
 def _pattern_regex(pattern: str) -> re.Pattern[str]:

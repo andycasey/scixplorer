@@ -10,6 +10,7 @@ from ads.fields import (
     DateTimeField,
     FloatField,
     IntegerField,
+    NameField,
     StringField,
     TextField,
     VirtualField,
@@ -63,7 +64,7 @@ class Paper(Model):
     _key = "bibcode"
     bibcode = StringField("Bibcode")
     title = TextField("Title", multivalued=True)
-    author = TextField("Authors", multivalued=True)
+    author = NameField("Authors", multivalued=True)
     year = IntegerField("Year")
     citation_count_norm = FloatField("Normalised citations")
     entry_date = DateTimeField("Entry date")

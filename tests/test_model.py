@@ -486,6 +486,10 @@ def test_describe_lists_fields_in_definition_order():
     assert by_name["pubdate"].type == "date"
     assert by_name["public"].type == "bool"
     assert by_name["full"].stored is False
+    assert by_name["author"].match_kind == "name"
+    assert by_name["title"].match_kind == "text"
+    assert by_name["full"].match_kind == "text"
+    assert by_name["year"].match_kind == "keyword"
     assert by_name["doctype"].stored is False
     assert "journal" not in by_name
     assert Journal.describe()[1] == FieldInfo(
