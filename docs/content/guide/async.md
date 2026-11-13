@@ -21,9 +21,9 @@ Every query can be run asynchronously. The async methods mirror the synchronous 
 | `query.count()` | `await query.acount()` |
 
 ```python
-import asyncio
-
 import scixplorer as scix
+
+import asyncio
 
 
 async def main():

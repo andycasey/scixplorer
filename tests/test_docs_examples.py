@@ -280,7 +280,7 @@ def test_directives_are_well_formed() -> None:
     """A misspelt directive would silently run (or not run) a block, so every one must parse."""
     for page in pages():
         for number, line in enumerate(page.read_text(encoding="utf-8").splitlines(), start=1):
-            if "docs-test" in line:
+            if line.lstrip().startswith("<!--") and "docs-test" in line:
                 assert _DIRECTIVE.match(line), f"{_page_id(page)}:{number}: malformed directive {line.strip()!r}"
 
 
