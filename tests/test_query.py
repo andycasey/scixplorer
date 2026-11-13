@@ -13,7 +13,15 @@ from ads.exceptions import APIError, DoesNotExist, NotLocallyEvaluable, QueryErr
 from ads.expr import NOTHING, And, Match, Order
 from ads.fields import IntegerField, StringField, VirtualField
 from ads.model import Model
-from ads.query import Explanation, MemoryBackend, Query, adrive, drive
+from ads.query import (
+    Explanation,
+    MemoryBackend,
+    Query,
+    adrive,
+    drive,
+    filter_rows,
+    select_rows,
+)
 
 # --- an in-memory model -------------------------------------------------------
 
@@ -848,3 +856,49 @@ def test_async_first_get_exists_count_requests(backend: PagedBackend, client: Fa
         {"start": 9, "rows": 1},
         {"rows": 0},
     ]
+
+
+def test_truthiness_fetches_at_most_one_row():
+    """bool(query) must not fall back to __len__, which would fetch every row."""
+    calls = []
+
+    class Counting:
+        def run(self, query):
+            calls.append(query.limit_)
+            yield [object()][: query.limit_]
+
+        def count(self, query):
+            raise AssertionError("not used")
+            yield
+
+        def explain(self, query):
+            raise AssertionError("not used")
+
+    class Thing(Model):
+        _key = "name"
+        _backend = Counting()
+        name = StringField()
+
+    assert bool(Thing.select()) is True
+    assert calls == [1]
+    assert bool(Thing.select().limit(0)) is False
+    assert calls == [1]
+
+
+def test_explanation_shows_booleans_as_they_are_sent():
+    text = str(Explanation("s", (Request("GET", "/x", params={"flag": True, "n": 3}),)))
+    assert "flag = true" in text
+    assert "n = 3" in text
+
+
+def test_select_rows_and_filter_rows_apply_a_query_in_python():
+    class Row(Model):
+        _key = "name"
+        name = StringField()
+        size = IntegerField()
+
+    rows = [Row(name=n, size=s) for n, s in [("a", 3), ("b", 1), ("c", 2), ("d", 5)]]
+    query = Query(Row).where(Row.size > 1).order_by(Row.size.desc()).offset(1).limit(2)
+    assert [r.name for r in filter_rows(rows, query)] == ["a", "c", "d"]
+    assert [r.name for r in select_rows(rows, query)] == ["a", "c"]
+    assert [r.name for r in select_rows(rows, Query(Row))] == ["a", "b", "c", "d"]

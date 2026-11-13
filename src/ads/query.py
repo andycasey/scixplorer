@@ -24,7 +24,16 @@ from .expr import Expr, Order
 from .fields import Field, FieldExpr
 from .model import Model
 
-__all__ = ["Backend", "Explanation", "MemoryBackend", "Query", "adrive", "drive"]
+__all__ = [
+    "Backend",
+    "Explanation",
+    "MemoryBackend",
+    "Query",
+    "adrive",
+    "drive",
+    "filter_rows",
+    "select_rows",
+]
 
 M = TypeVar("M", bound=Model)
 
@@ -47,7 +56,8 @@ class Explanation:
             lines.append(f"{request.method.upper()} {request.path}")
             for key, value in (request.params or {}).items():
                 if value is not None:
-                    lines.append(f"    {key} = {value}")
+                    shown = str(value).lower() if isinstance(value, bool) else value
+                    lines.append(f"    {key} = {shown}")
             size = _body_size(request)
             if size is not None:
                 lines.append(f"    (body: {size} bytes)")
@@ -406,6 +416,10 @@ class Query(Generic[M]):
     def __len__(self) -> int:
         return len(self._fetched())
 
+    def __bool__(self) -> bool:
+        """Whether there is at least one row; like :meth:`exists`, fetches at most one."""
+        return self.exists()
+
     def _fetched(self) -> tuple[M, ...]:
         return self._rows if self._rows is not None else tuple(self._stream())
 
@@ -447,6 +461,27 @@ def _check_count(name: str, n: Any) -> None:
         raise ValueError(f"{name}() needs a non-negative int, not {n}")
 
 
+def filter_rows(rows: Iterable[M], query: Query[M]) -> list[M]:
+    """The ``rows`` that satisfy the query's filter, evaluated in Python."""
+    if query.expr is None:
+        return list(rows)
+    test = evaluate.predicate(query.expr)
+    return [row for row in rows if test(row)]
+
+
+def select_rows(rows: Iterable[M], query: Query[M]) -> list[M]:
+    """Apply the query's filter, ordering, offset and limit to ``rows`` in Python.
+
+    This is what a backend holding its whole collection in memory yields.
+    """
+    selected = filter_rows(rows, query)
+    if query.order:
+        selected = evaluate.sort_rows(selected, query.order)
+    start = query.offset_
+    stop = None if query.limit_ is None else start + query.limit_
+    return selected[start:stop]
+
+
 class MemoryBackend(Generic[M]):
     """Evaluates queries in Python over a collection held in memory.
 
@@ -465,25 +500,14 @@ class MemoryBackend(Generic[M]):
     def __repr__(self) -> str:
         return f"<MemoryBackend {getattr(self._loader, '__qualname__', self._loader)!r}>"
 
-    def _matching(self, query: Query[M]) -> list[M]:
-        if query.expr is None:
-            return list(self._loader())
-        test = evaluate.predicate(query.expr)
-        return [row for row in self._loader() if test(row)]
-
     def run(self, query: Query[M]) -> Generator[list[M], None, None]:
         """Yield the matching rows, ordered, offset and limited, as a single batch."""
-        rows = self._matching(query)
-        if query.order:
-            rows = evaluate.sort_rows(rows, query.order)
-        start = query.offset_
-        stop = None if query.limit_ is None else start + query.limit_
-        yield rows[start:stop]
+        yield select_rows(self._loader(), query)
 
     def count(self, query: Query[M]) -> Generator[Request, Response, int]:
         """Return the number of matching rows, ignoring offset and limit."""
         yield from ()
-        return len(self._matching(query))
+        return len(filter_rows(self._loader(), query))
 
     def explain(self, query: Query[M]) -> Explanation:
         """Say that the query is evaluated locally, over how many rows."""
