@@ -329,6 +329,7 @@ Feature ID,Clean          Feature Name,Target,Feature Type,Approval          Sta
 16115,Aarna,Mars,"Crater, craters",Approved,"Dec 16, 2022"
 1297,Copernicus,Mars,"Crater, craters",Approved,1973
 1296,Copernicus,Moon,"Crater, craters",Approved,1935
+8421,Copernicus A,Moon,Satellite Feature,Approved,2006
 2071,Gale,Mars,"Crater, craters",Approved,1991
 2072,Galen,Moon,"Crater, craters",Approved,1973
 14300,Jezero,Mars,"Crater, craters",Approved,"Jul 25, 2007"
