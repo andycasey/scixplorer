@@ -30,3 +30,8 @@ addopts = "-q"
 markers = [
     "live: runs against the real ADS API (needs ADS_API_TOKEN; enable with --live)",
 ]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src/ads"]
