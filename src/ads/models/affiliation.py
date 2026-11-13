@@ -12,6 +12,7 @@ import dataclasses
 import functools
 from collections.abc import Iterator
 from importlib import resources
+from typing import ClassVar
 
 from ..expr import NOTHING
 from ..fields import StringField
@@ -99,7 +100,7 @@ class Affiliation(Model):
     """
 
     _key = "id"
-    _backend = MemoryBackend(_load, key="id")
+    _backend: ClassVar[MemoryBackend[Affiliation]] = MemoryBackend(_load, key="id")
 
     id = StringField("ADS canonical affiliation identifier, e.g. 'A00211'.")
     abbreviation = StringField("Short name of the institution, e.g. 'Harvard U'.")

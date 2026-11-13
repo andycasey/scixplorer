@@ -5,6 +5,7 @@ from __future__ import annotations
 import functools
 import json
 from importlib import resources
+from typing import ClassVar
 
 from ..fields import StringField
 from ..model import Model
@@ -30,7 +31,7 @@ class Journal(Model):
     """
 
     _key = "abbreviation"
-    _backend = MemoryBackend(_load, key="abbreviation")
+    _backend: ClassVar[MemoryBackend[Journal]] = MemoryBackend(_load, key="abbreviation")
 
     abbreviation = StringField(
         "ADS abbreviation of the journal (its bibstem), e.g. 'ApJ'. This is the journal "

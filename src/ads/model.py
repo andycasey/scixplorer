@@ -10,8 +10,7 @@ from .expr import BOOL_ERROR, Expr
 from .fields import Field, FieldExpr, FieldInfo
 
 if TYPE_CHECKING:
-    # ``ads.query`` is written separately; until it exists ``Query`` is ``Any`` here.
-    from .query import Query  # type: ignore[import-not-found, import-untyped, unused-ignore]
+    from .query import Backend, Query
 
 __all__ = ["Model", "ModelMeta", "Relation", "RelationExpr"]
 
@@ -230,7 +229,7 @@ class Model(metaclass=ModelMeta):
     """Base class for models. Field values are passed as keyword arguments."""
 
     _key: ClassVar[str]
-    _backend: ClassVar[Any]
+    _backend: ClassVar[Backend]
     _fields: ClassVar[dict[str, Field[Any, Any]]]
     _relations: ClassVar[dict[str, Relation[Any]]]
     DoesNotExist: ClassVar[type[exceptions.DoesNotExist]]
@@ -334,7 +333,7 @@ class Model(metaclass=ModelMeta):
     @classmethod
     def select(cls: type[M], *fields: str | Field[Any, Any] | FieldExpr) -> Query[M]:
         """Start a query over this model, fetching ``fields`` (all stored fields if none)."""
-        from .query import Query  # type: ignore[import-not-found, import-untyped, unused-ignore]
+        from .query import Query
 
         return Query(cls, tuple(cls._field(field) for field in fields))
 

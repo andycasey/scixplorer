@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import copy
 import json
-from collections.abc import AsyncIterator, Awaitable, Callable, Generator, Iterable, Iterator
+from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Generator, Iterable, Iterator
 from contextlib import aclosing, closing
 from dataclasses import dataclass
 from typing import Any, Generic, Protocol, TypeVar, overload
@@ -29,6 +29,7 @@ __all__ = [
     "Explanation",
     "MemoryBackend",
     "Query",
+    "Sender",
     "adrive",
     "drive",
     "filter_rows",
@@ -72,6 +73,18 @@ def _body_size(request: Request) -> int | None:
     if request.json is not None:
         return len(json.dumps(request.json).encode("utf-8"))
     return None
+
+
+class Sender(Protocol):
+    """What a query needs from a client to send requests; :class:`~ads.client.Client` is one."""
+
+    def send(self, request: Request) -> Response:
+        """Send a request and return its response."""
+        ...
+
+    async def asend(self, request: Request) -> Response:
+        """Send a request asynchronously and return its response."""
+        ...
 
 
 class Backend(Protocol):
@@ -123,7 +136,7 @@ def drive(gen: Generator[Any, Any, Any], send: Callable[[Request], Response]) ->
 
 async def adrive(
     gen: Generator[Any, Any, Any], asend: Callable[[Request], Awaitable[Response]]
-) -> AsyncIterator[Any]:
+) -> AsyncGenerator[Any, None]:
     """Run a backend generator asynchronously; the async counterpart of :func:`drive`.
 
     Async generators cannot return a value, so the backend generator's return
@@ -188,16 +201,16 @@ class Query(Generic[M]):
 
     __slots__ = ("_model", "_fields", "_expr", "_order", "_limit", "_offset", "_client", "_rows")
 
-    def __init__(self, model: type[M], fields: Iterable[str | Field | FieldExpr] = ()):
+    def __init__(self, model: type[M], fields: Iterable[str | Field[Any, Any] | FieldExpr] = ()) -> None:
         if not (isinstance(model, type) and issubclass(model, Model)):
             raise TypeError(f"Query needs a Model subclass, not {model!r}")
         self._model = model
-        self._fields: tuple[Field, ...] = tuple(model._field(field) for field in fields)
+        self._fields: tuple[Field[Any, Any], ...] = tuple(model._field(field) for field in fields)
         self._expr: Expr | None = None
         self._order: tuple[Order, ...] = ()
         self._limit: int | None = None
         self._offset = 0
-        self._client: Any = None
+        self._client: Sender | None = None
         self._rows: tuple[M, ...] | None = None
 
     @property
@@ -206,7 +219,7 @@ class Query(Generic[M]):
         return self._model
 
     @property
-    def fields(self) -> tuple[Field, ...]:
+    def fields(self) -> tuple[Field[Any, Any], ...]:
         """The fields to fetch; empty means all stored fields."""
         return self._fields
 
@@ -231,7 +244,7 @@ class Query(Generic[M]):
         return self._offset
 
     @property
-    def client(self) -> Any:
+    def client(self) -> Sender | None:
         """The client requests are sent with; ``None`` means the default client."""
         return self._client
 
@@ -259,7 +272,7 @@ class Query(Generic[M]):
             combined = expr if combined is None else combined & expr
         return self._replace(expr=combined)
 
-    def order_by(self, *keys: Order | str | Field | FieldExpr) -> Query[M]:
+    def order_by(self, *keys: Order | str | Field[Any, Any] | FieldExpr) -> Query[M]:
         """Return a query sorted by ``keys`` (replacing any previous ordering).
 
         Each key is an :class:`~ads.expr.Order` (from ``.asc()``/``.desc()``) or a
@@ -284,17 +297,17 @@ class Query(Generic[M]):
         _check_count("offset", n)
         return self._replace(offset=n)
 
-    def using(self, client: Any) -> Query[M]:
+    def using(self, client: Sender | None) -> Query[M]:
         """Return a query sending requests with ``client`` (``None`` for the default client)."""
         return self._replace(client=client)
 
     def _backend(self) -> Backend:
-        backend = getattr(self._model, "_backend", None)
+        backend: Backend | None = getattr(self._model, "_backend", None)
         if backend is None:
             raise TypeError(f"{self._model.__name__} has no backend, so it cannot be queried")
         return backend
 
-    def _resolve_client(self) -> Any:
+    def _resolve_client(self) -> Sender:
         return self._client if self._client is not None else _http.get_default_client()
 
     def _send(self, request: Request) -> Response:
@@ -428,8 +441,10 @@ class Query(Generic[M]):
     @overload
     def __getitem__(self, index: slice) -> list[M]: ...
     def __getitem__(self, index: int | slice) -> M | list[M]:
-        result = self._fetched()[index]
-        return list(result) if isinstance(index, slice) else result
+        rows = self._fetched()
+        if isinstance(index, slice):
+            return list(rows[index])
+        return rows[index]
 
     def explain(self) -> Explanation:
         """Describe how this query would be executed, without executing it."""
@@ -500,7 +515,7 @@ class MemoryBackend(Generic[M]):
     def __repr__(self) -> str:
         return f"<MemoryBackend {getattr(self._loader, '__qualname__', self._loader)!r}>"
 
-    def run(self, query: Query[M]) -> Generator[list[M], None, None]:
+    def run(self, query: Query[M]) -> Generator[Request | list[M], Response | None, None]:
         """Yield the matching rows, ordered, offset and limited, as a single batch."""
         yield select_rows(self._loader(), query)
 
