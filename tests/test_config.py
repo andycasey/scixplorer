@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from ads.config import TOKEN_ENV_VARS, Config, config
+from ads._config import TOKEN_ENV_VARS, Config, config
 
 
 @pytest.fixture

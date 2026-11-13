@@ -22,8 +22,8 @@ from typing import Any
 import httpx
 
 from ads import __version__
-from ads.config import TOKEN_ENV_VARS, TOKEN_FILES, Config
-from ads.config import config as _module_config
+from ads._config import TOKEN_ENV_VARS, TOKEN_FILES, Config
+from ads._config import config as _module_config
 from ads.exceptions import APIError, AuthenticationError, RateLimitExceeded
 
 USER_AGENT = f"ads-python/{__version__}"
@@ -105,9 +105,9 @@ class Client:
     :param token: API token. If omitted, ``config.resolve_token()`` is used. The
         token is looked up on every request and never appears in ``repr`` or
         exception messages.
-    :param config: settings to use; defaults to the module-level
-        ``ads.config.config``. Its ``api_url``, ``timeout``, ``max_retries`` and
-        ``retry_backoff`` are read on every request.
+    :param config: settings to use; defaults to the module-level ``ads.config``
+        (``ads._config.config``). Its ``api_url``, ``timeout``, ``max_retries``
+        and ``retry_backoff`` are read on every request.
     :param transport: optional ``httpx`` transport for the sync client.
     :param async_transport: optional ``httpx`` transport for the async client.
     :param sleep: called with the delay between sync retries.
@@ -423,7 +423,7 @@ _default_client: Client | None = None
 def get_default_client() -> Client:
     """Return the shared default :class:`Client`, creating it on first use.
 
-    The default client uses the module-level ``ads.config.config``.
+    The default client uses the module-level ``ads.config`` (``ads._config.config``).
     """
     global _default_client
     if _default_client is None:

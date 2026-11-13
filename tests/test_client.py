@@ -19,8 +19,8 @@ from ads.client import (
     service_for,
     set_default_client,
 )
-from ads.config import TOKEN_ENV_VARS, Config
-from ads.config import config as module_config
+from ads._config import TOKEN_ENV_VARS, Config
+from ads._config import config as module_config
 from ads.exceptions import APIError, AuthenticationError, RateLimitExceeded
 
 TOKEN = "s3cret-token-value"
