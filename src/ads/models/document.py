@@ -181,7 +181,27 @@ class Document(Model):
     models' fields directly (``Journal.title.contains("astro")``). The last two
     need their data downloaded once (``ads.data.refresh("uat")``,
     ``ads.data.refresh("planetary_features")``), except to match ids directly
-    (``Document.uat == 498``).
+    (``Document.uat == 498``). Each such condition is about any related
+    object; ``.any(...)`` makes several about the same one:
+    ``Document.planetary_feature.any((PlanetaryFeature.target == "Mars") & (PlanetaryFeature.feature_type == "Crater"))``.
+
+    Per-author conditions: ``doc.authors`` is one
+    :class:`~ads.models.author.Author` per author (``.name``, ``.aff``,
+    ``.affiliation``, ``.email``, ``.orcid``, ...), built from the per-author
+    arrays ``author``, ``aff``, ``aff_id``, ``email`` and the ORCID fields.
+    In a search, everything inside one ``Document.authors.any(...)`` (or
+    ``.all(...)``, every author) is about the same author, and an index picks
+    a position::
+
+        Document.authors.any((Author.name == "Casey, A") & (Author.affiliation.country == "Australia"))
+        Document.authors[0].orcid == "0000-0002-1825-0097"
+
+    A single condition means the same as its shorthand:
+    ``Document.authors[0].name == x`` is ``Document.author[0] == x``, and
+    ``Document.authors.any(Author.affiliation.country == x)`` is
+    ``Document.affiliation.country == x``. A condition Solr cannot express
+    exactly (several about one author at any position, or ``all``) is sent as
+    a necessary condition and checked on each returned document.
 
     Names: the Solr fields ``uat`` and ``planetary_feature`` (the names of the
     concepts and features as text) are :attr:`uat_name` and
