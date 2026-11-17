@@ -21,6 +21,7 @@ narrower terms of a concept, or the contents of a library.
 | [An author's affiliation history]({{< ref "guides/affiliation-history" >}}) | Where has this person worked, and when? |
 | [Referees without a conflict of interest]({{< ref "guides/referees-without-conflicts" >}}) | Who is active on this topic and has no tie to me? |
 | [An institution's output]({{< ref "guides/institution-output" >}}) | What did we publish, how much did we lead, and with whom? |
+| [What a reading list is missing]({{< ref "guides/reading-list-gaps" >}}) | What do the papers in my library cite that I have not collected? |
 
 The examples run against the small offline sample of papers used throughout this site, so the lists they
 print are short. Against SciX the same code returns everything that matches.
