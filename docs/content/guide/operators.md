@@ -46,7 +46,11 @@ To find the papers citing a paper, or the papers it cites, pass a condition that
 
 ```python
 emcee = Document.bibcode == "2013PASP..125..306F"
-citing = Document.select(Document.bibcode).where(Document.citations(emcee))
+citing = (
+    Document
+    .select(Document.bibcode)
+    .where(Document.citations(emcee))
+)
 [paper.bibcode for paper in citing]
 # -> ['2015ApJ...808...16N', '2016arXiv160303040C']
 ```

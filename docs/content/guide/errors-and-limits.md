@@ -43,7 +43,11 @@ response, or `None`). The message gives the method, the path and SciX's own expl
 ```python
 from scixplorer import *
 
-query = Document.select().where(Document.year == 2015)
+query = (
+    Document
+    .select()
+    .where(Document.year == 2015)
+)
 try:
     papers = query.all()
 except exceptions.AuthenticationError:
@@ -105,7 +109,12 @@ that matches more raises `UnsupportedQueryError` when the search is planned:
 
 <!-- docs-test: raises UnsupportedQueryError -->
 ```python
-Document.select().where(Document.affiliation.country_code == "US").count()
+query = (
+    Document
+    .select()
+    .where(Document.affiliation.country_code == "US")
+)
+query.count()
 ```
 
 ```text
@@ -128,7 +137,12 @@ in one of two ways, depending on where it is:
 
 ```python
 many = [f"2020ApJ...{900 + i}....1A" for i in range(60)]
-print(Document.select(Document.bibcode).where(Document.in_(many) & (Document.year > 2000)).explain())
+query = (
+    Document
+    .select(Document.bibcode)
+    .where(Document.in_(many) & (Document.year > 2000))
+)
+print(query.explain())
 # -> POST /search/bigquery
 # -> searching /search/bigquery with 60 bibcode(s)
 ```
@@ -152,7 +166,12 @@ index for the client to check. The client refuses such a search when it is plann
 
 <!-- docs-test: raises UnsupportedQueryError -->
 ```python
-Document.select().where(Document.not_in(many)).first()
+query = (
+    Document
+    .select()
+    .where(Document.not_in(many))
+)
+query.first()
 ```
 
 ```text

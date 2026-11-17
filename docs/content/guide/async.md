@@ -27,8 +27,13 @@ import asyncio
 
 
 async def main():
-    query = Document.select(Document.bibcode, Document.year).where(
-        Document.author == "Hogg, D"
+    query = (
+        Document
+        .select(
+            Document.bibcode,
+            Document.year,
+        )
+        .where(Document.author == "Hogg, D")
     )
     total = await query.acount()
     papers = [paper.bibcode async for paper in query]
@@ -48,7 +53,12 @@ Run independent searches concurrently with `asyncio.gather`:
 
 ```python
 async def counts(years):
-    queries = [Document.select().where(Document.year == year) for year in years]
+    queries = [
+        Document
+        .select()
+        .where(Document.year == year)
+        for year in years
+    ]
     return await asyncio.gather(*(query.acount() for query in queries))
 
 
@@ -84,7 +94,12 @@ closed when you are done, or used as a context manager:
 ```python
 async def with_own_client():
     async with Client(token="your-token") as client:
-        query = Document.select().where(Document.year == 2015).using(client)
+        query = (
+            Document
+            .select()
+            .where(Document.year == 2015)
+            .using(client)
+        )
         return await query.acount()
 ```
 

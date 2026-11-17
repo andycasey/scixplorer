@@ -14,7 +14,11 @@ institutions and controlled vocabularies that SciX uses.
 from scixplorer import *
 
 papers = (
-    Document.select(Document.bibcode, Document.title)
+    Document
+    .select(
+        Document.bibcode,
+        Document.title,
+    )
     .where((Document.author[0] == "Ness, M") & (Document.year >= 2015))
     .order_by(Document.citation_count.desc())
     .limit(5)

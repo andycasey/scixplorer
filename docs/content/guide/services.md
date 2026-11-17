@@ -49,7 +49,11 @@ The options:
 | `format` (`csl`) | 1: Unicode, 2: HTML, 3: LaTeX |
 
 ```python
-papers = Document.select(Document.bibcode).where(Document.author == "Hogg, D")
+papers = (
+    Document
+    .select(Document.bibcode)
+    .where(Document.author == "Hogg, D")
+)
 text = export.bibtex(papers, max_author=3, key_format="%1H:%Y", sort=Document.year.desc())
 ```
 

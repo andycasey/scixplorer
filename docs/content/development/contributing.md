@@ -123,6 +123,22 @@ gazetteer. No token is set and nothing reaches the network.
   names bare: `Document`, `data.refresh()`. Import an internal module only where the page is about it
   (`from scixplorer import solr`). The test enforces this. Pages under `development/` may import
   anything.
+- Write a query as a parenthesised chain with one method per line, starting from the model on its own
+  line. Give `select()` one field per line when it has more than one. Assign the query to a name, then
+  call `count()`, `explain()` and the like on that name:
+
+  ```text
+  query = (
+      Document
+      .select(
+          Document.bibcode,
+          Document.title,
+      )
+      .where(Document.author == "Hogg, D")
+      .order_by(Document.year.desc())
+      .limit(10)
+  )
+  ```
 - Show a value with a line `# -> text` right after an expression. The test checks that `text` is in the
   `repr` or `str` of the value, or in what the statement printed. Output shown any other way is not
   checked, so prefer this form. Pick text that is true of the real data too, not only of the sample.

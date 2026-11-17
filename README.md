@@ -22,7 +22,12 @@ Get an API token at <https://scixplorer.org/user/settings/token> and put it in t
 from scixplorer import *
 
 papers = (
-    Document.select(Document.bibcode, Document.title, Document.year)
+    Document
+    .select(
+        Document.bibcode,
+        Document.title,
+        Document.year,
+    )
     .where(
         Document.authors.any(
             (Author.name == "Hogg, D") & (Author.affiliation.country_code == "DE")

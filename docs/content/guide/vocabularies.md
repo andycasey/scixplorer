@@ -57,7 +57,12 @@ Search them like any model. `name` and `alt_names` are matched like SciX text: `
 phrase, ignoring case, and `.exact()` compares the whole name:
 
 ```python
-UATConcept.select().where(UATConcept.alt_names == "extrasolar planets").all()
+query = (
+    UATConcept
+    .select()
+    .where(UATConcept.alt_names == "extrasolar planets")
+)
+query.all()
 # -> [<UATConcept: id=498 (Exoplanets)>]
 ```
 
@@ -101,7 +106,12 @@ gale.to_dict()
 exactly, including case. Names are not unique across bodies:
 
 ```python
-PlanetaryFeature.select().where(PlanetaryFeature.name.exact("Copernicus")).all()
+query = (
+    PlanetaryFeature
+    .select()
+    .where(PlanetaryFeature.name.exact("Copernicus"))
+)
+query.all()
 # -> [<PlanetaryFeature: id=1297 (Copernicus, Mars)>, <PlanetaryFeature: id=1296 (Copernicus, Moon)>]
 ```
 
@@ -170,9 +180,13 @@ alone has more than 1000 named features, more than one search request can carry 
 shows the two forms side by side.
 
 ```python
-query = Document.select(Document.bibcode).where(
-    Document.planetary_features.any(
-        (PlanetaryFeature.target == "Mars") & PlanetaryFeature.name.exact("Gale")
+query = (
+    Document
+    .select(Document.bibcode)
+    .where(
+        Document.planetary_features.any(
+            (PlanetaryFeature.target == "Mars") & PlanetaryFeature.name.exact("Gale")
+        )
     )
 )
 [paper.bibcode for paper in query]

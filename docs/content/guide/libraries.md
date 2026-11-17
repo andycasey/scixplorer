@@ -75,8 +75,10 @@ tests membership itself, so the library's bibcodes are not fetched:
 ```python
 search.to_solr(Document.in_(spectroscopy) & (Document.year > 2015))
 # -> docs(library/Rk3bq7xQTgS0vVZ2mN8cWw) AND year:[2016 TO *]
-unread = Document.select(Document.bibcode).where(
-    Document.not_in(spectroscopy) & (Document.author == "Hogg, D")
+unread = (
+    Document
+    .select(Document.bibcode)
+    .where(Document.not_in(spectroscopy) & (Document.author == "Hogg, D"))
 )
 [paper.bibcode for paper in unread]
 # -> ['2013PASP..125..306F']

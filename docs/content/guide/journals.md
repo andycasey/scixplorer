@@ -31,7 +31,12 @@ Search the list with the same expressions as documents. `==` compares the whole 
 `like()`, `startswith()` and `contains()` ignore case:
 
 ```python
-planetary = Journal.select().where(Journal.title.contains("planetary")).order_by(Journal.abbreviation)
+planetary = (
+    Journal
+    .select()
+    .where(Journal.title.contains("planetary"))
+    .order_by(Journal.abbreviation)
+)
 [journal.abbreviation for journal in planetary.limit(4)]
 # -> ['AREPS', 'AdEPS', 'CRASE', 'CoLPL']
 ```
@@ -87,7 +92,11 @@ A condition on `Journal` fields can also be used directly in a document search. 
 "the document's journal":
 
 ```python
-query = Document.select().where(Journal.title == "Icarus")
+query = (
+    Document
+    .select()
+    .where(Journal.title == "Icarus")
+)
 search.to_solr(query)
 # -> bibstem:"Icar"
 ```
@@ -105,7 +114,12 @@ search.to_solr(same_journal)
 If no journal matches, the condition can never be true and no request is sent:
 
 ```python
-print(Document.select().where(Document.journal.title == "No such journal").explain())
+query = (
+    Document
+    .select()
+    .where(Document.journal.title == "No such journal")
+)
+print(query.explain())
 # -> No request is made: the filter can never match.
 ```
 

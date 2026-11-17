@@ -68,7 +68,13 @@ Before a document search is compiled, a planner (`search.plan`) rewrites it, in 
 The plan is pure: given the same query and configuration, it gives the same result without any I/O.
 
 ```python
-plan = search.plan(Document.select(Document.bibcode).where(condition).limit(5))
+query = (
+    Document
+    .select(Document.bibcode)
+    .where(condition)
+    .limit(5)
+)
+plan = search.plan(query)
 plan.q
 # -> pos(author:"Ness, M", 1) AND year:[2015 TO 2020]
 plan.request(0, 5)

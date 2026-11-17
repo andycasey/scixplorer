@@ -12,17 +12,27 @@ The examples on this site run against a small offline sample of real papers, so 
 
 ## Build a query
 
-A search starts from `Document.select()`. Each method returns a new query, so you can build one in
-steps and reuse the parts:
+A search starts from `Document.select()`, and each method after it adds one part of the query. Write
+one method per line, inside parentheses:
 
 ```python
 from scixplorer import *
 
-query = Document.select(Document.bibcode, Document.title, Document.year)
-query = query.where(Document.author == "Hogg, D")
-query = query.order_by(Document.year.desc())
-query = query.limit(10)
+query = (
+    Document
+    .select(
+        Document.bibcode,
+        Document.title,
+        Document.year,
+    )
+    .where(Document.author == "Hogg, D")
+    .order_by(Document.year.desc())
+    .limit(10)
+)
 ```
+
+Each method returns a new query and leaves the one it was called on unchanged, so you can also keep a part
+and build on it: `recent = query.where(Document.year >= 2015)` leaves `query` as it was.
 
 | Method | What it does |
 |---|---|

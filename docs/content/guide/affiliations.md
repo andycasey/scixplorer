@@ -46,9 +46,19 @@ Affiliation.lookup("A01400")
 `country == "USA"` matches nothing. Filter on `country_code` for a condition that stays stable:
 
 ```python
-Affiliation.select().where(Affiliation.country == "USA").count()
+by_name = (
+    Affiliation
+    .select()
+    .where(Affiliation.country == "USA")
+)
+by_name.count()
 # -> 0
-Affiliation.select().where(Affiliation.country_code == "AU").count()
+by_code = (
+    Affiliation
+    .select()
+    .where(Affiliation.country_code == "AU")
+)
+by_code.count()
 # -> 118
 ```
 
@@ -87,7 +97,11 @@ sent, and becomes a condition on the documents' `aff_id`:
 ```python
 search.to_solr(Document.affiliation == cfa)
 # -> aff_id:"A01400"
-query = Document.select(Document.bibcode).where(Document.affiliation.country_code == "AU")
+query = (
+    Document
+    .select(Document.bibcode)
+    .where(Document.affiliation.country_code == "AU")
+)
 [paper.bibcode for paper in query]
 # -> ['1998AJ....116.1009R']
 ```

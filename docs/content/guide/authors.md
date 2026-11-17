@@ -22,8 +22,10 @@ Cambridge; the German affiliation belongs to co-authors:
 ```python
 from scixplorer import *
 
-careless = Document.select(Document.bibcode).where(
-    (Document.author == "Casey, A") & (Document.affiliation.country_code == "DE")
+careless = (
+    Document
+    .select(Document.bibcode)
+    .where((Document.author == "Casey, A") & (Document.affiliation.country_code == "DE"))
 )
 [paper.bibcode for paper in careless]
 # -> ['2016arXiv160303040C']
@@ -35,9 +37,13 @@ Inside `Document.authors.any(...)`, every condition is about the same author. Th
 fields of `Author`:
 
 ```python
-careful = Document.select(Document.bibcode).where(
-    Document.authors.any(
-        (Author.name == "Casey, A") & (Author.affiliation.country_code == "DE")
+careful = (
+    Document
+    .select(Document.bibcode)
+    .where(
+        Document.authors.any(
+            (Author.name == "Casey, A") & (Author.affiliation.country_code == "DE")
+        )
     )
 )
 [paper.bibcode for paper in careful]
@@ -47,9 +53,13 @@ careful = Document.select(Document.bibcode).where(
 The same search for D. Hogg finds the paper on which Hogg himself gave a German affiliation:
 
 ```python
-query = Document.select(Document.bibcode).where(
-    Document.authors.any(
-        (Author.name == "Hogg, D") & (Author.affiliation.country_code == "DE")
+query = (
+    Document
+    .select(Document.bibcode)
+    .where(
+        Document.authors.any(
+            (Author.name == "Hogg, D") & (Author.affiliation.country_code == "DE")
+        )
     )
 )
 [paper.bibcode for paper in query]
@@ -95,9 +105,13 @@ Document.authors.any(Document.year == 2015)
 author to match.
 
 ```python
-swiss = Document.select(Document.bibcode).where(
-    Document.authors.all(Author.affiliation.country_code == "CH")
-    & (Document.year < 2000)
+swiss = (
+    Document
+    .select(Document.bibcode)
+    .where(
+        Document.authors.all(Author.affiliation.country_code == "CH")
+        & (Document.year < 2000)
+    )
 )
 [paper.bibcode for paper in swiss]
 # -> ['1995Natur.378..355M']
@@ -112,8 +126,10 @@ Index `Document.authors` to choose authors by position. With one index you can w
 directly on its fields; `Document.authors[0]` is the first author:
 
 ```python
-first_in_britain = Document.select(Document.bibcode).where(
-    Document.authors[0].affiliation.country_code == "GB"
+first_in_britain = (
+    Document
+    .select(Document.bibcode)
+    .where(Document.authors[0].affiliation.country_code == "GB")
 )
 [paper.bibcode for paper in first_in_britain]
 # -> ['2016arXiv160303040C']
@@ -124,8 +140,10 @@ search.to_solr(Document.authors[0].affiliation.abbreviation == "IoA")
 A slice selects several positions, and then you say whether any or all of them must match:
 
 ```python
-query = Document.select(Document.bibcode).where(
-    Document.authors[0:2].any(Author.affiliation.abbreviation == "MPIA Heidelberg")
+query = (
+    Document
+    .select(Document.bibcode)
+    .where(Document.authors[0:2].any(Author.affiliation.abbreviation == "MPIA Heidelberg"))
 )
 [paper.bibcode for paper in query]
 # -> ['2015ApJ...808...16N']
@@ -213,9 +231,13 @@ condition on each document that comes back.
 `explain()` says which it is:
 
 ```python
-query = Document.select(Document.bibcode).where(
-    Document.authors.any(
-        (Author.name == "Hogg, D") & (Author.affiliation.abbreviation == "MPIA Heidelberg")
+query = (
+    Document
+    .select(Document.bibcode)
+    .where(
+        Document.authors.any(
+            (Author.name == "Hogg, D") & (Author.affiliation.abbreviation == "MPIA Heidelberg")
+        )
     )
 )
 print(query.explain())
@@ -239,9 +261,12 @@ document in the index for the client to check:
 
 <!-- docs-test: raises UnsupportedQueryError -->
 ```python
-Document.select().where(
-    ~Document.authors.any((Author.name == "Hogg, D") & (Author.aff_id == "A00951"))
-).count()
+query = (
+    Document
+    .select()
+    .where(~Document.authors.any((Author.name == "Hogg, D") & (Author.aff_id == "A00951")))
+)
+query.count()
 ```
 
 Add a condition SciX can search, such as a year range, an author or a journal. See

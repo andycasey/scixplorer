@@ -148,7 +148,11 @@ search.to_solr(~((Document.year == 2020) & (Document.bibstem == "ApJ")))
 Passing several conditions to `where()`, or calling `where()` again, joins them with "and":
 
 ```python
-query = Document.select().where(Document.year == 2020, Document.bibstem == "ApJ")
+query = (
+    Document
+    .select()
+    .where(Document.year == 2020, Document.bibstem == "ApJ")
+)
 search.to_solr(query)
 # -> year:2020 AND bibstem:"ApJ"
 ```
@@ -232,7 +236,11 @@ Conditions can also go through a document's journal, its authors' affiliations, 
 concepts, which the client resolves before searching:
 
 ```python
-query = Document.select().where(Document.journal.title == "The Astrophysical Journal")
+query = (
+    Document
+    .select()
+    .where(Document.journal.title == "The Astrophysical Journal")
+)
 search.to_solr(query)
 # -> bibstem:"ApJ"
 ```

@@ -68,7 +68,12 @@ affected.
 `explain()` says whether the collection was applied, and why not:
 
 ```python
-print(Document.select().where(Document.year == 2020).explain())
+query = (
+    Document
+    .select()
+    .where(Document.year == 2020)
+)
+print(query.explain())
 # -> limited to collection 'astronomy' (scixplorer.config.collection): database:"astronomy" is added
 ```
 

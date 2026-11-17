@@ -79,7 +79,12 @@ You can also give one client its own token, and send a query with it using `usin
 
 ```python
 client = Client(token="your-token")
-query = Document.select().where(Document.year == 2020).using(client)
+query = (
+    Document
+    .select()
+    .where(Document.year == 2020)
+    .using(client)
+)
 ```
 
 ## When there is no token
@@ -92,7 +97,13 @@ with the status code (401 or 403) and SciX's message:
 ```python
 config.token = None
 anonymous = Client()
-Document.select().where(Document.year == 2020).using(anonymous).first()
+query = (
+    Document
+    .select()
+    .where(Document.year == 2020)
+    .using(anonymous)
+)
+query.first()
 ```
 
 Queries that never need a request, such as searches of [journals]({{< ref "guide/journals" >}}) and

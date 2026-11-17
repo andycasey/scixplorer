@@ -60,8 +60,13 @@ warnings.simplefilter("error", exceptions.DataWarning)
 those. The identifiers `bibcode`, `id` and `scix_id` are always fetched as well:
 
 ```python
-query = Document.select(Document.bibcode, Document.title).where(
-    Document.author == "Hogg, D"
+query = (
+    Document
+    .select(
+        Document.bibcode,
+        Document.title,
+    )
+    .where(Document.author == "Hogg, D")
 )
 query.first().to_dict()
 # -> 'title': ['The Cannon: A data-driven approach to Stellar Label Determination from Spectra']
