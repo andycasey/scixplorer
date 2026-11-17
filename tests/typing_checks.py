@@ -196,21 +196,21 @@ async def query_layer(aff: Affiliation) -> None:
 
 
 def vocabularies(document: Document, concept: UATConcept) -> None:
-    assert_type(Document.uat, RelationExpr)
-    assert_type(Document.planetary_feature, RelationExpr)
-    assert_type(document.uat, list[UATConcept])
-    assert_type(document.planetary_feature, list[PlanetaryFeature])
+    assert_type(Document.uat_concepts, RelationExpr)
+    assert_type(Document.planetary_features, RelationExpr)
+    assert_type(document.uat_concepts, list[UATConcept])
+    assert_type(document.planetary_features, list[PlanetaryFeature])
     assert_type(document.uat_id, list[int] | None)
-    assert_type(document.uat_name, list[str] | None)
-    assert_type(document.planetary_feature_name, list[str] | None)
-    assert_type(Document.uat == concept, Expr)
-    assert_type(Document.uat.in_(concept.descendants), Expr)
+    assert_type(document.uat, list[str] | None)
+    assert_type(document.planetary_feature, list[str] | None)
+    assert_type(Document.uat_concepts == concept, Expr)
+    assert_type(Document.uat_concepts.in_(concept.descendants), Expr)
     assert_type(UATConcept.lookup(498), UATConcept | None)
     assert_type(concept.ancestors, list[UATConcept])
     assert_type(concept.children, Query[UATConcept])
     assert_type(PlanetaryFeature.lookup(2071), PlanetaryFeature | None)
     assert_type(PlanetaryFeature.select(), Query[PlanetaryFeature])
-    _concepts: list[PlanetaryFeature] = document.uat  # type: ignore[assignment]
+    _concepts: list[PlanetaryFeature] = document.uat_concepts  # type: ignore[assignment]
 
 
 def search_only_field(paper: Paper) -> None:

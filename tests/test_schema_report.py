@@ -90,8 +90,7 @@ def test_report_compares_indexing(tmp_path: Path) -> None:
     assert any(line.startswith("virtual") and " full " in line and "indexed=True" in line for line in lines)
 
 
-def test_fields_are_matched_by_solr_name(tmp_path: Path) -> None:
-    # Document.uat_name and Document.planetary_feature_name are the Solr fields uat and planetary_feature.
+def test_vocabulary_fields_match_the_schema(tmp_path: Path) -> None:
     schema = tmp_path / "schema.xml"
     schema.write_text(
         SCHEMA.replace(
@@ -103,7 +102,7 @@ def test_fields_are_matched_by_solr_name(tmp_path: Path) -> None:
         )
     )
     lines = load().report(str(schema))
-    for name in ("uat", "uat_id", "planetary_feature", "planetary_feature_id", "uat_name", "planetary_feature_name"):
+    for name in ("uat", "uat_id", "planetary_feature", "planetary_feature_id"):
         assert not any(line.split()[1:2] == [name] for line in lines if line.startswith(("MISSING", "UNKNOWN"))), name
     differences = lines[lines.index("# Differences (schema -> Document)") + 1 : lines.index("# copyField")]
     assert not any(line.split()[:1] in (["uat"], ["planetary_feature"]) for line in differences)

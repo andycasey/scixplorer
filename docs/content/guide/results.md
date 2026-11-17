@@ -159,8 +159,8 @@ Documents link to other models. These are computed from the document's fields an
 | `doc.journal` | a [`Journal`]({{< ref "guide/journals" >}}), or `None` | the journal part of the bibcode |
 | `doc.affiliation` | one entry per author: `None`, an [`Affiliation`]({{< ref "guide/affiliations" >}}), or a tuple of them | `aff_id` |
 | `doc.authors` | a list of [`Author`]({{< ref "guide/authors" >}}) objects | the per-author fields |
-| `doc.uat` | a list of [`UATConcept`]({{< ref "guide/vocabularies" >}}) objects | `uat_id` |
-| `doc.planetary_feature` | a list of [`PlanetaryFeature`]({{< ref "guide/vocabularies" >}}) objects | `planetary_feature_id` |
+| `doc.uat_concepts` | a list of [`UATConcept`]({{< ref "guide/vocabularies" >}}) objects | `uat_id` |
+| `doc.planetary_features` | a list of [`PlanetaryFeature`]({{< ref "guide/vocabularies" >}}) objects | `planetary_feature_id` |
 
 `utils.flatten()` turns the per-author structure of `doc.affiliation` into a flat list:
 

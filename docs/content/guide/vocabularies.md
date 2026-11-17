@@ -30,7 +30,7 @@ downloaded a vocabulary, anything that needs it raises `exceptions.DataNotAvaila
 says what to run. See [Reference data]({{< ref "guide/reference-data" >}}) for where the files are kept and
 how to update them.
 
-You do not need the download to search by identifier: `Document.uat == 498` is sent as it is.
+You do not need the download to search by identifier: `Document.uat_concepts == 498` is sent as it is.
 
 ## UAT concepts
 
@@ -107,43 +107,41 @@ PlanetaryFeature.select().where(PlanetaryFeature.name.exact("Copernicus")).all()
 
 ## Concepts and features of a document
 
-`doc.uat` and `doc.planetary_feature` are lists of the concepts and features assigned to a document. They
+`doc.uat_concepts` and `doc.planetary_features` are lists of the concepts and features assigned to a document. They
 are built from `uat_id` and `planetary_feature_id`; identifiers missing from your copy of the vocabulary
 are skipped, and a document with none gives an empty list:
 
 ```python
 paper = Document.get(bibcode="2010GeoRL..3704201M")
-paper.planetary_feature
+paper.planetary_features
 # -> [<PlanetaryFeature: id=2071 (Gale, Mars)>]
-paper.uat
+paper.uat_concepts
 # -> []
 ```
 
-SciX also stores the names as text, in the Solr fields `uat` and `planetary_feature`. In scixplorer those
-are `uat_name` and `planetary_feature_name`, so that `uat` and `planetary_feature` can be the
-relations:
+SciX also stores the names as text, in the fields `uat` and `planetary_feature`:
 
 ```python
-paper.planetary_feature_name
+paper.planetary_feature
 # -> ['Gale']
 ```
 
 ## Search for documents by concept or feature
 
-A condition through `Document.uat` or `Document.planetary_feature` is resolved against the
+A condition through `Document.uat_concepts` or `Document.planetary_features` is resolved against the
 downloaded vocabulary, and becomes a condition on the identifiers:
 
 ```python
-search.to_solr(Document.uat.name == "Hot Jupiters")
+search.to_solr(Document.uat_concepts.name == "Hot Jupiters")
 # -> uat_id:753
-search.to_solr(Document.uat == exoplanets)
+search.to_solr(Document.uat_concepts == exoplanets)
 # -> uat_id:498
 ```
 
 To include narrower concepts, list them:
 
 ```python
-search.to_solr(Document.uat.in_([exoplanets, *exoplanets.descendants]))
+search.to_solr(Document.uat_concepts.in_([exoplanets, *exoplanets.descendants]))
 # -> uat_id:(498 OR 
 ```
 
@@ -157,15 +155,15 @@ To find papers about the crater Copernicus on Mars (not the one on the Moon), pu
 `.any()`:
 
 ```python
-martian_copernicus = Document.planetary_feature.any(
+martian_copernicus = Document.planetary_features.any(
     (PlanetaryFeature.target == "Mars") & PlanetaryFeature.name.exact("Copernicus")
 )
 search.to_solr(martian_copernicus)
 # -> planetary_feature_id:1297
 ```
 
-Written as two separate conditions, `(Document.planetary_feature.target == "Mars") &
-(Document.planetary_feature.name.exact("Copernicus"))`, it would also match a paper about Gale
+Written as two separate conditions, `(Document.planetary_features.target == "Mars") &
+(Document.planetary_features.name.exact("Copernicus"))`, it would also match a paper about Gale
 crater on Mars that mentions the lunar Copernicus. With the full gazetteer it is refused in any case: Mars
 alone has more than 1000 named features, more than one search request can carry (see
 [Limits]({{< ref "guide/vocabularies#limits" >}})). [Affiliations]({{< ref "guide/affiliations#several-conditions-on-one-affiliation" >}})
@@ -173,7 +171,7 @@ shows the two forms side by side.
 
 ```python
 query = Document.select(Document.bibcode).where(
-    Document.planetary_feature.any(
+    Document.planetary_features.any(
         (PlanetaryFeature.target == "Mars") & PlanetaryFeature.name.exact("Gale")
     )
 )
@@ -181,7 +179,7 @@ query = Document.select(Document.bibcode).where(
 # -> ['2010GeoRL..3704201M']
 ```
 
-`.any()` works on every relation: `Document.uat`, `Document.journal`,
+`.any()` works on every relation: `Document.uat_concepts`, `Document.journal`,
 `Document.affiliation`, and `Author.affiliation` inside
 [`Document.authors.any()`]({{< ref "guide/authors" >}}). There is no `.all()` on a relation: "every
 related feature" cannot be searched, and `.all` raises an `AttributeError` that says so.

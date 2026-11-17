@@ -80,7 +80,7 @@ Identity: a document is identified by the first of its identifiers (`_identifier
 
 Lazy loading: reading a stored field that was not fetched sends one search request that loads it for every document of the same result page that lacks it, with a `exceptions.LazyLoadWarning`. Documents are found by their identifier (in practice the bibcode; documents of the page identified by another field are loaded with one more request per field). The request is synchronous, even inside async code, so there select the fields you need. The identifiers (always fetched) and `score` (only meaningful for the query that produced the document) are never loaded this way, and a document with no identifier loads nothing.
 
-Relations: `journal` (from the bibcode), `affiliation` (from `aff_id`), `uat` (from `uat_id`) and `planetary_feature` (from `planetary_feature_id`) give `Journal`, `Affiliation`, `UATConcept` and `PlanetaryFeature` objects, and can be searched by their fields (`Document.journal.title.contains("astro")`), as can those models' fields directly (`Journal.title.contains("astro")`). The last two need their data downloaded once (`data.refresh("uat")`, `data.refresh("planetary_features")`), except to match ids directly (`Document.uat == 498`). Each such condition is about any related object; `.any(...)` makes several about the same one: `Document.planetary_feature.any((PlanetaryFeature.target == "Titan") & (PlanetaryFeature.feature_type == "Mare"))`.
+Relations: `journal` (from the bibcode), `affiliation` (from `aff_id`), `uat_concepts` (from `uat_id`) and `planetary_features` (from `planetary_feature_id`) give `Journal`, `Affiliation`, `UATConcept` and `PlanetaryFeature` objects, and can be searched by their fields (`Document.journal.title.contains("astro")`), as can those models' fields directly (`Journal.title.contains("astro")`). The last two need their data downloaded once (`data.refresh("uat")`, `data.refresh("planetary_features")`), except to match ids directly (`Document.uat_concepts == 498`). Each such condition is about any related object; `.any(...)` makes several about the same one: `Document.planetary_features.any((PlanetaryFeature.target == "Titan") & (PlanetaryFeature.feature_type == "Mare"))`.
 
 Per-author conditions: `doc.authors` is one `Author` per author (`.name`, `.aff`, `.affiliation`, `.email`, `.orcid`, ...), built from the per-author arrays `author`, `aff`, `aff_id`, `email` and the ORCID fields. In a search, everything inside one `Document.authors.any(...)` (or `.all(...)`, every author) is about the same author, and an index picks a position:
 
@@ -90,8 +90,6 @@ Document.authors[0].orcid == "0000-0002-1825-0097"
 ```
 
 A single condition means the same as its shorthand: `Document.authors[0].name == x` is `Document.author[0] == x`, and `Document.authors.any(Author.affiliation.country == x)` is `Document.affiliation.country == x`. A condition Solr cannot express exactly (several about one author at any position, or `all`) is sent as a necessary condition and checked on each returned document.
-
-Names: the Solr fields `uat` and `planetary_feature` (the names of the concepts and features as text) are `uat_name` and `planetary_feature_name` here, so that `uat` and `planetary_feature` can be the relations. Queries and `fl` use the Solr names (`Field.solr_name`).
 
 ### scixplorer.models.document.Document.citations
 

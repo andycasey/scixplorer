@@ -172,7 +172,7 @@ class Document(Model):
     this way, and a document with no identifier loads nothing.
 
     Relations: :attr:`journal` (from the bibcode), :attr:`affiliation` (from
-    ``aff_id``), :attr:`uat` (from ``uat_id``) and :attr:`planetary_feature`
+    ``aff_id``), :attr:`uat_concepts` (from ``uat_id``) and :attr:`planetary_features`
     (from ``planetary_feature_id``) give :class:`~scixplorer.models.journal.Journal`,
     :class:`~scixplorer.models.affiliation.Affiliation`,
     :class:`~scixplorer.models.uat.UATConcept` and
@@ -181,9 +181,9 @@ class Document(Model):
     models' fields directly (``Journal.title.contains("astro")``). The last two
     need their data downloaded once (``scixplorer.data.refresh("uat")``,
     ``scixplorer.data.refresh("planetary_features")``), except to match ids directly
-    (``Document.uat == 498``). Each such condition is about any related
+    (``Document.uat_concepts == 498``). Each such condition is about any related
     object; ``.any(...)`` makes several about the same one:
-    ``Document.planetary_feature.any((PlanetaryFeature.target == "Titan") & (PlanetaryFeature.feature_type == "Mare"))``.
+    ``Document.planetary_features.any((PlanetaryFeature.target == "Titan") & (PlanetaryFeature.feature_type == "Mare"))``.
 
     Per-author conditions: ``doc.authors`` is one
     :class:`~scixplorer.models.author.Author` per author (``.name``, ``.aff``,
@@ -202,12 +202,6 @@ class Document(Model):
     ``Document.affiliation.country == x``. A condition Solr cannot express
     exactly (several about one author at any position, or ``all``) is sent as
     a necessary condition and checked on each returned document.
-
-    Names: the Solr fields ``uat`` and ``planetary_feature`` (the names of the
-    concepts and features as text) are :attr:`uat_name` and
-    :attr:`planetary_feature_name` here, so that :attr:`uat` and
-    :attr:`planetary_feature` can be the relations. Queries and ``fl`` use the
-    Solr names (``Field.solr_name``).
     """
 
     #: The fields that can identify a document, in order of preference. Every
@@ -360,14 +354,13 @@ class Document(Model):
     page_range = StringField("The page range of the record. Returned, but not searchable.", indexed=False)
     planetary_feature_id = IntegerField(
         "Gazetteer of Planetary Nomenclature feature ids of the planetary features in the record. "
-        "See also: Document.planetary_feature.",
+        "See also: Document.planetary_features.",
         multivalued=True,
     )
-    planetary_feature_name = TextField(
-        "Planetary features mentioned in the record, as text (the Solr field planetary_feature; "
-        "Document.planetary_feature is the relation to PlanetaryFeature).",
+    planetary_feature = TextField(
+        "Planetary features mentioned in the record, as text "
+        "(Document.planetary_features is the relation to PlanetaryFeature).",
         multivalued=True,
-        solr_name="planetary_feature",
     )
     property = StringField(
         "An array of miscellaneous flags associated with a record. Examples include: refereed, "
@@ -397,13 +390,12 @@ class Document(Model):
     thesis = TextField("Thesis information, such as the degree-granting institution.")
     title = TextField("The title of the record (and any other titles it has).", multivalued=True)
     uat_id = IntegerField(
-        "Unified Astronomy Thesaurus concept numbers of the record. See also: Document.uat.", multivalued=True
+        "Unified Astronomy Thesaurus concept numbers of the record. See also: Document.uat_concepts.", multivalued=True
     )
-    uat_name = StringField(
-        "Unified Astronomy Thesaurus (UAT) concepts assigned to the record, as text (the Solr field uat; "
-        "Document.uat is the relation to UATConcept).",
+    uat = StringField(
+        "Unified Astronomy Thesaurus (UAT) concepts assigned to the record, as text "
+        "(Document.uat_concepts is the relation to UATConcept).",
         multivalued=True,
-        solr_name="uat",
     )
     vizier = StringField("Keywords, 'subject' tags from Vizier.", multivalued=True)
     volume = StringField("The journal volume.")
@@ -427,7 +419,7 @@ class Document(Model):
             "to scan them."
         ),
     )
-    uat: Relation[list[UATConcept]] = Relation(
+    uat_concepts: Relation[list[UATConcept]] = Relation(
         UATConcept,
         key="uat_id",
         related_key="id",
@@ -437,7 +429,7 @@ class Document(Model):
             "skipped, and a document without any gives an empty list). Needs data.refresh('uat') once."
         ),
     )
-    planetary_feature: Relation[list[PlanetaryFeature]] = Relation(
+    planetary_features: Relation[list[PlanetaryFeature]] = Relation(
         PlanetaryFeature,
         key="planetary_feature_id",
         related_key="id",

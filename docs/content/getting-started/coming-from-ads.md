@@ -121,7 +121,6 @@ Field values now have exactly the type the field declares, or `None`. Several fi
 | `cite_read_boost` | `int` | `float` |
 | `keyword`, `alternate_title`, `arxiv_class`, `bibgroup`, `data`, `grant`, `isbn`, `links_data`, `vizier` | `str` | a list of `str` |
 | `body`, `ack` | search-only | readable, but [deferred]({{< ref "guide/results#deferred-fields" >}}) |
-| `uat`, `planetary_feature` | text | relations to [`UATConcept` and `PlanetaryFeature`]({{< ref "guide/vocabularies" >}}); the text is now `uat_name` and `planetary_feature_name` |
 
 ```python
 search.to_solr(Document.id == 1406395)

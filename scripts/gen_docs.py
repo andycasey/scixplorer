@@ -460,8 +460,8 @@ DOCUMENT_GROUPS: list[tuple[str, str, list[str]]] = [
         "mention", "mention_count", "read_count", "cite_read_boost", "classic_factor", "score",
     ]),
     ("Subjects and classification", "", [
-        "keyword", "keyword_norm", "keyword_schema", "arxiv_class", "uat_id", "uat_name", "planetary_feature_id",
-        "planetary_feature_name", "gpn", "gpn_id", "facility", "database", "collection", "bibgroup", "property",
+        "keyword", "keyword_norm", "keyword_schema", "arxiv_class", "uat_id", "uat", "planetary_feature_id",
+        "planetary_feature", "gpn", "gpn_id", "facility", "database", "collection", "bibgroup", "property",
         "nedid", "nedtype", "simbid", "simbtype", "vizier",
     ]),
     ("Full text and data", "", [
@@ -586,7 +586,7 @@ EXPRESSIONS: list[tuple[str, list[tuple[str, str]]]] = [
         ('Document.title.startswith("The Cannon")', "a pattern with a space is quoted"),
         ('Document.keyword.in_(["galaxies", "quasars"], exact=True)', ""),
         ('Document.aff == "Max-Planck"', ""),
-        ('Document.uat_name == "exoplanets"', "the text of the UAT concepts"),
+        ('Document.uat == "exoplanets"', "the text of the UAT concepts"),
     ]),
     ("Name fields and positions", [
         ('Document.author == "Murray, S"', "with name variants"),
@@ -646,8 +646,8 @@ EXPRESSIONS: list[tuple[str, list[tuple[str, str]]]] = [
         ('Document.affiliation == "A01400"', ""),
         ('Document.affiliation.any((Affiliation.country_code == "AU") & (Affiliation.abbreviation == "Dep Phy"))', "one affiliation meets both"),
         ('Document.affiliation.abbreviation == "MPIA Heidelberg"', ""),
-        ("Document.uat == 498", "an identifier needs no downloaded data"),
-        ("Document.planetary_feature == 2071", ""),
+        ("Document.uat_concepts == 498", "an identifier needs no downloaded data"),
+        ("Document.planetary_features == 2071", ""),
     ]),
     ("Authors", [
         ('Document.authors.any(Author.name == "Ness, M")', "the same as the shorthand"),

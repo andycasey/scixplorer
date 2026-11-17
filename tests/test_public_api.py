@@ -92,7 +92,7 @@ def hook(event, args):
 sys.addaudithook(hook)
 import scixplorer
 assert events == [], events
-scixplorer.Document.select().where(scixplorer.Document.uat == 498)
+scixplorer.Document.select().where(scixplorer.Document.uat_concepts == 498)
 scixplorer.UATConcept.select().where(scixplorer.UATConcept.name == "Stars")
 scixplorer.data.cache_dir()
 assert events == [], events

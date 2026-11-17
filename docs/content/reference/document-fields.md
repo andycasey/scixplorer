@@ -116,10 +116,10 @@ Per-author fields hold one entry per author, in author order ('-' for none). See
 | `keyword_norm` |  | `list[str]` | text |  | Keywords normalised to a controlled vocabulary. |
 | `keyword_schema` |  | `list[str]` | text |  | The vocabulary each keyword in keyword comes from. |
 | `arxiv_class` |  | `list[str]` | text |  | The arXiv classes a document was submitted to. |
-| `uat_id` |  | `list[int]` | keyword |  | Unified Astronomy Thesaurus concept numbers of the record. See also: Document.uat. |
-| `uat_name` | `uat` | `list[str]` | keyword |  | Unified Astronomy Thesaurus (UAT) concepts assigned to the record, as text (the Solr field uat; Document.uat is the relation to UATConcept). |
-| `planetary_feature_id` |  | `list[int]` | keyword |  | Gazetteer of Planetary Nomenclature feature ids of the planetary features in the record. See also: Document.planetary_feature. |
-| `planetary_feature_name` | `planetary_feature` | `list[str]` | text |  | Planetary features mentioned in the record, as text (the Solr field planetary_feature; Document.planetary_feature is the relation to PlanetaryFeature). |
+| `uat_id` |  | `list[int]` | keyword |  | Unified Astronomy Thesaurus concept numbers of the record. See also: Document.uat_concepts. |
+| `uat` |  | `list[str]` | keyword |  | Unified Astronomy Thesaurus (UAT) concepts assigned to the record, as text (Document.uat_concepts is the relation to UATConcept). |
+| `planetary_feature_id` |  | `list[int]` | keyword |  | Gazetteer of Planetary Nomenclature feature ids of the planetary features in the record. See also: Document.planetary_features. |
+| `planetary_feature` |  | `list[str]` | text |  | Planetary features mentioned in the record, as text (Document.planetary_features is the relation to PlanetaryFeature). |
 | `gpn` |  | `list[str]` | text |  | Planetary features named in the record, from the Gazetteer of Planetary Nomenclature. |
 | `gpn_id` |  | `list[int]` | keyword |  | Gazetteer of Planetary Nomenclature identifiers of those features. |
 | `facility` |  | `list[str]` | text |  | Facilities declared in a record, based on a controlled list by AAS journals. |
@@ -171,8 +171,8 @@ Relations link a document to records of other models. Search through them (`Docu
 |---|---|---|---|
 | `journal` | `Journal` | `bibstem` → `abbreviation` | The journal the document appeared in, from the journal part of its bibcode (None if unknown). |
 | `affiliation` | `Affiliation` | `aff_id` → `id` | The curated affiliations, one entry per author: None, an Affiliation, or a tuple of them (from aff_id; ids missing from the local affiliation data are skipped). Use scixplorer.utils.flatten() to scan them. |
-| `uat` | `UATConcept` | `uat_id` → `id` | The Unified Astronomy Thesaurus concepts of the document (from uat_id; unknown ids are skipped, and a document without any gives an empty list). Needs data.refresh('uat') once. |
-| `planetary_feature` | `PlanetaryFeature` | `planetary_feature_id` → `id` | The planetary features named in the document (from planetary_feature_id; unknown ids are skipped, and a document without any gives an empty list). Needs data.refresh('planetary_features') once. |
+| `uat_concepts` | `UATConcept` | `uat_id` → `id` | The Unified Astronomy Thesaurus concepts of the document (from uat_id; unknown ids are skipped, and a document without any gives an empty list). Needs data.refresh('uat') once. |
+| `planetary_features` | `PlanetaryFeature` | `planetary_feature_id` → `id` | The planetary features named in the document (from planetary_feature_id; unknown ids are skipped, and a document without any gives an empty list). Needs data.refresh('planetary_features') once. |
 
 ## Collections
 

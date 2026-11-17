@@ -51,8 +51,8 @@ def any_of(field: str, values: list[Any]) -> str:
 
 
 def test_conditions_inside_any_are_about_one_related_object() -> None:
-    together = Document.planetary_feature.any(MARS_CRATER)
-    apart = (Document.planetary_feature.target == "Mars") & (Document.planetary_feature.feature_type == "Crater")
+    together = Document.planetary_features.any(MARS_CRATER)
+    apart = (Document.planetary_features.target == "Mars") & (Document.planetary_features.feature_type == "Crater")
     assert to_solr(together) == "planetary_feature_id:(2071 OR 16115)"
     assert to_solr(apart) == (
         "planetary_feature_id:(2071 OR 16115 OR 4 OR 90001) AND planetary_feature_id:(2071 OR 1 OR 16115)"
@@ -67,12 +67,12 @@ def test_conditions_inside_any_are_about_one_related_object() -> None:
 @pytest.mark.parametrize(
     ("build", "expected"),
     [
-        (lambda: Document.planetary_feature.any(PlanetaryFeature.target == "Titan"), "planetary_feature_id:6981"),
+        (lambda: Document.planetary_features.any(PlanetaryFeature.target == "Titan"), "planetary_feature_id:6981"),
         (
-            lambda: Document.uat.any(UATConcept.name.contains("star") & (UATConcept.deprecated == False)),  # noqa: E712
+            lambda: Document.uat_concepts.any(UATConcept.name.contains("star") & (UATConcept.deprecated == False)),  # noqa: E712
             "uat_id:(2 OR 4 OR 6)",
         ),
-        (lambda: Document.uat.any(UATConcept.name.contains("star") & UATConcept.name.contains("binary")), "uat_id:(4 OR 6)"),
+        (lambda: Document.uat_concepts.any(UATConcept.name.contains("star") & UATConcept.name.contains("binary")), "uat_id:(4 OR 6)"),
         (
             lambda: Document.journal.any(Journal.title.contains("Astrophysical") & Journal.abbreviation.startswith("ApJ")),
             'bibstem:("ApJ" OR "ApJS")',
@@ -84,10 +84,10 @@ def test_conditions_inside_any_are_about_one_related_object() -> None:
             lambda: f"pos({any_of('aff_id', ids(AU_OBSERVATORY))}, 1)",
         ),
         (
-            lambda: (Document.year == 2020) & ~Document.planetary_feature.any(MARS_CRATER),
+            lambda: (Document.year == 2020) & ~Document.planetary_features.any(MARS_CRATER),
             "year:2020 AND -planetary_feature_id:(2071 OR 16115)",
         ),
-        (lambda: Document.planetary_feature.any(MARS_CRATER & (PlanetaryFeature.name == "Mars")), "*:* AND -*:*"),
+        (lambda: Document.planetary_features.any(MARS_CRATER & (PlanetaryFeature.name == "Mars")), "*:* AND -*:*"),
     ],
 )
 def test_golden_query_strings(build: Any, expected: Any) -> None:
@@ -104,25 +104,25 @@ def test_affiliation_any_through_an_author() -> None:
 
 
 def test_resolution_notes() -> None:
-    notes = plan(Document.select().where(Document.planetary_feature.any(MARS_CRATER))).notes
-    assert any(note.startswith("Document.planetary_feature: 2 PlanetaryFeature row(s) matched") for note in notes)
+    notes = plan(Document.select().where(Document.planetary_features.any(MARS_CRATER))).notes
+    assert any(note.startswith("Document.planetary_features: 2 PlanetaryFeature row(s) matched") for note in notes)
 
 
 def test_any_builds_a_related_node() -> None:
-    relation = Document._relations["planetary_feature"]
-    assert Document.planetary_feature.any(MARS_CRATER) == Related(relation, MARS_CRATER)
+    relation = Document._relations["planetary_features"]
+    assert Document.planetary_features.any(MARS_CRATER) == Related(relation, MARS_CRATER)
     assert Document.authors[1].affiliation.any(AU_OBSERVATORY) == Document.authors[1].any(
         Author.affiliation.any(AU_OBSERVATORY)
     )
 
 
 def test_the_implicit_form_is_unchanged() -> None:
-    relation = Document._relations["planetary_feature"]
+    relation = Document._relations["planetary_features"]
     target = PlanetaryFeature._fields["target"]
-    assert (Document.planetary_feature.target == "Mars") == Related(relation, Match(target, "Mars"))
-    assert to_solr(PlanetaryFeature.target == "Mars") == to_solr(Document.planetary_feature.target == "Mars")
-    assert to_solr(Document.planetary_feature.any(PlanetaryFeature.target == "Mars")) == to_solr(
-        Document.planetary_feature.target == "Mars"
+    assert (Document.planetary_features.target == "Mars") == Related(relation, Match(target, "Mars"))
+    assert to_solr(PlanetaryFeature.target == "Mars") == to_solr(Document.planetary_features.target == "Mars")
+    assert to_solr(Document.planetary_features.any(PlanetaryFeature.target == "Mars")) == to_solr(
+        Document.planetary_features.target == "Mars"
     )
 
 
@@ -133,26 +133,26 @@ def test_the_implicit_form_is_unchanged() -> None:
     ("build", "error", "match"),
     [
         (
-            lambda: Document.planetary_feature.any(Document.year == 2020),
+            lambda: Document.planetary_features.any(Document.year == 2020),
             QueryError,
             r"Document\.year is a field of Document, not of PlanetaryFeature: everything inside "
-            r"Document\.planetary_feature\.any\(\.\.\.\) is about one planetary feature",
+            r"Document\.planetary_features\.any\(\.\.\.\) is about one planetary feature",
         ),
-        (lambda: Document.uat.any(PlanetaryFeature.target == "Mars"), QueryError, "not a field of UATConcept; inside"),
+        (lambda: Document.uat_concepts.any(PlanetaryFeature.target == "Mars"), QueryError, "not a field of UATConcept; inside"),
         (lambda: Document.journal.any("ApJ"), TypeError, "needs an expression over Journal fields"),
         (lambda: Document.journal.any(Journal.title), TypeError, "needs an expression over Journal fields"),
         (lambda: Document.affiliation.any(True), TypeError, "got the bool True.*and/or/not"),
         (
-            lambda: Document.planetary_feature.any((PlanetaryFeature.target == "Mars") and (PlanetaryFeature.name == "x")),
+            lambda: Document.planetary_features.any((PlanetaryFeature.target == "Mars") and (PlanetaryFeature.name == "x")),
             TypeError,
             "truth value",
         ),
-        (lambda: Document.uat.any(Document.raw("x")), QueryError, "cannot contain raw Solr text"),
-        (lambda: Document.uat.any(Document.citations(UATConcept.id == 1)), QueryError, "cannot contain an operator"),
-        (lambda: Document.uat.any(UATConcept.alt_names[0] == "x"), QueryError, "cannot restrict positions"),
+        (lambda: Document.uat_concepts.any(Document.raw("x")), QueryError, "cannot contain raw Solr text"),
+        (lambda: Document.uat_concepts.any(Document.citations(UATConcept.id == 1)), QueryError, "cannot contain an operator"),
+        (lambda: Document.uat_concepts.any(UATConcept.alt_names[0] == "x"), QueryError, "cannot restrict positions"),
         (lambda: Document.affiliation.any(Document.authors.any(Author.name == "x")), QueryError, "nested"),
         (lambda: Author.affiliation.any(Author.name == "x"), QueryError, "Author.name is a field of Author"),
-        (lambda: Document.planetary_feature.all, AttributeError, r'"every related planetary feature" cannot be searched'),
+        (lambda: Document.planetary_features.all, AttributeError, r'"every related planetary feature" cannot be searched'),
     ],
 )
 def test_construction_errors(build: Any, error: type[Exception], match: str) -> None:
@@ -162,7 +162,7 @@ def test_construction_errors(build: Any, error: type[Exception], match: str) -> 
 
 def test_all_on_a_relation_points_to_any() -> None:
     for build, relation in [
-        (lambda: Document.planetary_feature.all, "Document.planetary_feature"),
+        (lambda: Document.planetary_features.all, "Document.planetary_features"),
         (lambda: Document.journal.all, "Document.journal"),
         (lambda: Document.authors[0].affiliation.all, "Author.affiliation"),
     ]:
@@ -175,11 +175,11 @@ def test_all_on_a_relation_points_to_any() -> None:
 
 def test_field_through_a_relation_points_to_any() -> None:
     with pytest.raises(AttributeError) as info:
-        Document.planetary_feature.target.any  # type: ignore[attr-defined]  # noqa: B018
+        Document.planetary_features.target.any  # type: ignore[attr-defined]  # noqa: B018
     assert str(info.value) == (
-        'Document.planetary_feature.target has no .any(): a comparison through a relation already means "any '
-        'related planetary feature" (Document.planetary_feature.target == x matches when any of them does). '
-        "To say several things about the same planetary feature, use Document.planetary_feature.any(...) "
+        'Document.planetary_features.target has no .any(): a comparison through a relation already means "any '
+        'related planetary feature" (Document.planetary_features.target == x matches when any of them does). '
+        "To say several things about the same planetary feature, use Document.planetary_features.any(...) "
         "with conditions on PlanetaryFeature fields."
     )
 
@@ -205,6 +205,6 @@ def test_evaluation_on_a_loaded_document() -> None:
     assert not matches(Document.authors[0].affiliation.any(AU_OBSERVATORY), document)
     assert matches(Document.authors[1].affiliation.any(AU_OBSERVATORY), document)
     assert not matches(Document.authors.any((Author.name == "Casey, A") & Author.affiliation.any(AU_OBSERVATORY)), document)
-    assert matches(Document.planetary_feature.any(MARS_CRATER), document)
-    assert not matches(Document.uat.any(UATConcept.name.contains("star") & (UATConcept.deprecated == False)), document)  # noqa: E712
+    assert matches(Document.planetary_features.any(MARS_CRATER), document)
+    assert not matches(Document.uat_concepts.any(UATConcept.name.contains("star") & (UATConcept.deprecated == False)), document)  # noqa: E712
     assert matches(Document.journal.any(Journal.abbreviation.startswith("ApJ")), document)

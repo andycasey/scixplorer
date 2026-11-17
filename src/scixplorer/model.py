@@ -153,12 +153,12 @@ class RelationExpr:
 
         Everything inside is about the same related object, so ::
 
-            Document.planetary_feature.any(
+            Document.planetary_features.any(
                 (PlanetaryFeature.target == "Mars") & (PlanetaryFeature.feature_type == "Crater")
             )
 
         finds documents mentioning a Mars crater, whereas
-        ``(Document.planetary_feature.target == "Mars") & (Document.planetary_feature.feature_type == "Crater")``
+        ``(Document.planetary_features.target == "Mars") & (Document.planetary_features.feature_type == "Crater")``
         finds those mentioning some Mars feature and some crater (perhaps elsewhere).
         A condition on "every related object" cannot be searched, so there is no ``all``.
         """

@@ -43,7 +43,7 @@ Expressions use `from scixplorer import *` and `import datetime`.
 | `Document.title.startswith("The Cannon")` | `title:"The Cannon*"` | a pattern with a space is quoted |
 | `Document.keyword.in_(["galaxies", "quasars"], exact=True)` | `=keyword:"galaxies" OR =keyword:"quasars"` |  |
 | `Document.aff == "Max-Planck"` | `aff:"Max-Planck"` |  |
-| `Document.uat_name == "exoplanets"` | `uat:"exoplanets"` | the text of the UAT concepts |
+| `Document.uat == "exoplanets"` | `uat:"exoplanets"` | the text of the UAT concepts |
 
 ## Name fields and positions
 
@@ -121,8 +121,8 @@ Expressions use `from scixplorer import *` and `import datetime`.
 | `Document.affiliation == "A01400"` | `aff_id:"A01400"` |  |
 | `Document.affiliation.any((Affiliation.country_code == "AU") & (Affiliation.abbreviation == "Dep Phy"))` | `aff_id:("A11677" OR "A00307" OR "A11671" OR "A00733")` | one affiliation meets both |
 | `Document.affiliation.abbreviation == "MPIA Heidelberg"` | `aff_id:"A01570"` |  |
-| `Document.uat == 498` | `uat_id:498` | an identifier needs no downloaded data |
-| `Document.planetary_feature == 2071` | `planetary_feature_id:2071` |  |
+| `Document.uat_concepts == 498` | `uat_id:498` | an identifier needs no downloaded data |
+| `Document.planetary_features == 2071` | `planetary_feature_id:2071` |  |
 
 ## Authors
 
