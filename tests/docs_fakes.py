@@ -556,6 +556,8 @@ class _Parser:
         return self.leaf(name, value, quoted, exact)
 
     def leaf(self, name: str, value: str, quoted: bool, exact: bool) -> Expr:
+        if name == "property":
+            value = value.lower()
         pattern = _pattern(value, quoted)
         if name in _VIRTUAL:
             return Or(tuple(_leaf(_BY_SOLR_NAME[stored], value, quoted, exact, pattern) for stored in _VIRTUAL[name]))
@@ -650,11 +652,18 @@ def _test(expr: Expr, api: DocsAPI) -> Callable[[dict[str, Any]], bool]:
 
 
 def _as_indexed(row: dict[str, Any]) -> dict[str, Any]:
-    """The row as SciX searches it: an ``aff_id`` entry naming several institutions matches each of them."""
+    """The row as SciX searches it.
+
+    An ``aff_id`` entry naming several institutions matches each of them, and
+    ``property`` is matched whatever its case (``property:refereed`` finds ``REFEREED``).
+    """
+    indexed = row
     entries = row.get("aff_id")
-    if not entries or not any(";" in entry for entry in entries):
-        return row
-    return dict(row, aff_id=[part.strip() for entry in entries for part in entry.split(";")])
+    if entries and any(";" in entry for entry in entries):
+        indexed = dict(indexed, aff_id=[part.strip() for entry in entries for part in entry.split(";")])
+    if row.get("property"):
+        indexed = dict(indexed, property=[flag.lower() for flag in row["property"]])
+    return indexed
 
 
 def _positional(expr: _Pos, api: DocsAPI) -> Callable[[dict[str, Any]], bool]:
