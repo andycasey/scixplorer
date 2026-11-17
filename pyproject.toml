@@ -19,7 +19,11 @@ classifiers = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "mypy>=1.11"]
+dev = [
+    "pytest>=8",
+    "mypy>=1.11",
+    "coverage>=7.10",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/scixplorer"]
@@ -30,6 +34,20 @@ addopts = "-q"
 markers = [
     "live: runs against the real SciX API (needs SCIX_API_TOKEN; enable with --live)",
 ]
+
+[tool.coverage.run]
+source_pkgs = ["scixplorer"]
+branch = true
+# Paths relative to the checkout, so that data files from different machines combine.
+relative_files = true
+# Some tests run scixplorer in a child Python process; measure those too, one data file per process.
+patch = ["subprocess"]
+parallel = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_also = ["if TYPE_CHECKING:", "@overload"]
 
 [tool.mypy]
 python_version = "3.10"

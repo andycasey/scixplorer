@@ -33,6 +33,21 @@ uv run python -W error -m pytest
 The tests against the real API are opt-in; see [Live tests]({{< ref "development/live-tests" >}}).
 
 ## Type checking
+### Coverage
+
+To see which lines and branches of `src/scixplorer` the tests run:
+
+```shell
+uv run coverage run -m pytest
+uv run coverage combine
+uv run coverage report
+```
+
+`coverage run` writes one data file per process, because some tests start a child Python process and
+those are measured too; `coverage combine` merges the files. The report lists each file that is not fully
+covered, with the lines the tests missed. `uv run coverage html` writes a line-by-line report to
+`htmlcov/`.
+
 
 ```shell
 uv run mypy
