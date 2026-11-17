@@ -26,6 +26,18 @@ Lists, tuples, sets, dicts (their values) and iterators such as generators are e
 any(aff.country == "Australia" for aff in flatten(doc.affiliation))
 ```
 
+## scixplorer.utils.is_valid_orcid
+
+Written `utils.is_valid_orcid` after `from scixplorer import utils`.
+
+```python
+is_valid_orcid(orcid)
+```
+
+Whether `orcid` is a well-formed ORCID iD with a correct check digit.
+
+An ORCID iD is 16 characters in four hyphenated groups, `0000-0002-1825-0097`. The last character is a check digit (`0` to `9` or `X`) computed from the other fifteen (ISO 7064 MOD 11-2), so one mistyped digit, or two neighbouring digits swapped, makes the iD invalid. This checks the form and the check digit only: a valid iD need not be registered to anyone. The bare iD is expected, without `https://orcid.org/` in front.
+
 ## scixplorer.utils.parse_bibcode
 
 Written `utils.parse_bibcode` after `from scixplorer import utils`.

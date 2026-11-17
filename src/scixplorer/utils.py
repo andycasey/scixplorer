@@ -15,7 +15,7 @@ from scixplorer.exceptions import APIError
 if TYPE_CHECKING:
     from scixplorer.client import Request, Response
 
-__all__ = ["flatten", "parse_bibcode", "to_bibcodes"]
+__all__ = ["flatten", "is_valid_orcid", "parse_bibcode", "to_bibcodes"]
 
 #: A 19-character bibcode: YYYYJJJJJVVVVMPPPPA (https://ui.adsabs.harvard.edu/help/actions/bibcode).
 #: Volumes may be letters (``2020svos.conf...11E``) and the qualifier may be
@@ -56,6 +56,38 @@ def parse_bibcode(bibcode: str) -> dict[str, str]:
 
 
 _MISSING = object()
+
+
+#: An ORCID iD: 16 characters in four hyphenated groups, the last a digit or ``X``.
+_ORCID = re.compile(r"[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9Xx]")
+
+
+def is_valid_orcid(orcid: str) -> bool:
+    """Whether ``orcid`` is a well-formed ORCID iD with a correct check digit.
+
+    An ORCID iD is 16 characters in four hyphenated groups,
+    ``0000-0002-1825-0097``. The last character is a check digit (``0`` to
+    ``9`` or ``X``) computed from the other fifteen (ISO 7064 MOD 11-2), so
+    one mistyped digit, or two neighbouring digits swapped, makes the iD
+    invalid. This checks the form and the check digit only: a valid iD need
+    not be registered to anyone. The bare iD is expected, without
+    ``https://orcid.org/`` in front.
+    """
+    return _orcid_problem(orcid) is None
+
+
+def _orcid_problem(orcid: object) -> str | None:
+    """Why ``orcid`` is not a valid ORCID iD, or ``None`` if it is one."""
+    if not isinstance(orcid, str) or _ORCID.fullmatch(orcid) is None:
+        return "is not of the form 0000-0002-1825-0097 (16 digits in four groups; the last may be X)"
+    digits = orcid.replace("-", "")
+    total = 0
+    for digit in digits[:15]:
+        total = (total + int(digit)) * 2
+    check = (12 - total % 11) % 11
+    if digits[15].upper() != ("X" if check == 10 else str(check)):
+        return "has the wrong check digit, so it is probably mistyped"
+    return None
 
 
 def to_bibcodes(*items: Any) -> list[str]:

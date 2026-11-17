@@ -12,6 +12,7 @@ from scixplorer.utils import (
     _require_bibcodes,
     _response_field,
     flatten,
+    is_valid_orcid,
     parse_bibcode,
     to_bibcodes,
 )
@@ -213,3 +214,38 @@ def test_response_field_missing(data: Any, missing: str) -> None:
         _response_field(REQUEST, response, "links", "records")
     assert info.value.status_code == 200
     assert info.value.response is response
+
+
+@pytest.mark.parametrize(
+    "orcid",
+    [
+        "0000-0002-1825-0097",  # the iD in ORCID's own examples
+        "0000-0001-5109-3700",
+        "0000-0002-1694-233X",  # check digit X
+        "0000-0002-1694-233x",
+    ],
+)
+def test_is_valid_orcid(orcid: str) -> None:
+    assert is_valid_orcid(orcid)
+
+
+@pytest.mark.parametrize(
+    "orcid",
+    [
+        "0000-0002-1825-0098",  # the last digit changed
+        "0000-0002-1852-0097",  # two neighbouring digits swapped
+        "0000-0002-1825-009",  # too short
+        "0000000218250097",  # no hyphens
+        "https://orcid.org/0000-0002-1825-0097",  # a URL, not the bare iD
+        " 0000-0002-1825-0097",
+        "0000-0002-1825-009Y",
+        "",
+    ],
+)
+def test_is_valid_orcid_rejects(orcid: str) -> None:
+    assert not is_valid_orcid(orcid)
+
+
+def test_is_valid_orcid_rejects_other_types() -> None:
+    assert not is_valid_orcid(None)  # type: ignore[arg-type]
+    assert not is_valid_orcid(218250097)  # type: ignore[arg-type]
