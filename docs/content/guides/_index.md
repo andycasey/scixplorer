@@ -15,6 +15,7 @@ narrower terms of a concept, or the contents of a library.
 | Guide | Question |
 |---|---|
 | [Collaborations by country]({{< ref "guides/collaborations-by-country" >}}) | Which co-authors have I had abroad, and in which countries? |
+| [A collaborators table]({{< ref "guides/collaborators-table" >}}) | Who have I published with recently, where were they, and when? |
 
 The examples run against the small offline sample of papers used throughout this site, so the lists they
 print are short. Against SciX the same code returns everything that matches.
