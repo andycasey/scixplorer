@@ -58,28 +58,38 @@ def parse_bibcode(bibcode: str) -> dict[str, str]:
 _MISSING = object()
 
 
-#: An ORCID iD: 16 characters in four hyphenated groups, the last a digit or ``X``.
+#: An ORCID iD as it is written: 16 characters in four hyphenated groups, the last a digit or ``X``.
 _ORCID = re.compile(r"[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9Xx]")
+#: The 16 characters of an ORCID iD, without hyphens.
+_ORCID_CHARACTERS = re.compile(r"[0-9]{15}[0-9Xx]")
 
 
-def is_valid_orcid(orcid: str) -> bool:
-    """Whether ``orcid`` is a well-formed ORCID iD with a correct check digit.
+def is_valid_orcid(orcid: str, *, strict: bool = False) -> bool:
+    """Whether ``orcid`` is an ORCID iD with a correct check digit.
 
-    An ORCID iD is 16 characters in four hyphenated groups,
+    An ORCID iD is 16 characters, written in four hyphenated groups:
     ``0000-0002-1825-0097``. The last character is a check digit (``0`` to
     ``9`` or ``X``) computed from the other fifteen (ISO 7064 MOD 11-2), so
     one mistyped digit, or two neighbouring digits swapped, makes the iD
     invalid. This checks the form and the check digit only: a valid iD need
     not be registered to anyone. The bare iD is expected, without
     ``https://orcid.org/`` in front.
+
+    :param strict: require the hyphens, each in its place. By default they may
+        be missing (``0000000218250097``), which SciX accepts in a search too.
     """
-    return _orcid_problem(orcid) is None
+    return _orcid_problem(orcid, strict=strict) is None
 
 
-def _orcid_problem(orcid: object) -> str | None:
+def _orcid_problem(orcid: object, *, strict: bool = False) -> str | None:
     """Why ``orcid`` is not a valid ORCID iD, or ``None`` if it is one."""
-    if not isinstance(orcid, str) or _ORCID.fullmatch(orcid) is None:
-        return "is not of the form 0000-0002-1825-0097 (16 digits in four groups; the last may be X)"
+    if not isinstance(orcid, str):
+        return "is not an ORCID iD (16 digits, such as 0000-0002-1825-0097; the last may be X)"
+    if strict:
+        if _ORCID.fullmatch(orcid) is None:
+            return "is not of the form 0000-0002-1825-0097 (16 digits in four groups; the last may be X)"
+    elif _ORCID_CHARACTERS.fullmatch(orcid.replace("-", "")) is None:
+        return "is not an ORCID iD (16 digits, such as 0000-0002-1825-0097; the last may be X)"
     digits = orcid.replace("-", "")
     total = 0
     for digit in digits[:15]:

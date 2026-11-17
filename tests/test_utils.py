@@ -227,6 +227,21 @@ def test_response_field_missing(data: Any, missing: str) -> None:
 )
 def test_is_valid_orcid(orcid: str) -> None:
     assert is_valid_orcid(orcid)
+    assert is_valid_orcid(orcid, strict=True)
+
+
+@pytest.mark.parametrize(
+    "orcid",
+    [
+        "0000000218250097",  # no hyphens
+        "000000021694233X",
+        "0000-00021825-0097",  # one hyphen missing
+        "00000002-18250097",
+    ],
+)
+def test_is_valid_orcid_allows_missing_hyphens_unless_strict(orcid: str) -> None:
+    assert is_valid_orcid(orcid)
+    assert not is_valid_orcid(orcid, strict=True)
 
 
 @pytest.mark.parametrize(
@@ -235,7 +250,7 @@ def test_is_valid_orcid(orcid: str) -> None:
         "0000-0002-1825-0098",  # the last digit changed
         "0000-0002-1852-0097",  # two neighbouring digits swapped
         "0000-0002-1825-009",  # too short
-        "0000000218250097",  # no hyphens
+        "0000000218250098",  # no hyphens, and the last digit changed
         "https://orcid.org/0000-0002-1825-0097",  # a URL, not the bare iD
         " 0000-0002-1825-0097",
         "0000-0002-1825-009Y",
@@ -244,6 +259,7 @@ def test_is_valid_orcid(orcid: str) -> None:
 )
 def test_is_valid_orcid_rejects(orcid: str) -> None:
     assert not is_valid_orcid(orcid)
+    assert not is_valid_orcid(orcid, strict=True)
 
 
 def test_is_valid_orcid_rejects_other_types() -> None:

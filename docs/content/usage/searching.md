@@ -214,16 +214,23 @@ search.to_solr(mistyped)
 
 It is a warning and not an error because SciX can hold iDs that publishers supplied wrongly, and you
 may want to find them: the condition is still built, and the search is sent as you wrote it. Wildcard
-patterns (`like()`, `startswith()`) are not checked. To check an iD yourself, use `utils.is_valid_orcid()`:
+patterns (`like()`, `startswith()`) are not checked. An iD without its hyphens, `0000000218250097`, is
+not warned about either: SciX matches it all the same.
+
+To check an iD yourself, use `utils.is_valid_orcid()`. Pass `strict=True` to require the hyphens too:
 
 ```python
 utils.is_valid_orcid("0000-0002-1825-0097")
 # -> True
 utils.is_valid_orcid("0000-0002-1825-0098")
 # -> False
+utils.is_valid_orcid("0000000218250097")
+# -> True
+utils.is_valid_orcid("0000000218250097", strict=True)
+# -> False
 ```
 
-Give the bare iD, `0000-0002-1825-0097`, without `https://orcid.org/` in front.
+Give the bare iD, without `https://orcid.org/` in front.
 
 ## Raw Solr syntax
 

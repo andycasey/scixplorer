@@ -40,7 +40,7 @@ def test_the_warning_names_the_field_and_the_value_and_points_at_the_caller() ->
     with pytest.warns(QueryWarning) as caught:
         Document.orcid == "1825-0097"  # noqa: B015
     message = str(caught[0].message)
-    assert message.startswith("Document.orcid: '1825-0097' is not of the form 0000-0002-1825-0097")
+    assert message.startswith("Document.orcid: '1825-0097' is not an ORCID iD (16 digits, such as 0000-0002-1825-0097")
     assert message.endswith("The search is sent as written.")
     assert caught[0].filename == __file__
 
@@ -51,6 +51,9 @@ def test_the_warning_names_the_field_and_the_value_and_points_at_the_caller() ->
         lambda: Document.orcid == VALID,
         lambda: Document.orcid.in_([VALID, "0000-0002-1694-233X"]),
         lambda: Document.authors.any(Author.orcid == VALID),
+        # Missing hyphens are not a mistake: SciX matches the iD without them.
+        lambda: Document.orcid == VALID.replace("-", ""),
+        lambda: Document.orcid.in_(["0000-00021825-0097", "000000021694233X"]),
         # A pattern is not an iD, and is not checked.
         lambda: Document.orcid.like("0000-0002-1825-*"),
         lambda: Document.orcid.startswith("0000-0002"),

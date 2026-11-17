@@ -31,12 +31,16 @@ any(aff.country == "Australia" for aff in flatten(doc.affiliation))
 Written `utils.is_valid_orcid` after `from scixplorer import utils`.
 
 ```python
-is_valid_orcid(orcid)
+is_valid_orcid(orcid, *, strict=False)
 ```
 
-Whether `orcid` is a well-formed ORCID iD with a correct check digit.
+Whether `orcid` is an ORCID iD with a correct check digit.
 
-An ORCID iD is 16 characters in four hyphenated groups, `0000-0002-1825-0097`. The last character is a check digit (`0` to `9` or `X`) computed from the other fifteen (ISO 7064 MOD 11-2), so one mistyped digit, or two neighbouring digits swapped, makes the iD invalid. This checks the form and the check digit only: a valid iD need not be registered to anyone. The bare iD is expected, without `https://orcid.org/` in front.
+An ORCID iD is 16 characters, written in four hyphenated groups: `0000-0002-1825-0097`. The last character is a check digit (`0` to `9` or `X`) computed from the other fifteen (ISO 7064 MOD 11-2), so one mistyped digit, or two neighbouring digits swapped, makes the iD invalid. This checks the form and the check digit only: a valid iD need not be registered to anyone. The bare iD is expected, without `https://orcid.org/` in front.
+
+**Parameters**
+
+- `strict`: require the hyphens, each in its place. By default they may be missing (`0000000218250097`), which SciX accepts in a search too.
 
 ## scixplorer.utils.parse_bibcode
 
