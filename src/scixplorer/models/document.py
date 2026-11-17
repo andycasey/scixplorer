@@ -7,7 +7,6 @@ and the query parser's virtual fields (``abs``, ``full``, ``inst``, ...).
 
 from __future__ import annotations
 
-import sys
 import warnings
 from collections.abc import Iterable
 from typing import Any, ClassVar, TypeAlias
@@ -26,10 +25,12 @@ from ..fields import (
     StringField,
     TextField,
     VirtualField,
+    advised,
+    outside_package_stacklevel,
 )
 from ..model import Model, Relation
 from ..search import ResultPage, SearchBackend
-from ..utils import parse_bibcode, to_bibcodes
+from ..utils import _orcid_problem, parse_bibcode, to_bibcodes
 from .affiliation import Affiliation
 from .author import document_authors
 from .journal import Journal
@@ -125,16 +126,6 @@ def _positive_int(name: str, value: Any) -> int:
     if value < 1:
         raise QueryError(f"{name} must be at least 1, not {value}")
     return value
-
-
-def _outside_package_stacklevel() -> int:
-    """The ``stacklevel`` for a warning raised by the caller, pointing at the first frame outside ``scixplorer``."""
-    level = 1
-    frame = sys._getframe(1)
-    while frame.f_back is not None and frame.f_globals.get("__name__", "").split(".")[0] == "scixplorer":
-        frame = frame.f_back
-        level += 1
-    return level
 
 
 class Document(Model):
@@ -344,11 +335,14 @@ class Document(Model):
     mention_count = IntegerField("The number of records (e.g. software) this document mentions.")
     nedid = StringField("List of NED IDs for a record.", multivalued=True)
     nedtype = StringField("Keywords used to describe the NED type (e.g., galaxy, star).", multivalued=True)
-    orcid = VirtualField("ORCID identifier, from all possible sources.")
-    orcid_other = TextField("ORCID claims from users who used the ADS claiming interface.", multivalued=True)
-    orcid_pub = TextField("ORCIDs supplied by publishers.", multivalued=True)
-    orcid_user = TextField(
-        "ORCID claims from users who gave ADS consent to expose their public profile.", multivalued=True
+    orcid = advised(VirtualField("ORCID identifier, from all possible sources."), _orcid_problem)
+    orcid_other = advised(
+        TextField("ORCID claims from users who used the ADS claiming interface.", multivalued=True), _orcid_problem
+    )
+    orcid_pub = advised(TextField("ORCIDs supplied by publishers.", multivalued=True), _orcid_problem)
+    orcid_user = advised(
+        TextField("ORCID claims from users who gave ADS consent to expose their public profile.", multivalued=True),
+        _orcid_problem,
     )
     page = StringField("Page number of a record.", multivalued=True)
     page_count = IntegerField(
@@ -723,7 +717,7 @@ class Document(Model):
             f"{requests}. Select the fields you need, e.g. "
             f"Document.select({labels}, ...), to avoid this.",
             LazyLoadWarning,
-            stacklevel=_outside_package_stacklevel(),
+            stacklevel=outside_package_stacklevel(),
         )
         client = None if page is None else page.client
         for name, group in groups.items():

@@ -78,22 +78,22 @@ def test_fixture_data() -> None:
             Document.authors[0:3].any(Author.affiliation.country == "New Zealand"),
             f"pos({any_of('aff_id', NZ)}, 1, 3)",
         ),
-        (Document.authors.any((Author.name == "A, B") | (Author.orcid == "X")), 'author:"A, B" OR orcid:"X"'),
+        (Document.authors.any((Author.name == "A, B") | (Author.orcid == "0000-0002-1825-0097")), 'author:"A, B" OR orcid:"0000-0002-1825-0097"'),
         (
             Document.authors[0].any((Author.name == "A, B") | (Author.affiliation == MONASH)),
             f'pos(author:"A, B", 1) OR pos(aff_id:"{MONASH_ID}", 1)',
         ),
         (
-            (Document.year == 2020) | ~Document.authors.any((Author.name == "A, B") | (Author.orcid == "X")),
-            'year:2020 OR (*:* AND -(author:"A, B" OR orcid:"X"))',
+            (Document.year == 2020) | ~Document.authors.any((Author.name == "A, B") | (Author.orcid == "0000-0002-1825-0097")),
+            'year:2020 OR (*:* AND -(author:"A, B" OR orcid:"0000-0002-1825-0097"))',
         ),
         (
             ~Document.authors.any(Author.name == "A, B") & (Document.year == 2020),
             '-author:"A, B" AND year:2020',
         ),
         (
-            (Document.year == 2020) & ~((Document.title == "x") | Document.authors.any(Author.orcid == "X")),
-            'year:2020 AND -(title:"x" OR orcid:"X")',
+            (Document.year == 2020) & ~((Document.title == "x") | Document.authors.any(Author.orcid == "0000-0002-1825-0097")),
+            'year:2020 AND -(title:"x" OR orcid:"0000-0002-1825-0097")',
         ),
         (
             Document.citations(Document.authors[0].name == "Casey, A"),
@@ -173,7 +173,7 @@ def test_all_is_refined() -> None:
 @pytest.mark.parametrize(
     ("name", "build", "q", "read"),
     [
-        ("orcid", lambda: Document.authors[0].orcid == "X", 'orcid:"X"', ("author", "orcid_other", "orcid_pub", "orcid_user")),
+        ("orcid", lambda: Document.authors[0].orcid == "0000-0002-1825-0097", 'orcid:"0000-0002-1825-0097"', ("author", "orcid_other", "orcid_pub", "orcid_user")),
         ("email", lambda: Document.authors[0].email == "x@y.z", 'email:"x@y.z"', ("author", "email")),
     ],
 )
@@ -354,7 +354,7 @@ def test_conditions_in_branches_that_cannot_match_are_not_resolved() -> None:
         (Document.authors.any(Author.name == "Casey, A"), 'author:"Casey, A" AND database:"astronomy"'),
         (CASEY_AU, f'author:"Casey, A" AND {any_of("aff_id", AU)} AND database:"astronomy"'),
         (~CASEY_AU & (Document.year == 2020), 'year:2020 AND database:"astronomy"'),
-        (Document.authors[0].orcid == "X", 'orcid:"X" AND database:"astronomy"'),
+        (Document.authors[0].orcid == "0000-0002-1825-0097", 'orcid:"0000-0002-1825-0097" AND database:"astronomy"'),
     ],
 )
 def test_default_collection_still_applies(monkeypatch: pytest.MonkeyPatch, expr: Expr, q: str) -> None:

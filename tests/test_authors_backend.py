@@ -252,11 +252,11 @@ def test_exact_conditions_are_ordinary_searches(monkeypatch: pytest.MonkeyPatch)
     page_size(monkeypatch, 200)
     rows, _ = casey_rows(40)
     fake = FakeSearch(rows)
-    expr = Document.authors.any((Author.name == "Casey, A") | (Author.orcid == "X")) & (Document.authors[0].aff == "M")
+    expr = Document.authors.any((Author.name == "Casey, A") | (Author.orcid == "0000-0002-1825-0097")) & (Document.authors[0].aff == "M")
     documents = Document.select(Document.title).where(expr).offset(30).limit(5).using(fake.client()).all()
     assert bibcodes_of(documents) == [r["bibcode"] for r in rows[30:35]]
     assert dict(fake.searches[0].url.params) == {
-        "q": '(author:"Casey, A" OR orcid:"X") AND pos(aff:"M", 1)',
+        "q": '(author:"Casey, A" OR orcid:"0000-0002-1825-0097") AND pos(aff:"M", 1)',
         "fl": "bibcode,id,scix_id,title",
         "sort": "score desc,id asc",
         "start": "30",

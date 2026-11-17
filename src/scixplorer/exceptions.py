@@ -68,3 +68,10 @@ class LazyLoadWarning(UserWarning):
 
 class DataWarning(UserWarning):
     """A value returned by ADS did not have the type its field declares."""
+
+
+class QueryWarning(UserWarning):
+    """A value in a condition is probably a mistake, such as an ORCID iD with a wrong check digit.
+
+    The condition is still built, and the search is sent as written.
+    """

@@ -14,7 +14,7 @@ example below uses it so you can see exactly what is sent.
 ## Compare a field with a value
 
 ```python
-from scixplorer import Document, days_ago, search
+from scixplorer import Document, days_ago, search, utils
 
 search.to_solr(Document.year == 2015)
 # -> year:2015
@@ -198,6 +198,32 @@ Document.year == "2020"
 | `Document.bibcode.in_("2006MNRAS.372..961K")` | `TypeError`: `in_()` needs a collection, not a single string |
 | `Document.links_data == "x"` | `QueryError`: the field is returned but not searchable |
 | `Document.year == Document.citation_count` | `TypeError`: fields can only be compared with values |
+
+### ORCID iDs
+
+The last character of an ORCID iD is a check digit, so a mistyped iD can be recognised. Comparing an ORCID
+field (`Document.orcid`, `Document.orcid_pub`, `Document.orcid_user`, `Document.orcid_other`, or the same
+fields of `Author`) with a value that is not a valid iD emits a `QueryWarning`:
+
+<!-- docs-test: warns QueryWarning -->
+```python
+mistyped = Document.orcid == "0000-0002-1825-0098"
+search.to_solr(mistyped)
+# -> orcid:"0000-0002-1825-0098"
+```
+
+It is a warning and not an error because SciX can hold iDs that publishers supplied wrongly, and you
+may want to find them: the condition is still built, and the search is sent as you wrote it. Wildcard
+patterns (`like()`, `startswith()`) are not checked. To check an iD yourself, use `utils.is_valid_orcid()`:
+
+```python
+utils.is_valid_orcid("0000-0002-1825-0097")
+# -> True
+utils.is_valid_orcid("0000-0002-1825-0098")
+# -> False
+```
+
+Give the bare iD, `0000-0002-1825-0097`, without `https://orcid.org/` in front.
 
 ## Raw Solr syntax
 

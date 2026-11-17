@@ -13,8 +13,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..fields import IntegerField, NameField, NumericExpr, StringField, TextExpr, TextField
+from ..fields import IntegerField, NameField, NumericExpr, StringField, TextExpr, TextField, advised
 from ..model import Collection, Model, RecordExpr, Relation, RelationExpr, Source
+from ..utils import _orcid_problem
 from .affiliation import Affiliation
 
 __all__ = ["Author", "AuthorExpr", "document_authors"]
@@ -44,16 +45,25 @@ class Author(Model):
         multivalued=True,
     )
     email = TextField("The author's email address (from Document.email), or None.")
-    orcid_pub = TextField("ORCID supplied by the publisher (from Document.orcid_pub), or None.")
-    orcid_user = TextField(
-        "ORCID claimed by a user who gave ADS consent to expose their profile (from Document.orcid_user), or None."
+    orcid_pub = advised(
+        TextField("ORCID supplied by the publisher (from Document.orcid_pub), or None."), _orcid_problem
     )
-    orcid_other = TextField(
-        "ORCID claimed with the ADS claiming interface (from Document.orcid_other), or None."
+    orcid_user = advised(
+        TextField(
+            "ORCID claimed by a user who gave ADS consent to expose their profile (from Document.orcid_user), or None."
+        ),
+        _orcid_problem,
     )
-    orcid = StringField(
-        "The author's ORCID from any source: the first of orcid_pub, orcid_user and orcid_other "
-        "that is given (searched with Document.orcid)."
+    orcid_other = advised(
+        TextField("ORCID claimed with the ADS claiming interface (from Document.orcid_other), or None."),
+        _orcid_problem,
+    )
+    orcid = advised(
+        StringField(
+            "The author's ORCID from any source: the first of orcid_pub, orcid_user and orcid_other "
+            "that is given (searched with Document.orcid)."
+        ),
+        _orcid_problem,
     )
 
     affiliation: Relation[tuple[Affiliation, ...]] = Relation(

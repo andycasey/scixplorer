@@ -393,7 +393,7 @@ def test_handles() -> None:
 @pytest.mark.parametrize(
     ("shorthand", "explicit"),
     [
-        (lambda: Document.authors[0].orcid == "X", lambda: Document.authors[0].any(Author.orcid == "X")),
+        (lambda: Document.authors[0].orcid == "0000-0002-1825-0097", lambda: Document.authors[0].any(Author.orcid == "0000-0002-1825-0097")),
         (lambda: Document.authors[0].name.exact("A, B"), lambda: Document.authors[0].any(Author.name.exact("A, B"))),
         (lambda: Document.authors[0].email.like("*@x.org"), lambda: Document.authors[0].any(Author.email.like("*@x.org"))),
         (lambda: Document.authors[0].aff_id.in_(["A", "B"]), lambda: Document.authors[0].any(Author.aff_id.in_(["A", "B"]))),

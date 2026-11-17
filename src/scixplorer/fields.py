@@ -30,14 +30,15 @@ from __future__ import annotations
 
 import math
 import re
+import sys
 import warnings
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, NoReturn, Protocol, TypeVar, cast, overload
 
-from .exceptions import DataWarning, QueryError
+from .exceptions import DataWarning, QueryError, QueryWarning
 from .expr import (
     BOOL_ERROR,
     Expr,
@@ -137,6 +138,15 @@ class FieldExpr:
         if isinstance(value, (FieldExpr, Expr)):
             raise TypeError(f"{self!r} can only be compared with values, not with {value!r}")
         self.field.to_solr(value)
+        advice = self.field.advice
+        if advice is not None and not isinstance(value, SolrLiteral):
+            problem = advice(value)
+            if problem is not None:
+                warnings.warn(
+                    f"{self.field._label()}: {value!r} {problem}. The search is sent as written.",
+                    QueryWarning,
+                    stacklevel=outside_package_stacklevel(),
+                )
         return self.field.normalise(value)
 
     def __eq__(self, value: object) -> Expr:  # type: ignore[override]  # builds an Expr, not a bool
@@ -288,6 +298,16 @@ class NumericExpr(FieldExpr):
     def between(self, lo: Any, hi: Any) -> Expr:
         """Match values from ``lo`` to ``hi`` inclusive."""
         return self._wrap(Range(self.field, self._check(lo), self._check(hi)))
+
+
+def outside_package_stacklevel() -> int:
+    """The ``stacklevel`` for a warning raised by the caller, pointing at the first frame outside ``scixplorer``."""
+    level = 1
+    frame = sys._getframe(1)
+    while frame.f_back is not None and frame.f_globals.get("__name__", "").split(".")[0] == "scixplorer":
+        frame = frame.f_back
+        level += 1
+    return level
 
 
 def parse_positions(index: int | slice) -> tuple[int, int]:
@@ -447,6 +467,11 @@ class Field(Generic[T, H]):
     #: How ADS matches values: ``"keyword"`` (literally), ``"text"`` (tokenized,
     #: with synonyms) or ``"name"`` (with name variants). See the module docstring.
     match_kind: ClassVar[str] = "keyword"
+    #: Given a value compared with the field (by ``==``, ``exact()`` or ``in_()``),
+    #: returns why it is probably a mistake, or ``None``. A reason is reported
+    #: as a :class:`~scixplorer.exceptions.QueryWarning`; the condition is still
+    #: built. Set with :func:`advised`.
+    advice: Callable[[Any], str | None] | None = None
     name: str
     model: type
 
@@ -607,6 +632,18 @@ class Field(Generic[T, H]):
 # checker only: ``multivalued=True`` makes the value type ``list[...]``. The
 # overloads must name the concrete class, because type checkers cannot infer a
 # subclass's type parameter from self-typed overloads inherited from a base.
+
+
+_F = TypeVar("_F", bound=Field[Any, Any])
+
+
+def advised(field: _F, advice: Callable[[Any], str | None]) -> _F:
+    """Return ``field``, set to warn about compared values that ``advice`` gives a reason to doubt.
+
+    See :attr:`Field.advice`.
+    """
+    field.advice = advice
+    return field
 
 
 class _StringLikeField(Field[T, TextExpr]):

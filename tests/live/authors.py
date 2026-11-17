@@ -19,10 +19,12 @@ positions), where it needs more requests than checking each item.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from scixplorer.exceptions import QueryWarning
 from scixplorer.expr import Expr
 from scixplorer.models.document import Document
 
@@ -176,7 +178,11 @@ def several_ids(records: Sequence[dict[str, Any]]) -> tuple[str, str, list[str]]
 
 def at(field: str, value: str, position: int) -> Expr:
     """``pos(<field>:"<value>", position + 1)``: the clause for author ``position``'s value."""
-    return Document.pos(getattr(Document, field) == value, position + 1)
+    with warnings.catch_warnings():
+        # The value is an entry as the server gave it, or a probe that matches nothing: an ORCID
+        # that is not valid is not a mistake here.
+        warnings.simplefilter("ignore", QueryWarning)
+        return Document.pos(getattr(Document, field) == value, position + 1)
 
 
 def set_at(affiliation_id: str, position: int) -> Expr:

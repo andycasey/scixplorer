@@ -24,11 +24,12 @@ catch them all:
 | `RateLimitExceeded` | `APIError` | the rate limit for a service is used up (HTTP 429) |
 | `DataNotAvailable` | `SciXError` | a vocabulary has not been downloaded (see [Reference data]({{< ref "usage/reference-data" >}})) |
 
-Two warnings, which are not errors:
+Three warnings, which are not errors:
 
 | Warning | Emitted when |
 |---|---|
 | `LazyLoadWarning` | a field that was not fetched is loaded on demand (see [Results]({{< ref "usage/results#lazy-loading" >}})) |
+| `QueryWarning` | a value in a condition is probably a mistake, such as an ORCID iD with a wrong check digit (see [Searching]({{< ref "usage/searching#orcid-ids" >}})); the search is still sent as written |
 | `DataWarning` | a value from SciX could not be converted to its field's type and became `None`, or a cached data file could not be read |
 
 `APIError` has `message`, `status_code` (or `None` if no response arrived) and `response` (the parsed

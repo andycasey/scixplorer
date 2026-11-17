@@ -127,3 +127,15 @@ Written `exceptions.DataWarning` after `from scixplorer import exceptions`.
 A value returned by ADS did not have the type its field declares.
 
 Derives from `UserWarning`.
+
+## scixplorer.exceptions.QueryWarning
+
+Written `exceptions.QueryWarning` after `from scixplorer import exceptions`.
+
+*class*
+
+A value in a condition is probably a mistake, such as an ORCID iD with a wrong check digit.
+
+The condition is still built, and the search is sent as written.
+
+Derives from `UserWarning`.
