@@ -1,0 +1,96 @@
+# Build the documentation site with Hugo, and publish it to GitHub Pages from main.
+#
+# A pull request only builds the site (a warning or a broken link fails the build); a push to main
+# also deploys it.
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time. A running deployment is left to finish; a pull request's build is replaced.
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Hugo extended; keep in step with the version the site is written against.
+  HUGO_VERSION: "0.152.2"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v7
+
+      # The theme is a Hugo module, which Hugo fetches with Go.
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: docs/go.mod
+          cache-dependency-path: docs/go.sum
+
+      - name: Install Hugo
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/hugo.deb" \
+            "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb"
+          sudo dpkg -i "$RUNNER_TEMP/hugo.deb"
+          hugo version
+
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install the package and the development dependencies
+        run: uv sync --locked
+
+      # The build test is opt-in (SCIX_TEST_DOCS=1) and skips itself if it cannot run, so a skip is a failure here.
+      - name: Check the site builds without warnings and has its key pages
+        env:
+          SCIX_TEST_DOCS: "1"
+        run: |
+          set -o pipefail
+          uv run pytest tests/test_docs_build.py -rs | tee "$RUNNER_TEMP/docs-build.txt"
+          if grep -q SKIPPED "$RUNNER_TEMP/docs-build.txt"; then
+            echo "::error::The documentation build test was skipped."
+            exit 1
+          fi
+
+      - name: Look up the address of the Pages site
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Build the site
+        env:
+          HUGO_ENVIRONMENT: production
+        run: |
+          hugo --source docs --gc --minify --panicOnWarning --printPathWarnings \
+            --baseURL "${{ steps.pages.outputs.base_url }}/"
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs/public
+
+  deploy:
+    name: Deploy
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
