@@ -412,16 +412,14 @@ def _flags(info: Any, deferred: frozenset[str] = frozenset()) -> str:
     return ", ".join(notes)
 
 
-def field_table(model: type[Model], names: Iterable[str] | None = None, *, solr: bool = False) -> str:
+def field_table(model: type[Model], names: Iterable[str] | None = None) -> str:
     infos = {info.name: info for info in model.describe()}
     deferred: frozenset[str] = getattr(model, "_deferred", frozenset())
-    header = "| Field | " + ("Solr name | " if solr else "") + "Type | Match | Notes | Description |"
-    rule = "|---|" + ("---|" if solr else "") + "---|---|---|---|"
-    rows = [header, rule]
+    rows = ["| Field | Type | Match | Notes | Description |", "|---|---|---|---|---|"]
     for name in names if names is not None else infos:
         info = infos[name]
-        solr_cell = (code(info.solr_name) if info.solr_name != info.name else "") if solr else None
-        cells = [code(info.name)] + ([solr_cell] if solr else []) + [
+        cells = [
+            code(info.name),
             code(info.type),
             info.match_kind,
             _flags(info, deferred),
@@ -488,8 +486,7 @@ def document_fields() -> str:
         "",
         "| Column | Meaning |",
         "|---|---|",
-        "| Field | the attribute: `Document.<field>` in a search, `doc.<field>` on a result |",
-        "| Solr name | the field's name in the Solr query, when it differs |",
+        "| Field | the field's name in Solr, and the attribute: `Document.<field>` in a search, `doc.<field>` on a result |",
         "| Type | the Python type of a value; `list[...]` for a multi-valued field. A missing value is `None` |",
         "| Match | how `==` matches: `keyword` (literally), `text` (words as a phrase, with synonyms), `name` (with name variants) |",
         "| Notes | `search-only`: can be searched, never returned. `deferred`: not fetched unless selected. `not searchable`: returned, but cannot be searched or sorted by |",
@@ -499,7 +496,7 @@ def document_fields() -> str:
         body += [f"## {title}", ""]
         if intro:
             body += [intro, ""]
-        body += [field_table(Document, names, solr=True), ""]
+        body += [field_table(Document, names), ""]
     body += [
         "## Relations",
         "",
@@ -522,7 +519,7 @@ def document_fields() -> str:
     return page(
         "Document fields",
         1,
-        "Every field of the Document model: its Solr name, type, how it matches, and whether it is returned, deferred or searchable.",
+        "Every field of the Document model: its type, how it matches, and whether it is returned, deferred or searchable.",
         "\n".join(body),
     )
 

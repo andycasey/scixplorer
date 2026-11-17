@@ -229,6 +229,10 @@ def test_describe_shows_the_text_fields_under_their_solr_names() -> None:
     assert type(Document._fields["gpn_id"]) is IntegerField and Document._fields["gpn"].solr_name == "gpn"
 
 
+def test_every_document_field_has_its_solr_name() -> None:
+    assert [i.name for i in Document.describe() if i.solr_name != i.name] == []
+
+
 def test_relations_and_names() -> None:
     assert Document._relations["uat_concepts"].related_model is UATConcept
     assert Document._relations["planetary_features"].related_model is PlanetaryFeature
