@@ -1,0 +1,108 @@
+# Release a version: pushing a tag vX.Y.Z runs the tests, builds the distributions, publishes them
+# to PyPI, and creates the GitHub release.
+#
+# The tag must be "v" followed by the version in pyproject.toml. PyPI accepts the upload through
+# trusted publishing: the project on PyPI names this repository, this workflow file and the "pypi"
+# environment as a publisher, so no token is stored here.
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    name: Tests
+    uses: ./.github/workflows/tests.yml
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.14"
+
+      - name: Check the tag against the package version
+        id: version
+        run: |
+          version="$(uv version --short)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::The tag is $GITHUB_REF_NAME, but pyproject.toml says version $version (expected the tag v$version)."
+            exit 1
+          fi
+          module="$(uv run --locked python -c 'import scixplorer; print(scixplorer.__version__)')"
+          if [ "$module" != "$version" ]; then
+            echo "::error::pyproject.toml says version $version, but scixplorer.__version__ is $module."
+            exit 1
+          fi
+          # An alpha, beta, release candidate or development version is a pre-release.
+          if echo "$version" | grep -Eq '(a|b|rc|\.dev)[0-9]+'; then prerelease=true; else prerelease=false; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+      - name: Build the source distribution and the wheel
+        run: uv build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  pypi:
+    name: Publish to PyPI
+    needs: [tests, build]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/scixplorer/${{ needs.build.outputs.version }}/
+    permissions:
+      # For trusted publishing.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: Create the GitHub release
+    needs: [build, pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create the release, with notes from the commits since the last one
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.build.outputs.version }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          flags=()
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "scixplorer $VERSION" \
+            --generate-notes \
+            "${flags[@]}"
