@@ -56,6 +56,7 @@ params:
   description: A Python client for SciX (Science Explorer), the successor to NASA/ADS.
   navbar:
     displayTitle: true
+    width: wide
     displayLogo: false
   theme:
     default: system
@@ -73,9 +74,10 @@ params:
     # No public repository URL yet.
     enable: false
   page:
-    width: normal
+    width: wide
   footer:
     enable: true
+    width: wide
     displayCopyright: false
   displayUpdatedDate: false
   toc:
