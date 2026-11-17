@@ -50,8 +50,13 @@ menu:
       weight: 5
       params:
         type: search
-    - name: Theme
+    - name: GitHub
       weight: 6
+      url: https://github.com/andycasey/scixplorer
+      params:
+        icon: github
+    - name: Theme
+      weight: 7
       params:
         type: theme-toggle
 
@@ -74,7 +79,6 @@ params:
       enable: true
       display: hover
   editURL:
-    # No public repository URL yet.
     enable: false
   page:
     width: wide
