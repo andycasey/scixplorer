@@ -54,7 +54,7 @@ Never loads missing values, and does not include relations.
 
 ## scixplorer.models.document.Document
 
-Written `Document` after `from scixplorer import *`.
+Written `Document` after `from scixplorer import Document`.
 
 ```python
 Document(**values)
@@ -357,7 +357,7 @@ Documents not in `source` (see `in_`).
 
 ## scixplorer.models.library.Library
 
-Written `Library` after `from scixplorer import *`.
+Written `Library` after `from scixplorer import Library`.
 
 ```python
 Library(**values)
@@ -539,7 +539,7 @@ Whether a document (a bibcode or an object with a `bibcode`) is in the library.
 
 ## scixplorer.models.journal.Journal
 
-Written `Journal` after `from scixplorer import *`.
+Written `Journal` after `from scixplorer import Journal`.
 
 ```python
 Journal(**values)
@@ -574,7 +574,7 @@ The journal with this abbreviation, or `None`. Constant time.
 
 ## scixplorer.models.affiliation.Affiliation
 
-Written `Affiliation` after `from scixplorer import *`.
+Written `Affiliation` after `from scixplorer import Affiliation`.
 
 ```python
 Affiliation(**values)
@@ -635,7 +635,7 @@ A query for the other institutions sharing at least one parent with this one.
 
 ## scixplorer.models.uat.UATConcept
 
-Written `UATConcept` after `from scixplorer import *`.
+Written `UATConcept` after `from scixplorer import UATConcept`.
 
 ```python
 UATConcept(**values)
@@ -696,7 +696,7 @@ Every narrower concept, nearest first, each once; safe if the data has cycles.
 
 ## scixplorer.models.planetary.PlanetaryFeature
 
-Written `PlanetaryFeature` after `from scixplorer import *`.
+Written `PlanetaryFeature` after `from scixplorer import PlanetaryFeature`.
 
 ```python
 PlanetaryFeature(**values)
@@ -731,7 +731,7 @@ The feature with this id (an int, or a string of digits), or `None`. Constant ti
 
 ## scixplorer.models.author.Author
 
-Written `Author` after `from scixplorer import *`.
+Written `Author` after `from scixplorer import Author`.
 
 ```python
 Author(**values)
@@ -745,7 +745,7 @@ Values come from entry `position` of the document's per-author arrays; `"-"` (AD
 
 ## scixplorer.expr.days_ago
 
-Written `days_ago` after `from scixplorer import *`.
+Written `days_ago` after `from scixplorer import days_ago`.
 
 ```python
 days_ago(n)
@@ -755,7 +755,7 @@ The time `n` days before now, as evaluated by Solr.
 
 ## scixplorer.expr.now
 
-Written `now` after `from scixplorer import *`.
+Written `now` after `from scixplorer import now`.
 
 ```python
 now()
@@ -765,7 +765,7 @@ The current time, as evaluated by Solr.
 
 ## scixplorer.search.to_solr
 
-Written `search.to_solr` after `from scixplorer import *`.
+Written `search.to_solr` after `from scixplorer import search`.
 
 ```python
 to_solr(query_or_expr)
@@ -777,7 +777,7 @@ For a search sent to `/search/bigquery` this is the query applied to the uploade
 
 ## scixplorer.search.plan
 
-Written `search.plan` after `from scixplorer import *`.
+Written `search.plan` after `from scixplorer import search`.
 
 ```python
 plan(query, *, library_bibcodes=None)

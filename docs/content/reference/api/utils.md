@@ -12,7 +12,7 @@ This module duck-types documents and libraries instead of importing the models, 
 
 ## scixplorer.utils.flatten
 
-Written `utils.flatten` after `from scixplorer import *`.
+Written `utils.flatten` after `from scixplorer import utils`.
 
 ```python
 flatten(obj)
@@ -28,7 +28,7 @@ any(aff.country == "Australia" for aff in flatten(doc.affiliation))
 
 ## scixplorer.utils.parse_bibcode
 
-Written `utils.parse_bibcode` after `from scixplorer import *`.
+Written `utils.parse_bibcode` after `from scixplorer import utils`.
 
 ```python
 parse_bibcode(bibcode)
@@ -47,7 +47,7 @@ Raises `ValueError` if `bibcode` is not a 19-character bibcode.
 
 ## scixplorer.utils.to_bibcodes
 
-Written `utils.to_bibcodes` after `from scixplorer import *`.
+Written `utils.to_bibcodes` after `from scixplorer import utils`.
 
 ```python
 to_bibcodes(*items)

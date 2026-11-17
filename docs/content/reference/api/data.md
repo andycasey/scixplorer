@@ -18,7 +18,7 @@ The cache directory is `$SCIX_CACHE_DIR` if set, else `$XDG_CACHE_HOME/scixplore
 
 ## scixplorer.data.refresh
 
-Written `data.refresh` after `from scixplorer import *`.
+Written `data.refresh` after `from scixplorer import data`.
 
 ```python
 refresh(*names, transport=None, timeout=60.0)
@@ -37,7 +37,7 @@ Requests carry only a generic User-Agent; the SciX API token is never sent.
 
 ## scixplorer.data.status
 
-Written `data.status` after `from scixplorer import *`.
+Written `data.status` after `from scixplorer import data`.
 
 ```python
 status()
@@ -47,7 +47,7 @@ Which copy of each dataset is in use, where it is, when it was modified and its 
 
 ## scixplorer.data.clear
 
-Written `data.clear` after `from scixplorer import *`.
+Written `data.clear` after `from scixplorer import data`.
 
 ```python
 clear(*names)
@@ -59,7 +59,7 @@ Models then read their packaged snapshot, or raise `exceptions.DataNotAvailable`
 
 ## scixplorer.data.notices
 
-Written `data.notices` after `from scixplorer import *`.
+Written `data.notices` after `from scixplorer import data`.
 
 ```python
 notices()
@@ -71,7 +71,7 @@ It says where each file comes from and under which licence; the packaged data is
 
 ## scixplorer.data.cache_dir
 
-Written `data.cache_dir` after `from scixplorer import *`.
+Written `data.cache_dir` after `from scixplorer import data`.
 
 ```python
 cache_dir()
@@ -81,7 +81,7 @@ The directory holding downloaded data. It is created only when something is writ
 
 ## scixplorer.data.read_text
 
-Written `data.read_text` after `from scixplorer import *`.
+Written `data.read_text` after `from scixplorer import data`.
 
 ```python
 read_text(dataset, filename)
@@ -93,7 +93,7 @@ Raises `exceptions.DataNotAvailable` if neither exists. The text is not checked;
 
 ## scixplorer.data.RefreshResult
 
-Written `data.RefreshResult` after `from scixplorer import *`.
+Written `data.RefreshResult` after `from scixplorer import data`.
 
 ```python
 RefreshResult(name, ok, files, message)
@@ -105,7 +105,7 @@ The outcome of refreshing one dataset. `files` are the cache files written.
 
 ## scixplorer.data.DatasetStatus
 
-Written `data.DatasetStatus` after `from scixplorer import *`.
+Written `data.DatasetStatus` after `from scixplorer import data`.
 
 ```python
 DatasetStatus(name, source, paths, modified, size)
@@ -119,7 +119,7 @@ Which copy of a dataset is in use.
 
 ## scixplorer.data.Dataset
 
-Written `data.Dataset` after `from scixplorer import *`.
+Written `data.Dataset` after `from scixplorer import data`.
 
 ```python
 Dataset(name, files, packaged, licence, description)
@@ -133,7 +133,7 @@ A collection of reference data and where it comes from.
 
 ## scixplorer.data.RemoteFile
 
-Written `data.RemoteFile` after `from scixplorer import *`.
+Written `data.RemoteFile` after `from scixplorer import data`.
 
 ```python
 RemoteFile(url, filename, convert=None)
@@ -162,7 +162,7 @@ Models use these to read their data; you do not need them to use scixplorer.
 
 ### scixplorer.data.register
 
-Written `data.register` after `from scixplorer import *`.
+Written `data.register` after `from scixplorer import data`.
 
 ```python
 register(name, parse, reset)
@@ -177,7 +177,7 @@ Register how a model reads dataset `name`; models call this when imported.
 
 ### scixplorer.data.load
 
-Written `data.load` after `from scixplorer import *`.
+Written `data.load` after `from scixplorer import data`.
 
 ```python
 load(name, parse)

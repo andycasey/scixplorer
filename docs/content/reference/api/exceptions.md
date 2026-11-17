@@ -8,7 +8,7 @@ description: "Every exception and warning scixplorer raises."
 
 ## scixplorer.exceptions.SciXError
 
-Written `exceptions.SciXError` after `from scixplorer import *`.
+Written `exceptions.SciXError` after `from scixplorer import exceptions`.
 
 *class*
 
@@ -18,7 +18,7 @@ Derives from `Exception`.
 
 ## scixplorer.exceptions.QueryError
 
-Written `exceptions.QueryError` after `from scixplorer import *`.
+Written `exceptions.QueryError` after `from scixplorer import exceptions`.
 
 *class*
 
@@ -28,7 +28,7 @@ Derives from `exceptions.SciXError`.
 
 ## scixplorer.exceptions.UnsupportedQueryError
 
-Written `exceptions.UnsupportedQueryError` after `from scixplorer import *`.
+Written `exceptions.UnsupportedQueryError` after `from scixplorer import exceptions`.
 
 *class*
 
@@ -38,7 +38,7 @@ Derives from `exceptions.QueryError`.
 
 ## scixplorer.exceptions.NotLocallyEvaluable
 
-Written `exceptions.NotLocallyEvaluable` after `from scixplorer import *`.
+Written `exceptions.NotLocallyEvaluable` after `from scixplorer import exceptions`.
 
 *class*
 
@@ -48,7 +48,7 @@ Derives from `exceptions.QueryError`.
 
 ## scixplorer.exceptions.DoesNotExist
 
-Written `exceptions.DoesNotExist` after `from scixplorer import *`.
+Written `exceptions.DoesNotExist` after `from scixplorer import exceptions`.
 
 *class*
 
@@ -58,7 +58,7 @@ Derives from `exceptions.SciXError`, `LookupError`.
 
 ## scixplorer.exceptions.APIError
 
-Written `exceptions.APIError` after `from scixplorer import *`.
+Written `exceptions.APIError` after `from scixplorer import exceptions`.
 
 ```python
 APIError(message, *, status_code=None, response=None)
@@ -72,7 +72,7 @@ Derives from `exceptions.SciXError`.
 
 ## scixplorer.exceptions.AuthenticationError
 
-Written `exceptions.AuthenticationError` after `from scixplorer import *`.
+Written `exceptions.AuthenticationError` after `from scixplorer import exceptions`.
 
 ```python
 AuthenticationError(message, *, status_code=None, response=None)
@@ -86,7 +86,7 @@ Derives from `exceptions.APIError`.
 
 ## scixplorer.exceptions.RateLimitExceeded
 
-Written `exceptions.RateLimitExceeded` after `from scixplorer import *`.
+Written `exceptions.RateLimitExceeded` after `from scixplorer import exceptions`.
 
 ```python
 RateLimitExceeded(message, *, limit=None, remaining=None, reset=None, **kwargs)
@@ -100,7 +100,7 @@ Derives from `exceptions.APIError`.
 
 ## scixplorer.exceptions.DataNotAvailable
 
-Written `exceptions.DataNotAvailable` after `from scixplorer import *`.
+Written `exceptions.DataNotAvailable` after `from scixplorer import exceptions`.
 
 *class*
 
@@ -110,7 +110,7 @@ Derives from `exceptions.SciXError`.
 
 ## scixplorer.exceptions.LazyLoadWarning
 
-Written `exceptions.LazyLoadWarning` after `from scixplorer import *`.
+Written `exceptions.LazyLoadWarning` after `from scixplorer import exceptions`.
 
 *class*
 
@@ -120,7 +120,7 @@ Derives from `UserWarning`.
 
 ## scixplorer.exceptions.DataWarning
 
-Written `exceptions.DataWarning` after `from scixplorer import *`.
+Written `exceptions.DataWarning` after `from scixplorer import exceptions`.
 
 *class*
 

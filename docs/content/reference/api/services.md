@@ -19,7 +19,7 @@ print(export.bibtex("2015ApJ...808...16N", library, sort="date desc"))
 
 ### scixplorer.services.export.aastex
 
-Written `export.aastex` after `from scixplorer import *`.
+Written `export.aastex` after `from scixplorer import export`.
 
 ```python
 aastex(*documents, journal_format=1, sort=None, client=None)
@@ -31,7 +31,7 @@ Export documents in AASTeX format.
 
 ### scixplorer.services.export.ads
 
-Written `export.ads` after `from scixplorer import *`.
+Written `export.ads` after `from scixplorer import export`.
 
 ```python
 ads(*documents, sort=None, client=None)
@@ -46,7 +46,7 @@ Export documents in the ADS generic tagged format.
 
 ### scixplorer.services.export.bibtex
 
-Written `export.bibtex` after `from scixplorer import *`.
+Written `export.bibtex` after `from scixplorer import export`.
 
 ```python
 bibtex(*documents, max_author=10, author_cutoff=200, key_format=None, journal_format=1, sort=None, client=None)
@@ -65,7 +65,7 @@ Export documents as BibTeX.
 
 ### scixplorer.services.export.bibtexabs
 
-Written `export.bibtexabs` after `from scixplorer import *`.
+Written `export.bibtexabs` after `from scixplorer import export`.
 
 ```python
 bibtexabs(*documents, max_author=0, author_cutoff=200, key_format=None, journal_format=1, sort=None, client=None)
@@ -77,7 +77,7 @@ The options are those of `bibtex`. The default `max_author` differs because the 
 
 ### scixplorer.services.export.csl
 
-Written `export.csl` after `from scixplorer import *`.
+Written `export.csl` after `from scixplorer import export`.
 
 ```python
 csl(*documents, style, format, journal_format=None, sort=None, client=None)
@@ -95,7 +95,7 @@ Export documents in a Citation Style Language style.
 
 ### scixplorer.services.export.custom
 
-Written `export.custom` after `from scixplorer import *`.
+Written `export.custom` after `from scixplorer import export`.
 
 ```python
 custom(*documents, format, client=None)
@@ -112,7 +112,7 @@ There is no `sort`: ADS answers `/export/custom` with HTTP 500 when given `sort=
 
 ### scixplorer.services.export.dcxml
 
-Written `export.dcxml` after `from scixplorer import *`.
+Written `export.dcxml` after `from scixplorer import export`.
 
 ```python
 dcxml(*documents, sort=None, client=None)
@@ -127,7 +127,7 @@ Export documents in Dublin Core (DC) XML format.
 
 ### scixplorer.services.export.endnote
 
-Written `export.endnote` after `from scixplorer import *`.
+Written `export.endnote` after `from scixplorer import export`.
 
 ```python
 endnote(*documents, sort=None, client=None)
@@ -142,7 +142,7 @@ Export documents in EndNote format.
 
 ### scixplorer.services.export.icarus
 
-Written `export.icarus` after `from scixplorer import *`.
+Written `export.icarus` after `from scixplorer import export`.
 
 ```python
 icarus(*documents, sort=None, client=None)
@@ -157,7 +157,7 @@ Export documents in Icarus format.
 
 ### scixplorer.services.export.ieee
 
-Written `export.ieee` after `from scixplorer import *`.
+Written `export.ieee` after `from scixplorer import export`.
 
 ```python
 ieee(*documents, sort=None, client=None)
@@ -172,7 +172,7 @@ Export documents in IEEE format (Unicode).
 
 ### scixplorer.services.export.medlars
 
-Written `export.medlars` after `from scixplorer import *`.
+Written `export.medlars` after `from scixplorer import export`.
 
 ```python
 medlars(*documents, sort=None, client=None)
@@ -187,7 +187,7 @@ Export documents in MEDLARS format.
 
 ### scixplorer.services.export.mnras
 
-Written `export.mnras` after `from scixplorer import *`.
+Written `export.mnras` after `from scixplorer import export`.
 
 ```python
 mnras(*documents, sort=None, client=None)
@@ -202,7 +202,7 @@ Export documents in Monthly Notices of the Royal Astronomical Society format.
 
 ### scixplorer.services.export.procite
 
-Written `export.procite` after `from scixplorer import *`.
+Written `export.procite` after `from scixplorer import export`.
 
 ```python
 procite(*documents, sort=None, client=None)
@@ -217,7 +217,7 @@ Export documents in ProCite format.
 
 ### scixplorer.services.export.refabsxml
 
-Written `export.refabsxml` after `from scixplorer import *`.
+Written `export.refabsxml` after `from scixplorer import export`.
 
 ```python
 refabsxml(*documents, sort=None, client=None)
@@ -232,7 +232,7 @@ Export documents in REFABS-XML format.
 
 ### scixplorer.services.export.refworks
 
-Written `export.refworks` after `from scixplorer import *`.
+Written `export.refworks` after `from scixplorer import export`.
 
 ```python
 refworks(*documents, sort=None, client=None)
@@ -247,7 +247,7 @@ Export documents in RefWorks format.
 
 ### scixplorer.services.export.refxml
 
-Written `export.refxml` after `from scixplorer import *`.
+Written `export.refxml` after `from scixplorer import export`.
 
 ```python
 refxml(*documents, sort=None, client=None)
@@ -262,7 +262,7 @@ Export documents in REF-XML format.
 
 ### scixplorer.services.export.ris
 
-Written `export.ris` after `from scixplorer import *`.
+Written `export.ris` after `from scixplorer import export`.
 
 ```python
 ris(*documents, sort=None, client=None)
@@ -277,7 +277,7 @@ Export documents in RIS (Refman) format.
 
 ### scixplorer.services.export.soph
 
-Written `export.soph` after `from scixplorer import *`.
+Written `export.soph` after `from scixplorer import export`.
 
 ```python
 soph(*documents, sort=None, client=None)
@@ -292,7 +292,7 @@ Export documents in Solar Physics (SoPh) format.
 
 ### scixplorer.services.export.votable
 
-Written `export.votable` after `from scixplorer import *`.
+Written `export.votable` after `from scixplorer import export`.
 
 ```python
 votable(*documents, sort=None, client=None)
@@ -337,7 +337,7 @@ These are the full text (publisher, arXiv, scans), data archives, and other page
 
 ### scixplorer.services.resolver.external_resources
 
-Written `resolver.external_resources` after `from scixplorer import *`.
+Written `resolver.external_resources` after `from scixplorer import resolver`.
 
 ```python
 external_resources(document, *, client=None)
@@ -354,7 +354,7 @@ Return every external resource ADS knows for one document.
 
 ### scixplorer.services.resolver.external_resource
 
-Written `resolver.external_resource` after `from scixplorer import *`.
+Written `resolver.external_resource` after `from scixplorer import resolver`.
 
 ```python
 external_resource(document, link_type, *, client=None)
@@ -386,7 +386,7 @@ These are the networks drawn by the ADS web interface (https://ui.adsabs.harvard
 
 ### scixplorer.services.vis.author_network
 
-Written `vis.author_network` after `from scixplorer import *`.
+Written `vis.author_network` after `from scixplorer import vis`.
 
 ```python
 author_network(*documents, client=None)
@@ -401,7 +401,7 @@ Return the data for a network of the authors of the given documents.
 
 ### scixplorer.services.vis.paper_network
 
-Written `vis.paper_network` after `from scixplorer import *`.
+Written `vis.paper_network` after `from scixplorer import vis`.
 
 ```python
 paper_network(*documents, client=None)
@@ -417,7 +417,7 @@ The ADS citation helper: suggest papers missing from a set of documents.
 
 ### scixplorer.services.citation_helper.citation_helper
 
-Written `citation_helper` after `from scixplorer import *`.
+Written `citation_helper` after `from scixplorer import citation_helper`.
 
 ```python
 citation_helper(*documents, client=None)

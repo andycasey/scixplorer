@@ -66,7 +66,7 @@ def code(text: str) -> str:
     return f"{fence}{pad}{text.replace('|', chr(92) + '|')}{pad}{fence}"
 
 
-# Public names, for writing references as users write them after ``from scixplorer import *`` (``Document``).
+# Public names, for writing references as users write them once imported from ``scixplorer`` (``Document``).
 
 
 def _public_names() -> dict[str, str]:
@@ -103,14 +103,21 @@ def public(path: str) -> str:
 
 
 def qualify(text: str) -> str:
-    """Code as users write it after ``from scixplorer import *``: ``scixplorer.Document`` becomes ``Document``.
+    """Code as users write it with the names imported: ``scixplorer.Document`` becomes ``Document``.
 
-    Imports of exported names in examples become ``from scixplorer import *``.
+    An import of the package in an example becomes an import of the exported names the example uses.
     """
-    if re.search(r"^\s*(from\s+scixplorer\s+import|import\s+scixplorer\b)", text, flags=re.M):
-        text = re.sub(r"^\s*(from\s+scixplorer\s+import|import\s+scixplorer\b).*\n?", "", text, flags=re.M)
-        text = "from scixplorer import *\n" + text
-    return _EXPORTED.sub("", text)
+    imports = re.compile(r"^\s*(from\s+scixplorer\s+import|import\s+scixplorer\b).*\n?", flags=re.M)
+    had_import = imports.search(text) is not None
+    text = _EXPORTED.sub("", imports.sub("", text))
+    if had_import:
+        text = f"from scixplorer import {', '.join(exported_names(text))}\n" + text
+    return text
+
+
+def exported_names(source: str) -> list[str]:
+    """The names exported by the package that ``source`` uses, sorted."""
+    return sorted(name for name in scix.__all__ if re.search(rf"(?<![\w.]){name}\b", source))
 
 
 # Docstrings: reST to Markdown.
@@ -373,7 +380,7 @@ def members(cls: type, *, names: Iterable[str] | None = None, inherited: bool = 
 def class_entry(cls: type, *, names: Iterable[str] | None = None, inherited: bool = False, skip: Iterable[str] = ()) -> str:
     path = f"{cls.__module__}.{cls.__qualname__}"
     alias = public(path)
-    note = f"Written `{alias}` after `from scixplorer import *`." if alias != path else ""
+    note = f"Written `{alias}` after `from scixplorer import {alias.split('.')[0]}`." if alias != path else ""
     parts = [entry(path, cls, label=f"{path}", level=2, note=note)]
     for name, value in members(cls, names=names, inherited=inherited):
         if name in skip:
@@ -386,7 +393,7 @@ def function_entry(module: Any, name: str, *, level: int = 2) -> str:
     obj = getattr(module, name)
     path = f"{module.__name__}.{name}"
     alias = public(path)
-    note = f"Written `{alias}` after `from scixplorer import *`." if alias != path else ""
+    note = f"Written `{alias}` after `from scixplorer import {alias.split('.')[0]}`." if alias != path else ""
     return entry(path, obj, level=level, note=note)
 
 
@@ -683,7 +690,8 @@ EXPRESSIONS: list[tuple[str, list[tuple[str, str]]]] = [
 
 def expressions_page() -> str:
     namespace: dict[str, Any] = {"datetime": datetime}
-    exec("from scixplorer import *", namespace)
+    namespace.update({name: getattr(scix, name) for name in scix.__all__})
+    names = exported_names("\n".join(source for _, items in EXPRESSIONS for source, _ in items))
     rows = 0
     body = [
         "Each row is a Python expression and the Solr query string that `search.to_solr()` compiles it to. "
@@ -691,7 +699,7 @@ def expressions_page() -> str:
         "on other models are resolved against the packaged data; the identifier lists depend on the version of "
         "that data.",
         "",
-        "Expressions use `from scixplorer import *` and `import datetime`.",
+        f"Expressions use `from scixplorer import {', '.join(names)}` and `import datetime`.",
         "",
     ]
     for section, items in EXPRESSIONS:
@@ -714,9 +722,10 @@ def expressions_page() -> str:
 
 def api_index() -> str:
     body = """
-The public classes and functions, with their signatures and docstrings. Headings give the full dotted path;
-after `from scixplorer import *`, write them as shown under each heading (for example
-`scixplorer.models.document.Document` is `Document`). Signatures are shown without type annotations.
+The public classes and functions, with their signatures and docstrings. Headings give the full dotted path.
+The line under each heading shows the name to import from `scixplorer` and how to write it (for example
+`scixplorer.models.document.Document` is `Document`, after `from scixplorer import Document`). Signatures
+are shown without type annotations.
 
 | Page | Contents |
 |---|---|

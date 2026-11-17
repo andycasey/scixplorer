@@ -24,7 +24,7 @@ The `Config` instance every client uses unless it is given its own. Written `con
 
 ## scixplorer._config.Config
 
-Written `Config` after `from scixplorer import *`.
+Written `Config` after `from scixplorer import Config`.
 
 ```python
 Config(token=None, api_url='https://api.scixplorer.org/v1', timeout=30.0, max_retries=3, retry_backoff=1.0, page_size=200, max_inline_bibcodes=50, library_membership='docs', collection=None)
@@ -58,7 +58,7 @@ Return the collections that open document searches are limited to; empty for all
 
 ## scixplorer.client.Client
 
-Written `Client` after `from scixplorer import *`.
+Written `Client` after `from scixplorer import Client`.
 
 ```python
 Client(token=None, *, config=None, transport=None, async_transport=None, sleep=time.sleep, async_sleep=asyncio.tasks.sleep, now=scixplorer.client._utcnow)
@@ -124,7 +124,7 @@ A `dict` from service (such as `"search/query"`) to the `RateLimit` SciX last re
 
 ## scixplorer.client.get_default_client
 
-Written `get_default_client` after `from scixplorer import *`.
+Written `get_default_client` after `from scixplorer import get_default_client`.
 
 ```python
 get_default_client()
@@ -136,7 +136,7 @@ The default client uses the module-level `config` (`scixplorer._config.config`).
 
 ## scixplorer.client.set_default_client
 
-Written `set_default_client` after `from scixplorer import *`.
+Written `set_default_client` after `from scixplorer import set_default_client`.
 
 ```python
 set_default_client(client)
