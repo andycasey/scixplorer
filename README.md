@@ -73,25 +73,3 @@ BibTeX. `papers.explain()` shows the request without sending it.
   suggestions.
 - Synchronous and `asyncio` use with the same queries; retries, rate-limit tracking, and paging handled
   for you.
-
-## Documentation
-
-The documentation is a [Hugo](https://gohugo.io) site in [`docs/`](docs/). To read it locally, install
-Hugo (extended, 0.146 or later) and Go, then run:
-
-```shell
-hugo server --source docs
-```
-
-and open <http://localhost:1313/>. Every example in it is run by the test suite.
-
-## Project status
-
-Pre-release (1.0.0.dev0). The client is tested offline in detail, and an opt-in live test suite
-(`uv run pytest --live`) checks what it assumes about the real SciX API.
-
-## Licence
-
-The code is MIT-licensed (see [LICENSE](LICENSE)). The reference data packaged with it is distributed
-under its own terms (the affiliation data is GPL-3.0); see
-[`src/scixplorer/data/NOTICE.md`](src/scixplorer/data/NOTICE.md).
