@@ -122,7 +122,7 @@ are built from `uat_id` and `planetary_feature_id`; identifiers missing from you
 are skipped, and a document with none gives an empty list:
 
 ```python
-paper = Document.get(bibcode="2010GeoRL..3704201M")
+paper = Document.get(bibcode="2015GeoRL..42..264E")
 paper.planetary_features
 # -> [<PlanetaryFeature: id=2071 (Gale, Mars)>]
 paper.uat_concepts
@@ -190,7 +190,7 @@ query = (
     )
 )
 [paper.bibcode for paper in query]
-# -> ['2010GeoRL..3704201M']
+# -> ['2015GeoRL..42..264E']
 ```
 
 `.any()` works on every relation: `Document.uat_concepts`, `Document.journal`,

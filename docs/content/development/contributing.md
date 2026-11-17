@@ -152,7 +152,7 @@ gazetteer. No token is set and nothing reaches the network.
           Document.bibcode,
           Document.title,
       )
-      .where(Document.author == "Hogg, D")
+      .where(Document.author == "Kewley, L")
       .order_by(Document.year.desc())
       .limit(10)
   )

@@ -16,8 +16,8 @@ SciX stores what it knows about authors as separate lists on the document, one e
 ORCID lists. A condition on one list means "any entry", so two conditions can be met by two different
 authors.
 
-Suppose you want papers by A. Casey written at a German institution. This finds one, but Casey was in
-Cambridge; the German affiliation belongs to co-authors:
+Suppose you want papers by L. Kewley written at a German institution. This finds one, but Kewley was in
+Hawaii; the German affiliation belongs to her co-authors:
 
 ```python
 from scixplorer import Affiliation, Author, Document, search
@@ -25,10 +25,10 @@ from scixplorer import Affiliation, Author, Document, search
 careless = (
     Document
     .select(Document.bibcode)
-    .where((Document.author == "Casey, A") & (Document.affiliation.country_code == "DE"))
+    .where((Document.author == "Kewley, L") & (Document.affiliation.country_code == "DE"))
 )
 [paper.bibcode for paper in careless]
-# -> ['2016arXiv160303040C']
+# -> ['2006MNRAS.372..961K']
 ```
 
 ## One author: `Document.authors.any()`
@@ -42,7 +42,7 @@ careful = (
     .select(Document.bibcode)
     .where(
         Document.authors.any(
-            (Author.name == "Casey, A") & (Author.affiliation.country_code == "DE")
+            (Author.name == "Kewley, L") & (Author.affiliation.country_code == "DE")
         )
     )
 )
@@ -50,7 +50,7 @@ careful = (
 # -> []
 ```
 
-The same search for D. Hogg finds the paper on which Hogg himself gave a German affiliation:
+The same search for G. Kauffmann finds the paper on which Kauffmann herself gave a German affiliation:
 
 ```python
 query = (
@@ -58,12 +58,12 @@ query = (
     .select(Document.bibcode)
     .where(
         Document.authors.any(
-            (Author.name == "Hogg, D") & (Author.affiliation.country_code == "DE")
+            (Author.name == "Kauffmann, G") & (Author.affiliation.country_code == "DE")
         )
     )
 )
 [paper.bibcode for paper in query]
-# -> ['2015ApJ...808...16N']
+# -> ['2006MNRAS.372..961K']
 ```
 
 | `Author` field | From the document's | Notes |
@@ -82,13 +82,13 @@ affiliation of the author, use `.any()` on the relation as well:
 
 ```python
 one_affiliation = Document.authors.any(
-    (Author.name == "Schmidt, B")
+    (Author.name == "Kewley, L")
     & Author.affiliation.any(
-        (Affiliation.country_code == "AU") & (Affiliation.abbreviation == "MSSSO")
+        (Affiliation.country_code == "AU") & (Affiliation.abbreviation == "Res Sch Ast Astrop")
     )
 )
 search.to_solr(one_affiliation)
-# -> author:"Schmidt, B" AND aff_id:"A00343"
+# -> author:"Kewley, L" AND aff_id:"A00342"
 ```
 
 Conditions on the document itself go outside `any(...)`, joined with `&`. Putting one inside is an error
@@ -105,16 +105,16 @@ Document.authors.any(Document.year == 2015)
 author to match.
 
 ```python
-swiss = (
+australian = (
     Document
     .select(Document.bibcode)
     .where(
-        Document.authors.all(Author.affiliation.country_code == "CH")
-        & (Document.year < 2000)
+        Document.authors.all(Author.affiliation.country_code == "AU")
+        & (Document.year < 2005)
     )
 )
-[paper.bibcode for paper in swiss]
-# -> ['1995Natur.378..355M']
+[paper.bibcode for paper in australian]
+# -> ['2001ApJ...556..121K']
 ```
 
 An author with no curated affiliation does not meet an affiliation condition, so `all(...)` excludes papers
@@ -126,13 +126,13 @@ Index `Document.authors` to choose authors by position. With one index you can w
 directly on its fields; `Document.authors[0]` is the first author:
 
 ```python
-first_in_britain = (
+first_in_australia = (
     Document
     .select(Document.bibcode)
-    .where(Document.authors[0].affiliation.country_code == "GB")
+    .where(Document.authors[0].affiliation.country_code == "AU")
 )
-[paper.bibcode for paper in first_in_britain]
-# -> ['2016arXiv160303040C']
+[paper.bibcode for paper in first_in_australia]
+# -> ['2001ApJ...556..121K']
 search.to_solr(Document.authors[0].affiliation.abbreviation == "IoA")
 # -> pos(aff_id:("A00319" OR "A13064"), 1)
 ```
@@ -143,10 +143,10 @@ A slice selects several positions, and then you say whether any or all of them m
 query = (
     Document
     .select(Document.bibcode)
-    .where(Document.authors[0:2].any(Author.affiliation.abbreviation == "MPIA Heidelberg"))
+    .where(Document.authors[0:2].any(Author.affiliation.abbreviation == "MPA Garching"))
 )
 [paper.bibcode for paper in query]
-# -> ['2015ApJ...808...16N']
+# -> ['2006MNRAS.372..961K']
 ```
 
 Without an index (or with a slice) the attribute shorthand is ambiguous, so it raises an `AttributeError`
@@ -154,7 +154,7 @@ that suggests `.any()`, `.all()` or an index:
 
 <!-- docs-test: raises AttributeError -->
 ```python
-Document.authors.name == "Ness, M"
+Document.authors.name == "Kewley, L"
 ```
 
 Positions count from 0 and slices follow Python. Negative or open-ended positions raise `QueryError`.
@@ -171,8 +171,8 @@ Simple per-author conditions have shorter forms, and both forms send the same qu
 
 | Per-author form | Shorthand |
 |---|---|
-| `Document.authors[0].name == "Ness, M"` | `Document.author[0] == "Ness, M"` |
-| `Document.authors.any(Author.name == "Ness, M")` | `Document.author == "Ness, M"` |
+| `Document.authors[0].name == "Kewley, L"` | `Document.author[0] == "Kewley, L"` |
+| `Document.authors.any(Author.name == "Kewley, L")` | `Document.author == "Kewley, L"` |
 | `Document.authors.any(Author.affiliation.country_code == "AU")` | `Document.affiliation.country_code == "AU"` |
 | `Document.authors.any(Author.orcid == "...")` | `Document.orcid == "..."` |
 
@@ -190,15 +190,15 @@ Use the per-author form when you need more than one condition about an author.
 `doc.authors` is a list of `Author` objects, one per author, in order:
 
 ```python
-paper = Document.get(bibcode="2015ApJ...808...16N")
+paper = Document.get(bibcode="2015GeoRL..42..264E")
 paper.authors
-# -> [<Author 0: 'Ness, M.'>, <Author 1: 'Hogg, David W.'>, <Author 2: 'Rix, H. -W.'>, <Author 3: 'Ho, Anna. Y. Q.'>, <Author 4: 'Zasowski, G.'>]
-hogg = paper.authors[1]
-hogg.aff_id
-# -> ['A00951', 'A01570']
-hogg.affiliation
-# -> (<Affiliation: id='A00951' (NYU)>, <Affiliation: id='A01570' (MPIA Heidelberg)>)
-hogg.email is None
+# -> [<Author 0: 'Ehlmann, Bethany L.'>, <Author 1: 'Buz, Jennifer'>]
+ehlmann = paper.authors[0]
+ehlmann.aff_id
+# -> ['A01095', 'A01099']
+ehlmann.affiliation
+# -> (<Affiliation: id='A01095' (Div Geo Plan Sci)>, <Affiliation: id='A01099' (JPL)>)
+ehlmann.email is None
 # -> True
 ```
 
@@ -236,12 +236,12 @@ query = (
     .select(Document.bibcode)
     .where(
         Document.authors.any(
-            (Author.name == "Hogg, D") & (Author.affiliation.abbreviation == "MPIA Heidelberg")
+            (Author.name == "Kauffmann, G") & (Author.affiliation.abbreviation == "MPA Garching")
         )
     )
 )
 print(query.explain())
-# -> q = author:"Hogg, D" AND aff_id:"A01570"
+# -> q = author:"Kauffmann, G" AND aff_id:"A01561"
 # -> checked client-side on each returned document (conditions joined with & may be met by different authors)
 ```
 
@@ -264,7 +264,7 @@ document in the index for the client to check:
 query = (
     Document
     .select()
-    .where(~Document.authors.any((Author.name == "Hogg, D") & (Author.aff_id == "A00951")))
+    .where(~Document.authors.any((Author.name == "Kauffmann, G") & (Author.aff_id == "A01561")))
 )
 query.count()
 ```

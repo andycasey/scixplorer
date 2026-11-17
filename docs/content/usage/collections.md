@@ -45,8 +45,8 @@ not already say which collection it wants, or which documents it wants. It is no
 
 ```python
 config.collection = "astronomy"
-search.to_solr(Document.bibcode == "2010GeoRL..3704201M")
-# -> bibcode:"2010GeoRL..3704201M"
+search.to_solr(Document.bibcode == "2015GeoRL..42..264E")
+# -> bibcode:"2015GeoRL..42..264E"
 search.to_solr(Document.database == "earthscience")
 # -> database:"earthscience"
 ```
@@ -55,8 +55,8 @@ search.to_solr(Document.database == "earthscience")
 documents of the whole search, so the collection still applies:
 
 ```python
-search.to_solr((Document.bibcode == "2010GeoRL..3704201M") | (Document.year == 2020))
-# -> (bibcode:"2010GeoRL..3704201M" OR year:2020) AND database:"astronomy"
+search.to_solr((Document.bibcode == "2015GeoRL..42..264E") | (Document.year == 2020))
+# -> (bibcode:"2015GeoRL..42..264E" OR year:2020) AND database:"astronomy"
 ```
 
 Because `Document.get(bibcode=...)` and the requests that [lazy loading]({{< ref "usage/results#lazy-loading" >}})

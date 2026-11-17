@@ -23,22 +23,22 @@ large collaborations if their author lists would swamp the table:
 from scixplorer import Document, search
 import datetime
 
-me = "0000-0003-2866-9403"
+me = "0000-0001-8152-3943"
 
 papers = (
     Document
     .select()
     .where(
         (Document.orcid == me)
-        & Document.pubdate.between(datetime.date(2012, 4, 1), datetime.date(2016, 3, 31))
+        & Document.pubdate.between(datetime.date(2004, 8, 1), datetime.date(2008, 7, 31))
         & (Document.author_count <= 50)
     )
     .order_by(Document.pubdate.desc())
 )
 search.to_solr(papers)
-# -> orcid:"0000-0003-2866-9403" AND pubdate:[2012-04 TO 2016-03] AND author_count:[* TO 50]
+# -> orcid:"0000-0001-8152-3943" AND pubdate:[2004-08 TO 2008-07] AND author_count:[* TO 50]
 papers.count()
-# -> 3
+# -> 2
 ```
 
 The dates are fixed so that the example always gives the same answer. A publication date counts to the
@@ -60,11 +60,11 @@ for paper in papers:
         table.setdefault(key, (author.name, organisation, paper.pubdate))
 
 len(table)
-# -> 9
-table["Ness, M"]
-# -> ('Ness, Melissa', 'Max-Planck-Institute for Astronomy, Heidelberg', datetime.date(2016, 3, 1))
-table["Lang, D"]
-# -> ('Lang, Dustin', 'unknown', datetime.date(2013, 3, 1))
+# -> 4
+table["Kauffmann, G"]
+# -> ('Kauffmann, Guinevere', 'Max-Planck-Institute for Astrophysics, Garching', datetime.date(2006, 11, 1))
+table["Heckman, T"]
+# -> ('Heckman, Tim', 'Department of Physics and Astronomy, Johns Hopkins University, Baltimore, MD 21218, USA', datetime.date(2006, 11, 1))
 ```
 
 Each author's `affiliation` is a tuple of curated institutions, and `canonical_name` is the institution's
@@ -88,21 +88,21 @@ writer.writerows(
 )
 print(out.getvalue())
 # -> Name,Organisation,Last active
-# -> "Casey, Andrew R.","University of Cambridge, Institute of Astronomy",03/2016
-# -> "Foreman-Mackey, Daniel",New York University,03/2013
+# -> "Ellison, Sara L.","University of Victoria, Department of Physics and Astronomy",07/2008
+# -> "Groves, Brent","Max-Planck-Institute for Astrophysics, Garching",11/2006
 ```
 
 ## With `ads`
 
 The `ads` package gives `author`, `aff` and `aff_id` as separate lists and `pubdate` as a string such as
-`"2016-03-00"`. You would pair the lists by position, turn the identifiers into institution names with a
+`"2008-07-00"`. You would pair the lists by position, turn the identifiers into institution names with a
 table of your own, and parse the dates.
 
 ## Things to know
 
 - The table lists the institution given **on the last paper together**. A co-author who has since moved
   appears at their old institution until you publish together again.
-- The key is SciX's short form of the name, `"Lastname, F"`, so that `"Ness, M."` and `"Ness, Melissa"` are
+- The key is SciX's short form of the name, `"Lastname, F"`, so that `"Groves, B."` and `"Groves, Brent"` are
   one row. Two people who share a surname and a first initial would also become one row; compare
   `author.orcid` where that matters.
 - Only papers that carry your ORCID iD are found. See

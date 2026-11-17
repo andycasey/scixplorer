@@ -54,7 +54,7 @@ papers = (
 search.to_solr(papers)
 # -> planetary_feature_id:(2071 OR 14300) AND year:[2005 TO *]
 [(paper.bibcode, paper.title[0]) for paper in papers]
-# -> [('2010GeoRL..3704201M', 'Paleoclimate of Mars as captured by the stratigraphic record in Gale Crater')]
+# -> ('2015GeoRL..42..264E', "Mineralogy and fluvial history of the watersheds of Gale, Knobel, and Sharp craters
 ```
 
 ## Sort the papers by site
@@ -72,7 +72,7 @@ for paper in papers:
             by_site[feature.name].append(paper.bibcode)
 
 dict(by_site)
-# -> {'Gale': ['2010GeoRL..3704201M']}
+# -> {'Gale': ['2015GeoRL..42..264E']}
 ```
 
 ## A class of features
@@ -103,7 +103,7 @@ about_them = (
     .where(Document.planetary_features.any(recent_craters))
 )
 [paper.bibcode for paper in about_them]
-# -> ['2010GeoRL..3704201M']
+# -> ['2015GeoRL..42..264E']
 ```
 
 Run the search on `PlanetaryFeature` first, as here, to see which features the conditions select and
@@ -114,13 +114,13 @@ how many there are.
 The feature condition combines with a text search like any other condition:
 
 ```python
-stratigraphy = (
+fluvial = (
     Document
     .select(Document.bibcode)
-    .where(Document.planetary_features.in_(sites) & (Document.abs == "stratigraphic record"))
+    .where(Document.planetary_features.in_(sites) & (Document.abs == "fluvial history"))
 )
-[paper.bibcode for paper in stratigraphy]
-# -> ['2010GeoRL..3704201M']
+[paper.bibcode for paper in fluvial]
+# -> ['2015GeoRL..42..264E']
 ```
 
 ## Keep the result
@@ -132,7 +132,7 @@ library = Library.create(name="Candidate landing sites", documents=papers)
 library.num_documents
 # -> 1
 print(export.bibtex(papers))
-# -> @ARTICLE{2010GeoRL..3704201M,
+# -> @ARTICLE{2015GeoRL..42..264E,
 ```
 
 ## With `ads`

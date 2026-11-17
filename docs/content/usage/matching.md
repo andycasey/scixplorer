@@ -43,15 +43,15 @@ On a keyword field nothing is expanded, so `.exact()` changes nothing and no `=`
 `=bibcode:"..."` with no documents, so the client never sends it.)
 
 ```python
-search.to_solr(Document.bibcode.exact("2015ApJ...808...16N"))
-# -> bibcode:"2015ApJ...808...16N"
+search.to_solr(Document.bibcode.exact("2006MNRAS.372..961K"))
+# -> bibcode:"2006MNRAS.372..961K"
 ```
 
 `in_()` and `not_in()` take `exact=True` too:
 
 ```python
-search.to_solr(Document.author.in_(["Casey, A", "Ness, M"], exact=True))
-# -> =author:"Casey, A" OR =author:"Ness, M"
+search.to_solr(Document.author.in_(["Freedman, W", "Kewley, L"], exact=True))
+# -> =author:"Freedman, W" OR =author:"Kewley, L"
 ```
 
 ## Text fields
@@ -77,15 +77,15 @@ search.to_solr(both)
 ## Name fields
 
 Names are written `"Last, First Middle"` or `"Last, F M"`. `==` matches the name variants SciX knows. The
-ADS search documentation gives this table for `author`:
+The ADS search documentation gives these rules for `author`, shown here for the name Vera C. Rubin:
 
 | Query | Matches | Does not match |
 |---|---|---|
-| `author == "Murray, S"` | Murray, S. / Murray, S. S. / Murray, Stephen / Murray, Stephen S. / Murray, Stephen D. / Murray, Sarah S. / Murray, Scott | |
-| `author == "Murray, Stephen"` | Murray, Stephen / Murray, Stephen S. / Murray, Stephen D. / Murray, S. / Murray, S. S. / Murray, S. D. | Murray, Sarah S. / Murray, Scott |
-| `author == "Murray, Stephen S"` | Murray, Stephen S. / Murray, Stephen / Murray, S. S. / Murray, S. | Murray, Stephen D. / Murray, S. D. |
-| `author.exact("Murray, S")` | Murray, S. | everything else |
-| `author.exact("Murray, Stephen")` | Murray, Stephen | everything else |
+| `author == "Rubin, V"` | Rubin, V. / Rubin, V. C. / Rubin, Vera / Rubin, Vera C. / Rubin, Vera D. / Rubin, Victoria C. / Rubin, Vincent | |
+| `author == "Rubin, Vera"` | Rubin, Vera / Rubin, Vera C. / Rubin, Vera D. / Rubin, V. / Rubin, V. C. / Rubin, V. D. | Rubin, Victoria C. / Rubin, Vincent |
+| `author == "Rubin, Vera C"` | Rubin, Vera C. / Rubin, Vera / Rubin, V. C. / Rubin, V. | Rubin, Vera D. / Rubin, V. D. |
+| `author.exact("Rubin, V")` | Rubin, V. | everything else |
+| `author.exact("Rubin, Vera")` | Rubin, Vera | everything else |
 
 Even with `.exact()`, case and the full stops after initials are ignored.
 
@@ -93,8 +93,8 @@ So a query with initials only is broad. Give the full first name to narrow it, a
 know exactly how the name is written:
 
 ```python
-search.to_solr(Document.author.exact("Ness, Melissa"))
-# -> =author:"Ness, Melissa"
+search.to_solr(Document.author.exact("Kewley, Lisa"))
+# -> =author:"Kewley, Lisa"
 ```
 
 SciX also applies curated synonyms for authors who changed their names. Those synonyms are known only to
@@ -106,26 +106,26 @@ the server.
 Indices start at 0 and slices follow Python, so `[0:3]` is the first three:
 
 ```python
-search.to_solr(Document.author[0] == "Ness, M")
-# -> pos(author:"Ness, M", 1)
-search.to_solr(Document.author[0:3] == "Hogg, D")
-# -> pos(author:"Hogg, D", 1, 3)
-search.to_solr(Document.author[1].exact("Hogg, David W"))
-# -> pos(=author:"Hogg, David W", 2)
+search.to_solr(Document.author[0] == "Kewley, L")
+# -> pos(author:"Kewley, L", 1)
+search.to_solr(Document.author[0:3] == "Kauffmann, G")
+# -> pos(author:"Kauffmann, G", 1, 3)
+search.to_solr(Document.author[1].exact("Kauffmann, Guinevere"))
+# -> pos(=author:"Kauffmann, Guinevere", 2)
 ```
 
 SciX counts positions from 1, which is why the query says `1` for `[0]`. It cannot count from the end, so
 negative indices and open-ended slices such as `[2:]` raise `QueryError`. Only multi-valued fields can be
 indexed.
 
-`first_author` holds the first author's name on its own, so `Document.first_author == "Ness, M"`
+`first_author` holds the first author's name on its own, so `Document.first_author == "Kewley, L"`
 is another way to search for a first author.
 
 For a condition written in Solr syntax, `Document.pos()` does the same:
 
 ```python
-search.to_solr(Document.pos('author:"Ness, M"', 1))
-# -> pos(author:"Ness, M", 1)
+search.to_solr(Document.pos('author:"Kewley, L"', 1))
+# -> pos(author:"Kewley, L", 1)
 ```
 
 ## Matching in Python

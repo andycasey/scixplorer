@@ -23,7 +23,7 @@ curated affiliations:
 ```python
 from scixplorer import Author, Document
 
-who = "0000-0003-2866-9403"
+who = "0000-0001-8152-3943"
 
 papers = (
     Document
@@ -39,7 +39,7 @@ for paper in papers:
             timeline.append((paper.year, [affiliation.abbreviation for affiliation in author.affiliation]))
 
 timeline
-# -> [(2013, ['NYU']), (2015, ['NYU', 'MPIA Heidelberg']), (2016, ['NYU'])]
+# -> [(2001, ['Res Sch Ast Astrop']), (2006, ['IfA']), (2008, ['IfA'])]
 ```
 
 ## First and last year at each institution
@@ -57,7 +57,7 @@ for paper in papers:
             years[affiliation] = (min(first, paper.year), max(last, paper.year))
 
 [(affiliation.canonical_name, affiliation.country, span) for affiliation, span in years.items()]
-# -> [('New York University', 'United States', (2013, 2016)), ('Max-Planck-Institute for Astronomy, Heidelberg', 'Germany', (2015, 2015))]
+# -> [('ANU, Research School of Astronomy and Astrophysics', 'Australia', (2001, 2001)), ('University of Hawaii, Manoa, Institute for Astronomy', 'United States', (2006, 2008))]
 ```
 
 ## By parent institution
@@ -72,7 +72,7 @@ def top_level(affiliation):
     return affiliation
 
 sorted({top_level(affiliation).abbreviation for affiliation in years})
-# -> ['Max Planck', 'NYU']
+# -> ['ANU', 'Manoa']
 ```
 
 An institution can have more than one parent; `parent` is the first, and `parents` lists them all.
@@ -81,6 +81,35 @@ An institution can have more than one parent; `parent` is the first, and `parent
 
 To get the papers this person wrote at an institution, or in a country, put the iD and the affiliation in
 one `Document.authors.any(...)`, so that both are about the same author:
+
+```python
+in_australia = (
+    Document
+    .select(Document.bibcode)
+    .where(
+        Document.authors.any(
+            (Author.orcid == who) & (Author.affiliation.country_code == "AU")
+        )
+    )
+)
+[paper.bibcode for paper in in_australia]
+# -> ['2001ApJ...556..121K']
+```
+
+Without `any(...)`, a country condition is met by anyone on the paper. This search finds a paper although
+this person never gave a German institution; two of her co-authors did:
+
+```python
+anyone_in_germany = (
+    Document
+    .select(Document.bibcode)
+    .where((Document.orcid == who) & (Document.affiliation.country_code == "DE"))
+)
+[paper.bibcode for paper in anyone_in_germany]
+# -> ['2006MNRAS.372..961K']
+```
+
+Inside `any(...)` the same two conditions find nothing, which is the right answer:
 
 ```python
 in_germany = (
@@ -93,20 +122,7 @@ in_germany = (
     )
 )
 [paper.bibcode for paper in in_germany]
-# -> ['2015ApJ...808...16N']
-```
-
-Without `any(...)`, the search `(Document.orcid == who) & (Document.affiliation.country_code == "DE")` also
-finds the papers on which this person was elsewhere and a co-author was in Germany:
-
-```python
-anyone_in_germany = (
-    Document
-    .select(Document.bibcode)
-    .where((Document.orcid == who) & (Document.affiliation.country_code == "DE"))
-)
-[paper.bibcode for paper in anyone_in_germany]
-# -> ['2015ApJ...808...16N', '2016arXiv160303040C']
+# -> []
 ```
 
 ## With `ads`
@@ -121,5 +137,5 @@ when it names several institutions, and look up names, countries and parents in 
   publication date. The years are those of the papers, not of the appointments.
 - Only papers that carry the ORCID iD are found, and only curated affiliations are listed. For the rest,
   read `author.aff`, the affiliation as the paper wrote it.
-- A person can give two institutions on one paper, as in 2015 above: a visit, a joint appointment or a
-  move in progress.
+- A person can give two institutions on one paper: a visit, a joint appointment or a move in progress.
+  Both then appear for that year.

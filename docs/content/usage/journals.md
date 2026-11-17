@@ -59,11 +59,11 @@ list, run `data.refresh("journals")`; see [Reference data]({{< ref "usage/refere
 bibcode cannot be parsed, its first `bibstem`), or `None` if the abbreviation is not in the list:
 
 ```python
-paper = Document.get(bibcode="2013PASP..125..306F")
+paper = Document.get(bibcode="2006MNRAS.372..961K")
 paper.journal
-# -> <Journal: abbreviation='PASP'>
+# -> <Journal: abbreviation='MNRAS'>
 paper.journal.title
-# -> Publications of the Astronomical Society of the Pacific
+# -> Monthly Notices of the Royal Astronomical Society
 ```
 
 This needs no request: it is computed from the bibcode.

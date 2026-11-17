@@ -15,9 +15,9 @@ Comparing a field builds a small, immutable tree of nodes. Nothing is sent and n
 ```python
 from scixplorer import Document, Journal, get_default_client, search
 
-condition = (Document.author[0] == "Ness, M") & Document.year.between(2015, 2020)
+condition = (Document.author[0] == "Kewley, L") & Document.year.between(2015, 2020)
 condition
-# -> And(operands=(Func(name='pos', args=(Match(field=<NameField Document.author>, value='Ness, M', exact=False), 1, 1)), Range(field=<IntegerField Document.year>, lo=2015, hi=2020, include_lo=True, include_hi=True)))
+# -> And(operands=(Func(name='pos', args=(Match(field=<NameField Document.author>, value='Kewley, L', exact=False), 1, 1)), Range(field=<IntegerField Document.year>, lo=2015, hi=2020, include_lo=True, include_hi=True)))
 ```
 
 Each field type offers only the operations that make sense for it (ranges on numbers and dates, wildcards
@@ -36,7 +36,7 @@ The same tree can be read two ways, by two internal modules:
 from scixplorer import evaluate, solr
 
 solr.compile(condition)
-# -> pos(author:"Ness, M", 1) AND year:[2015 TO 2020]
+# -> pos(author:"Kewley, L", 1) AND year:[2015 TO 2020]
 evaluate.matches(Journal.title.contains("astrophysical"), Journal.lookup("ApJ"))
 # -> True
 ```
@@ -76,7 +76,7 @@ query = (
 )
 plan = search.plan(query)
 plan.q
-# -> pos(author:"Ness, M", 1) AND year:[2015 TO 2020]
+# -> pos(author:"Kewley, L", 1) AND year:[2015 TO 2020]
 plan.request(0, 5)
 # -> Request(method='GET', path='/search/query'
 ```
@@ -120,7 +120,7 @@ JSON:
 ```python
 from scixplorer.client import Request
 
-request = Request("GET", "/resolver/2015ApJ...808...16N")
+request = Request("GET", "/resolver/2006MNRAS.372..961K")
 response = get_default_client().send(request)
 response.status_code
 # -> 200

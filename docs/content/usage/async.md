@@ -33,7 +33,7 @@ async def main():
             Document.bibcode,
             Document.year,
         )
-        .where(Document.author == "Hogg, D")
+        .where(Document.author == "Kewley, L")
     )
     total = await query.acount()
     papers = [paper.bibcode async for paper in query]
@@ -41,7 +41,7 @@ async def main():
 
 
 asyncio.run(main())
-# -> (3, ['2015ApJ...808...16N', '2016arXiv160303040C', '2013PASP..125..306F'])
+# -> (3, ['2001ApJ...556..121K', '2006MNRAS.372..961K', '2008ApJ...681.1183K'])
 ```
 
 Pages are requested one at a time as you consume them, exactly as in synchronous code. The same
@@ -62,7 +62,7 @@ async def counts(years):
     return await asyncio.gather(*(query.acount() for query in queries))
 
 
-asyncio.run(counts([1995, 1998, 2015]))
+asyncio.run(counts([2000, 2003, 2015]))
 # -> [1, 1, 1]
 ```
 

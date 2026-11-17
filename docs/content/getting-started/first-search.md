@@ -25,14 +25,14 @@ query = (
         Document.title,
         Document.year,
     )
-    .where(Document.author == "Hogg, D")
+    .where(Document.author == "Kewley, L")
     .order_by(Document.year.desc())
     .limit(10)
 )
 ```
 
 Each method returns a new query and leaves the one it was called on unchanged, so you can also keep a part
-and build on it: `recent = query.where(Document.year >= 2015)` leaves `query` as it was.
+and build on it: `recent = query.where(Document.year >= 2005)` leaves `query` as it was.
 
 | Method | What it does |
 |---|---|
@@ -71,9 +71,9 @@ query.count()
 query.exists()
 # -> True
 query.first()
-# -> <Document: bibcode='2016arXiv160303040C'>
+# -> <Document: bibcode='2008ApJ...681.1183K'>
 query.all()
-# -> [<Document: bibcode='2016arXiv160303040C'>, <Document: bibcode='2015ApJ...808...16N'>, <Document: bibcode='2013PASP..125..306F'>]
+# -> [<Document: bibcode='2008ApJ...681.1183K'>, <Document: bibcode='2006MNRAS.372..961K'>, <Document: bibcode='2001ApJ...556..121K'>]
 ```
 
 | Call | Returns | Requests |
@@ -93,9 +93,9 @@ condition, starts afresh.
 To fetch one document by an identifier, use `Document.get` with keyword arguments:
 
 ```python
-paper = Document.get(bibcode="1995Natur.378..355M")
+paper = Document.get(bibcode="2000ApJ...537..916S")
 paper.title
-# -> A Jupiter-mass companion to a solar-type star
+# -> Theoretical Transmission Spectra during Extrasolar Giant Planet Transits
 ```
 
 If nothing matches, it raises `Document.DoesNotExist`, which is also a `LookupError`:
@@ -111,7 +111,7 @@ Document.get(bibcode="2099ApJ...999....1X")
 
 ```python
 print(query.explain())
-# -> q = author:"Hogg, D"
+# -> q = author:"Kewley, L"
 # -> sort = year desc,id asc
 ```
 
@@ -120,7 +120,7 @@ The output for this query is:
 ```text
 Searches ADS with GET /search/query, up to 200 rows per request.
 GET /search/query
-    q = author:"Hogg, D"
+    q = author:"Kewley, L"
     fl = bibcode,id,scix_id,title,year
     sort = year desc,id asc
     start = 0
@@ -136,8 +136,8 @@ pages never overlap or skip a document.
 To see only the query string, use `search.to_solr`:
 
 ```python
-search.to_solr(Document.author[0] == "Ness, M")
-# -> pos(author:"Ness, M", 1)
+search.to_solr(Document.author[0] == "Kewley, L")
+# -> pos(author:"Kewley, L", 1)
 ```
 
 ## Read the documents
@@ -148,13 +148,13 @@ field SciX has no value for is `None`.
 
 ```python
 paper.year
-# -> 1995
+# -> 2000
 paper.author
-# -> ['Mayor, Michel', 'Queloz, Didier']
+# -> ['Seager, S.', 'Sasselov, D. D.']
 paper.pubdate
-# -> datetime.date(1995, 11, 1)
+# -> datetime.date(2000, 7, 1)
 paper.journal
-# -> <Journal: abbreviation='Natur'>
+# -> <Journal: abbreviation='ApJ'>
 ```
 
 `paper.journal` is a [`Journal`]({{< ref "usage/journals" >}}) object. Documents also link to their authors'
@@ -164,14 +164,14 @@ A document's `repr` names its identifier, and `str()` gives the identifier alone
 
 ```python
 str(paper)
-# -> 1995Natur.378..355M
+# -> 2000ApJ...537..916S
 ```
 
 `to_dict()` returns the values loaded so far:
 
 ```python
 paper.to_dict()["bibcode"]
-# -> 1995Natur.378..355M
+# -> 2000ApJ...537..916S
 ```
 
 [Results]({{< ref "usage/results" >}}) covers fields, types and loading in detail, and

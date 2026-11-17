@@ -23,7 +23,7 @@ users' public ORCID profiles, and those claimed in ADS or SciX itself.
 ```python
 from scixplorer import Affiliation, Author, Document, Library, export
 
-me = "0000-0001-5082-6693"
+me = "0000-0002-6892-6948"
 
 claimed = (
     Document
@@ -31,7 +31,7 @@ claimed = (
     .where(Document.orcid == me)
 )
 [paper.bibcode for paper in claimed]
-# -> ['2015ApJ...808...16N']
+# -> ['2000ApJ...537..916S']
 ```
 
 ## Your name at your institutions, without your iD
@@ -41,9 +41,9 @@ The per-author condition ties the name to the institution, as in
 about the whole document, so it goes outside `any(...)`:
 
 ```python
-mpia = Affiliation.get(abbreviation="MPIA Heidelberg")
+ias = Affiliation.get(abbreviation="Princeton IAS")
 
-mine = Document.authors.any((Author.name == "Ness, M") & (Author.affiliation == mpia))
+mine = Document.authors.any((Author.name == "Seager, S") & (Author.affiliation == ias))
 unclaimed = (
     Document
     .select(
@@ -53,7 +53,7 @@ unclaimed = (
     .where(mine & ~(Document.orcid == me))
 )
 [(paper.bibcode, paper.title[0]) for paper in unclaimed]
-# -> [('2016arXiv160303040C', 'The Cannon 2: A data-driven model of stellar spectra for detailed chemical abundance analyses')]
+# -> [('2003ApJ...585.1038S', 'A Unique Solution of Planet and Star Parameters from an Extrasolar Planet Transit Light Curve')]
 ```
 
 SciX is sent the name, the institution and the missing iD, and the client then checks that the name and
@@ -61,11 +61,11 @@ the institution belong to the same author:
 
 ```python
 print(unclaimed.explain())
-# -> q = author:"Ness, M" AND aff_id:"A01570" AND -orcid:"0000-0001-5082-6693"
+# -> q = author:"Seager, S" AND aff_id:"A01134" AND -orcid:"0000-0002-6892-6948"
 ```
 
 If you have worked at several institutions, list them all, each with its departments:
-`Author.affiliation.in_([mpia, columbia, *columbia.children])`.
+`Author.affiliation.in_([ias, harvard, *harvard.children])`.
 
 ## Collect them
 
@@ -85,7 +85,7 @@ ORCID can also import works from a BibTeX file, and `export.bibtex()` accepts th
 
 ```python
 print(export.bibtex(to_claim))
-# -> @ARTICLE{2016arXiv160303040C,
+# -> @ARTICLE{2003ApJ...585.1038S,
 ```
 
 ## Where an iD came from
@@ -94,19 +94,19 @@ To see which of the three sources connects you to a paper, read the author's ORC
 when that source has no iD for the author:
 
 ```python
-paper = Document.get(bibcode="2015ApJ...808...16N")
+paper = Document.get(bibcode="2000ApJ...537..916S")
 author = paper.authors[0]
 (author.name, author.orcid_pub, author.orcid_user, author.orcid_other)
-# -> ('Ness, M.', '0000-0001-5082-6693', None, None)
+# -> ('Seager, S.', '0000-0002-6892-6948', None, None)
 ```
 
 `author.orcid` is the first of the three that is given.
 
 ## With `ads`
 
-In the `ads` package you can write `author:"Ness, M" aff_id:A01570 -orcid:...` by hand, once you have
+In the `ads` package you can write `author:"Seager, S" aff_id:A01134 -orcid:...` by hand, once you have
 looked up the identifier. It cannot require that the name and the institution belong to the same author,
-so a paper by another M. Ness comes back too whenever one of its other authors is at your institute.
+so a paper by another S. Seager comes back too whenever one of its other authors is at your institute.
 
 ## Things to know
 

@@ -27,13 +27,13 @@ SciX has no value:
 ```python
 from scixplorer import Document, exceptions, utils
 
-paper = Document.get(bibcode="2000ApJ...529L..45C")
+paper = Document.get(bibcode="2003ApJ...585.1038S")
 paper.title
-# -> ['Detection of Planetary Transits Across a Sun-like Star']
+# -> ['A Unique Solution of Planet and Star Parameters from an Extrasolar Planet Transit Light Curve']
 paper.volume
-# -> '529'
+# -> '585'
 paper.entry_date
-# -> datetime.datetime(2000, 1, 20, 0, 0, tzinfo=datetime.timezone.utc)
+# -> datetime.datetime(2003, 2, 20, 0, 0, tzinfo=datetime.timezone.utc)
 paper.abstract is None
 # -> True
 ```
@@ -66,10 +66,10 @@ query = (
         Document.bibcode,
         Document.title,
     )
-    .where(Document.author == "Hogg, D")
+    .where(Document.author == "Kewley, L")
 )
 query.first().to_dict()
-# -> 'title': ['The Cannon: A data-driven approach to Stellar Label Determination from Spectra']
+# -> 'title': ['Theoretical Modeling of Starburst Galaxies']
 ```
 
 Fewer fields mean smaller responses. Choose them when you know what you will read.
@@ -91,7 +91,7 @@ it happened and how to avoid it:
 ```python
 papers = query.all()
 [paper.citation_count for paper in papers]
-# -> [480, 120, 9800]
+# -> [2600, 2000, 1350]
 ```
 
 ```text
@@ -170,8 +170,8 @@ Documents link to other models. These are computed from the document's fields an
 `utils.flatten()` turns the per-author structure of `doc.affiliation` into a flat list:
 
 ```python
-riess = Document.get(bibcode="1998AJ....116.1009R")
-{affiliation.country for affiliation in utils.flatten(riess.affiliation)}
+freedman = Document.get(bibcode="2001ApJ...553...47F")
+{affiliation.country for affiliation in utils.flatten(freedman.affiliation)}
 # -> Australia
 ```
 
@@ -182,6 +182,6 @@ equal, and hash alike, when that is the same field with the same value, so docum
 searches can be compared and put in sets. A document with no identifier is equal only to itself.
 
 ```python
-Document.get(bibcode="2000ApJ...529L..45C") == paper
+Document.get(bibcode="2003ApJ...585.1038S") == paper
 # -> True
 ```

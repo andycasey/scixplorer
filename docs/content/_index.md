@@ -33,12 +33,12 @@ papers = (
         Document.bibcode,
         Document.title,
     )
-    .where((Document.author[0] == "Ness, M") & (Document.year >= 2015))
+    .where((Document.author[0] == "Kewley, L") & (Document.year >= 2005))
     .order_by(Document.citation_count.desc())
     .limit(5)
 )
 [paper.title[0] for paper in papers]
-# -> The Cannon: A data-driven approach to Stellar Label Determination from Spectra
+# -> The host galaxies and classification of active galactic nuclei
 ```
 
 </div>
@@ -60,7 +60,7 @@ sent. Raw Solr syntax is there when you need it.
 
 ```python
 print(papers.explain())
-# -> q = pos(author:"Ness, M", 1) AND year:[2015 TO *]
+# -> q = pos(author:"Kewley, L", 1) AND year:[2005 TO *]
 # -> sort = citation_count desc,id asc
 ```
 
@@ -83,11 +83,11 @@ you build a condition: `Document.year == "2015"` raises `QueryError` at once.
 <div>
 
 ```python
-paper = Document.get(bibcode="1995Natur.378..355M")
+paper = Document.get(bibcode="2000ApJ...537..916S")
 paper.pubdate
-# -> datetime.date(1995, 11, 1)
+# -> datetime.date(2000, 7, 1)
 paper.journal
-# -> <Journal: abbreviation='Natur'>
+# -> <Journal: abbreviation='ApJ'>
 ```
 
 <!-- docs-test: raises QueryError -->
@@ -119,7 +119,7 @@ australian = (
     .where(Document.affiliation.country_code == "AU")
 )
 [paper.bibcode for paper in australian]
-# -> ['1998AJ....116.1009R']
+# -> ['2001ApJ...556..121K', '2001ApJ...553...47F']
 ```
 
 </div>
@@ -130,8 +130,8 @@ australian = (
 
 ### Several conditions on the same author
 
-Everything inside one `Document.authors.any(...)` is about one author. This finds papers on which Hogg, D
-lists a German institution, not papers by Hogg, D with some co-author in Germany. You can also ask about
+Everything inside one `Document.authors.any(...)` is about one author. This finds papers on which G. Kauffmann
+lists a German institution, not papers by G. Kauffmann with some co-author in Germany. You can also ask about
 the first author, or about every author.
 
 [Authors →]({{< ref "usage/authors" >}})
@@ -142,17 +142,17 @@ the first author, or about every author.
 ```python
 from scixplorer import Author
 
-hogg_in_germany = (
+kauffmann_in_germany = (
     Document
     .select(Document.bibcode)
     .where(
         Document.authors.any(
-            (Author.name == "Hogg, D") & (Author.affiliation.country_code == "DE")
+            (Author.name == "Kauffmann, G") & (Author.affiliation.country_code == "DE")
         )
     )
 )
-[paper.bibcode for paper in hogg_in_germany]
-# -> ['2015ApJ...808...16N']
+[paper.bibcode for paper in kauffmann_in_germany]
+# -> ['2006MNRAS.372..961K']
 ```
 
 </div>
@@ -185,7 +185,7 @@ async def counts(years):
     return await asyncio.gather(*(query.acount() for query in queries))
 
 
-asyncio.run(counts([1995, 1998, 2015]))
+asyncio.run(counts([2000, 2003, 2015]))
 # -> [1, 1, 1]
 ```
 

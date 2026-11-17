@@ -22,9 +22,9 @@ ones already in the library, and put the most cited first:
 ```python
 from scixplorer import Document, Library, citation_helper, search
 
-library = Library.get(name="Data-driven spectroscopy")
+library = Library.get(name="Emission-line galaxies")
 library.bibcodes
-# -> ('2015ApJ...808...16N', '2016arXiv160303040C')
+# -> ('2006MNRAS.372..961K', '2008ApJ...681.1183K')
 
 missing = (
     Document
@@ -37,7 +37,7 @@ missing = (
     .order_by(Document.citation_count.desc())
 )
 [(paper.bibcode, paper.title[0]) for paper in missing]
-# -> [('2013PASP..125..306F', 'emcee: The MCMC Hammer')]
+# -> [('2001ApJ...556..121K', 'Theoretical Modeling of Starburst Galaxies')]
 ```
 
 SciX does the whole of this. The library's bibcodes are never downloaded:
@@ -63,7 +63,7 @@ def citing_papers_in_library(bibcode):
 
 cited_by = {paper.bibcode: citing_papers_in_library(paper.bibcode) for paper in missing.limit(20)}
 cited_by
-# -> {'2013PASP..125..306F': 2}
+# -> {'2001ApJ...556..121K': 2}
 ```
 
 That is one small request for each missing paper, so limit the list first. For a quick answer without the
@@ -73,7 +73,7 @@ for a library in one request:
 ```python
 suggestions = citation_helper(library)
 [(suggestion["bibcode"], suggestion["score"]) for suggestion in suggestions]
-# -> [('2013PASP..125..306F', 2)]
+# -> [('2001ApJ...556..121K', 2)]
 ```
 
 ## Other questions of the same shape

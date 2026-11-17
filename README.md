@@ -32,9 +32,9 @@ papers = (
     )
     .where(
         Document.authors.any(
-            (Author.name == "Hogg, D") & (Author.affiliation.country_code == "DE")
+            (Author.name == "Kauffmann, G") & (Author.affiliation.country_code == "DE")
         )
-        & Document.year.between(2010, 2020)
+        & Document.year.between(2000, 2010)
     )
     .order_by(Document.citation_count.desc())
     .limit(10)
@@ -43,10 +43,10 @@ for paper in papers:
     print(paper.year, paper.bibcode, paper.title[0])
 
 print(export.bibtex(papers))
-# -> @ARTICLE{2015ApJ...808...16N
+# -> @ARTICLE{2006MNRAS.372..961K
 ```
 
-This finds papers from 2010 to 2020 on which D. Hogg gave a German affiliation, and exports them as
+This finds papers from 2000 to 2010 on which G. Kauffmann gave a German affiliation, and exports them as
 BibTeX. `papers.explain()` shows the request without sending it.
 
 ## Features

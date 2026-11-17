@@ -35,7 +35,7 @@ own `children` too.
 is the first author:
 
 ```python
-period = Document.year.between(2010, 2016) & (Document.property == "refereed")
+period = Document.year.between(2000, 2016) & (Document.property == "refereed")
 
 took_part = (
     Document
@@ -50,9 +50,9 @@ led = (
     .order_by(Document.year)
 )
 [paper.bibcode for paper in took_part]
-# -> ['2010GeoRL..3704201M', '2015ApJ...808...16N']
+# -> ['2001ApJ...553...47F', '2015GeoRL..42..264E']
 [paper.bibcode for paper in led]
-# -> ['2010GeoRL..3704201M']
+# -> ['2015GeoRL..42..264E']
 ```
 
 The first-author condition is sent to SciX as a position in the list of institution identifiers:
@@ -71,11 +71,11 @@ The results are ordinary Python objects, so count them however the report needs.
 from collections import Counter
 
 Counter(paper.year for paper in took_part)
-# -> Counter({2010: 1, 2015: 1})
+# -> Counter({2001: 1, 2015: 1})
 Counter(paper.journal.title for paper in took_part)
-# -> Counter({'Geophysical Research Letters': 1, 'The Astrophysical Journal': 1})
+# -> Counter({'The Astrophysical Journal': 1, 'Geophysical Research Letters': 1})
 sum(paper.citation_count for paper in took_part)
-# -> 790
+# -> 2864
 ```
 
 ## Partner institutions
@@ -100,7 +100,7 @@ for paper in took_part:
     })
 
 sorted(partners.items())
-# -> [('JHU', 2), ('Max Planck', 1), ('NYU', 1)]
+# -> [('ANU', 1), ('CIW', 1), ('Harvard U', 1), ('NOAO', 1), ('Rutgers U', 1), ('Swinburne U Tech', 1), ('U AZ', 1), ('U Camb', 1)]
 ```
 
 Each partner is counted once per paper. For countries, collect `affiliation.country` in the same way.
@@ -111,7 +111,7 @@ Every [export function]({{< ref "usage/services#export" >}}) accepts a query:
 
 ```python
 print(export.bibtex(led, sort=Document.year.desc()))
-# -> @ARTICLE{2010GeoRL..3704201M,
+# -> @ARTICLE{2015GeoRL..42..264E,
 ```
 
 ## With `ads`

@@ -25,16 +25,16 @@ ones `paper.authors` is built from:
 ```python
 from scixplorer import Author, Document
 
-me = "0000-0003-2866-9403"
+me = "0000-0001-8152-3943"
 
 papers = (
     Document
     .select()
-    .where((Document.orcid == me) & Document.year.between(2012, 2016))
+    .where((Document.orcid == me) & Document.year.between(2001, 2008))
     .order_by(Document.year)
 )
 [paper.bibcode for paper in papers]
-# -> ['2013PASP..125..306F', '2015ApJ...808...16N', '2016arXiv160303040C']
+# -> ['2001ApJ...556..121K', '2006MNRAS.372..961K', '2008ApJ...681.1183K']
 ```
 
 The years are fixed here so that the example always gives the same answer. For the last five years, write
@@ -64,22 +64,22 @@ for paper in papers:
                 report[affiliation.country][name].append(paper.bibcode)
 
 sorted(report)
-# -> ['Germany', 'United Kingdom']
+# -> ['Australia', 'Canada', 'Germany']
 dict(report["Germany"])
-# -> {'Ness, M': ['2015ApJ...808...16N', '2016arXiv160303040C'], 'Rix, H': ['2015ApJ...808...16N', '2016arXiv160303040C']}
-dict(report["United Kingdom"])
-# -> {'Casey, A': ['2016arXiv160303040C'], 'Gilmore, G': ['2016arXiv160303040C']}
+# -> {'Groves, B': ['2006MNRAS.372..961K'], 'Kauffmann, G': ['2006MNRAS.372..961K']}
+dict(report["Canada"])
+# -> {'Ellison, S': ['2008ApJ...681.1183K']}
 ```
 
 `author_norm` is SciX's short form of each name, `"Lastname, F"`. It is the key here because the same
-person is written differently from paper to paper (`"Ness, M."` on one, `"Ness, Melissa"` on the next).
+person is written differently from paper to paper (`"Kewley, L. J."` on one, `"Kewley, Lisa J."` on the next).
 
 `unknown` holds the co-authors SciX has no curated institution for. They need a look by hand, because
 their country is not known:
 
 ```python
 dict(unknown)
-# -> {'Lang, D': ['2013PASP..125..306F']}
+# -> {'Heckman, T': ['2006MNRAS.372..961K']}
 ```
 
 ## A longer list of exempt countries
@@ -106,7 +106,7 @@ outside
 ```
 
 With that list nothing in the sample is left to report: every curated institution on these three papers is
-in the United States, Germany or the United Kingdom.
+in Australia, Canada, Germany or the United States.
 
 ## Only the papers with a co-author in certain countries
 
@@ -121,12 +121,12 @@ watched = (
     .where(
         (Document.orcid == me)
         & Document.authors.any(
-            (Author.orcid != me) & Author.affiliation.country_code.in_(["GB", "CH"])
+            (Author.orcid != me) & Author.affiliation.country_code.in_(["CA", "DE"])
         )
     )
 )
 [paper.bibcode for paper in watched]
-# -> ['2016arXiv160303040C']
+# -> ['2006MNRAS.372..961K', '2008ApJ...681.1183K']
 ```
 
 SciX narrows the search to your papers that have any author at an institution in those countries, and the

@@ -187,8 +187,8 @@ but a positive set of bibcodes uploaded to `/search/bigquery` does. Here an auth
 the excluded set is applied as results arrive:
 
 ```python
-search.to_solr(Document.not_in(many) & (Document.author == "Hogg, D"))
-# -> author:"Hogg, D"
+search.to_solr(Document.not_in(many) & (Document.author == "Kauffmann, G"))
+# -> author:"Kauffmann, G"
 ```
 
 ### Pages

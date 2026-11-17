@@ -58,7 +58,7 @@ query = (
         Document.title,
         Document.year,
     )
-    .where(Document.author == "Hogg, D")
+    .where(Document.author == "Kewley, L")
     .order_by(Document.year.desc())
     .limit(10)
 )
@@ -68,7 +68,7 @@ Building a query sends nothing. Iterating sends it, a page of results at a time:
 
 ```python
 [(paper.year, paper.bibcode) for paper in query]
-# -> [(2016, '2016arXiv160303040C'), (2015, '2015ApJ...808...16N'), (2013, '2013PASP..125..306F')]
+# -> [(2008, '2008ApJ...681.1183K'), (2006, '2006MNRAS.372..961K'), (2001, '2001ApJ...556..121K')]
 ```
 
 `count()`, `first()` and `all()` run it too, and `Document.get()` fetches one document by an identifier:
@@ -76,17 +76,17 @@ Building a query sends nothing. Iterating sends it, a page of results at a time:
 ```python
 query.count()
 # -> 3
-paper = Document.get(bibcode="1995Natur.378..355M")
+paper = Document.get(bibcode="2000ApJ...537..916S")
 paper.title
-# -> ['A Jupiter-mass companion to a solar-type star']
+# -> ['Theoretical Transmission Spectra during Extrasolar Giant Planet Transits']
 ```
 
 Combine conditions with `&` (and), `|` (or) and `~` (not), each in its own parentheses:
 
 ```python
-recent_hogg = (Document.author == "Hogg, D") & (Document.year >= 2015)
-search.to_solr(recent_hogg)
-# -> author:"Hogg, D" AND year:[2015 TO *]
+recent_kewley = (Document.author == "Kewley, L") & (Document.year >= 2005)
+search.to_solr(recent_kewley)
+# -> author:"Kewley, L" AND year:[2005 TO *]
 ```
 
 `search.to_solr()` shows the Solr query a condition becomes, and `query.explain()` shows the whole
@@ -99,15 +99,15 @@ dates, lists for fields with several values, and `None` where SciX has no value.
 
 ```python
 paper.year
-# -> 1995
+# -> 2000
 paper.pubdate
-# -> datetime.date(1995, 11, 1)
+# -> datetime.date(2000, 7, 1)
 paper.author
-# -> ['Mayor, Michel', 'Queloz, Didier']
+# -> ['Seager, S.', 'Sasselov, D. D.']
 ```
 
 Your editor completes the field names (`Document.` lists them all), and a type checker knows each
-field's type. Values are checked as you write a condition, so `Document.year == "1995"` raises
+field's type. Values are checked as you write a condition, so `Document.year == "2000"` raises
 `QueryError` straight away.
 
 ## Next

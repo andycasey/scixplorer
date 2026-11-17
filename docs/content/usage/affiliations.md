@@ -103,7 +103,7 @@ query = (
     .where(Document.affiliation.country_code == "AU")
 )
 [paper.bibcode for paper in query]
-# -> ['1998AJ....116.1009R']
+# -> ['2001ApJ...556..121K', '2001ApJ...553...47F']
 ```
 
 A condition on an institution matches only that identifier, not its children. To include the
@@ -172,11 +172,11 @@ Other ways to search affiliations, which the client passes to SciX as they are:
 list:
 
 ```python
-paper = Document.get(bibcode="2015ApJ...808...16N")
+paper = Document.get(bibcode="2001ApJ...553...47F")
 paper.affiliation[1]
-# -> (<Affiliation: id='A00951' (NYU)>, <Affiliation: id='A01570' (MPIA Heidelberg)>)
+# -> (<Affiliation: id='A01097' (IPAC)>, <Affiliation: id='A00146' (OCIW)>)
 sorted({affiliation.country_code for affiliation in utils.flatten(paper.affiliation)})
-# -> ['DE', 'US']
+# -> ['AU', 'GB', 'US']
 ```
 
 `doc.authors[i].affiliation` gives the same per author, always as a tuple; see

@@ -54,7 +54,7 @@ Keep them in a library. Create it once; on later runs fetch it with `Library.get
 seen = Library.create(
     name="Seen: exoplanets",
     description="Papers the weekly search has already reported",
-    documents=["1995Natur.378..355M"],
+    documents=["2000ApJ...537..916S"],
 )
 ```
 
@@ -89,10 +89,10 @@ import datetime
 
 since_1999 = new_on_topic(datetime.datetime(1999, 1, 1))
 [(paper.bibcode, paper.title[0]) for paper in since_1999]
-# -> [('2000ApJ...529L..45C', 'Detection of Planetary Transits Across a Sun-like Star')]
+# -> [('2005ApJ...622.1102F', 'The Planet-Metallicity Correlation'), ('2003ApJ...585.1038S', 'A Unique Solution of Planet and Star Parameters from an Extrasolar Planet Transit Light Curve')]
 ```
 
-The 1995 paper on the topic is left out because it is in the library.
+The 2000 paper on the topic is left out because it is in the library.
 
 ## Record what you found
 
@@ -101,7 +101,7 @@ query and returns the number of documents SciX added:
 
 ```python
 seen.add(since_1999)
-# -> 1
+# -> 2
 ```
 
 With the library in place the date matters less. Search the last 30 days every week: a paper SciX indexed

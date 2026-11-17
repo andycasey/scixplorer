@@ -17,8 +17,8 @@ these. Each also takes `client=` to use a particular `Client`.
 ```python
 from scixplorer import Document, Library, citation_helper, export, resolver, vis
 
-print(export.bibtex("2015ApJ...808...16N", "2013PASP..125..306F"))
-# -> @ARTICLE{2015ApJ...808...16N,
+print(export.bibtex("2006MNRAS.372..961K", "2001ApJ...556..121K"))
+# -> @ARTICLE{2006MNRAS.372..961K,
 ```
 
 Every function returns the exported text as SciX sends it.
@@ -52,7 +52,7 @@ The options:
 papers = (
     Document
     .select(Document.bibcode)
-    .where(Document.author == "Hogg, D")
+    .where(Document.author == "Kewley, L")
 )
 text = export.bibtex(papers, max_author=3, key_format="%1H:%Y", sort=Document.year.desc())
 ```
@@ -64,7 +64,7 @@ document (full text from the publisher or arXiv, data archives, and so on). Each
 such as `type`, `title`, `url` and `count`:
 
 ```python
-resources = resolver.external_resources("2015ApJ...808...16N")
+resources = resolver.external_resources("2006MNRAS.372..961K")
 [resource["type"] for resource in resources]
 # -> 'esource'
 ```
@@ -75,7 +75,7 @@ SciX sends it: with one link, a dict with `"action": "redirect"` and the `link`;
 full-text sources), `"pub_pdf"`, `"eprint_pdf"` or `"data"`:
 
 ```python
-answer = resolver.external_resource("2015ApJ...808...16N", "esource")
+answer = resolver.external_resource("2006MNRAS.372..961K", "esource")
 answer["action"]
 # -> redirect
 ```
@@ -87,7 +87,7 @@ to draw its [author and paper networks](https://ui.adsabs.harvard.edu/help/actio
 sends it, ready for a graph library such as D3:
 
 ```python
-network = vis.author_network(Library.get(name="Data-driven spectroscopy"))
+network = vis.author_network(Library.get(name="Emission-line galaxies"))
 ```
 
 ## Citation suggestions
@@ -97,9 +97,9 @@ papers that cite or are cited by them but are not among them. Each suggestion is
 `score` (an integer), `title` and `author` (each a single string, not a list as in search results):
 
 ```python
-suggestions = citation_helper("2015ApJ...808...16N", "2016arXiv160303040C")
+suggestions = citation_helper("2006MNRAS.372..961K", "2008ApJ...681.1183K")
 [suggestion["bibcode"] for suggestion in suggestions]
-# -> ['2013PASP..125..306F']
+# -> ['2001ApJ...556..121K']
 ```
 
 ## Not covered

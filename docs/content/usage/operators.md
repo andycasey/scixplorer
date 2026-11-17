@@ -17,9 +17,9 @@ condition, which you combine with others like any condition.
 ```python
 from scixplorer import Document, search
 
-cannon = Document.bibcode == "2015ApJ...808...16N"
-search.to_solr(Document.citations(cannon))
-# -> citations(bibcode:"2015ApJ...808...16N")
+agn_hosts = Document.bibcode == "2006MNRAS.372..961K"
+search.to_solr(Document.citations(agn_hosts))
+# -> citations(bibcode:"2006MNRAS.372..961K")
 ```
 
 | Method | Finds | Sent as |
@@ -45,14 +45,14 @@ The ADS help pages describe the
 To find the papers citing a paper, or the papers it cites, pass a condition that matches it:
 
 ```python
-emcee = Document.bibcode == "2013PASP..125..306F"
+starbursts = Document.bibcode == "2001ApJ...556..121K"
 citing = (
     Document
     .select(Document.bibcode)
-    .where(Document.citations(emcee))
+    .where(Document.citations(starbursts))
 )
 [paper.bibcode for paper in citing]
-# -> ['2015ApJ...808...16N', '2016arXiv160303040C']
+# -> ['2006MNRAS.372..961K', '2008ApJ...681.1183K']
 ```
 
 The argument is a condition, not a document: write `Document.citations(Document.bibcode ==
@@ -60,10 +60,10 @@ paper.bibcode)` for a document you already have. The condition can be any search
 citations of a whole set of papers:
 
 ```python
-first_author_papers = Document.author[0] == "Ness, M"
-citing_others = Document.citations(first_author_papers) & ~(Document.author == "Ness, M")
+first_author_papers = Document.author[0] == "Kewley, L"
+citing_others = Document.citations(first_author_papers) & ~(Document.author == "Kewley, L")
 search.to_solr(citing_others)
-# -> citations(pos(author:"Ness, M", 1)) AND -author:"Ness, M"
+# -> citations(pos(author:"Kewley, L", 1)) AND -author:"Kewley, L"
 ```
 
 ### Topics
@@ -101,14 +101,14 @@ search.to_solr(Document.references(most_cited))
 
 ## Positions: `pos`
 
-Indexing a field restricts a condition to positions in it: `Document.author[0] == "Ness, M"`. See
+Indexing a field restricts a condition to positions in it: `Document.author[0] == "Kewley, L"`. See
 [Matching]({{< ref "usage/matching#positions" >}}). `Document.pos(expr, start, end=None)` does the same
 for a condition written as Solr syntax, or on another multi-valued field. Its positions count from 1 and
 `end` is included:
 
 ```python
-search.to_solr(Document.pos('author:"Ness, M"', 1))
-# -> pos(author:"Ness, M", 1)
+search.to_solr(Document.pos('author:"Kewley, L"', 1))
+# -> pos(author:"Kewley, L", 1)
 search.to_solr(Document.pos(Document.aff == "Heidelberg", 1, 2))
 # -> pos(aff:"Heidelberg", 1, 2)
 ```

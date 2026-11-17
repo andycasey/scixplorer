@@ -120,9 +120,9 @@ Queries that never need a request, such as searches of [journals]({{< ref "usage
 With the token in place, search:
 
 ```python
-paper = Document.get(bibcode="2015ApJ...808...16N")
+paper = Document.get(bibcode="2006MNRAS.372..961K")
 paper.title
-# -> The Cannon: A data-driven approach to Stellar Label Determination from Spectra
+# -> The host galaxies and classification of active galactic nuclei
 ```
 
 ## Other settings

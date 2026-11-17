@@ -23,12 +23,12 @@ is SciX's short form of a name, `"Lastname, F"`, which is the same from paper to
 ```python
 from scixplorer import Document, UATConcept, data, search
 
-me = "Charbonneau, D"
+me = "Seager, S"
 
 my_papers = (
     Document
     .select()
-    .where((Document.author == me) & Document.year.between(1996, 2000))
+    .where((Document.author == me) & Document.year.between(2000, 2003))
 )
 
 coauthors = set()
@@ -42,9 +42,21 @@ for paper in my_papers:
             coauthors.add(name)
 
 sorted(coauthors)
-# -> ['Brown, T', 'Latham, D', 'Mayor, M']
-my_institutions
-# -> {<Affiliation: id='A01400' (CfA)>}
+# -> ['Mallén-Ornelas, G', 'Sasselov, D']
+sorted(affiliation.abbreviation for affiliation in my_institutions)
+# -> ['Dep Ast', 'Princeton IAS']
+```
+
+The first of those is Harvard's Department of Astronomy. A colleague elsewhere at Harvard is a conflict
+too, so add each institution's parents and the parents' other children:
+
+```python
+for affiliation in list(my_institutions):
+    for parent in affiliation.parents:
+        my_institutions.update([parent, *parent.children])
+
+len(my_institutions)
+# -> 15
 ```
 
 ## Who is active on the topic
@@ -65,12 +77,12 @@ active = (
     .select()
     .where(
         topic
-        & Document.year.between(1995, 2000)
+        & Document.year.between(2000, 2005)
         & (Document.property == "refereed")
     )
 )
 search.to_solr(active)
-# -> uat_id:(498 OR 695 OR 753 OR 1063 OR 1655) AND year:[1995 TO 2000] AND property:"refereed"
+# -> uat_id:(498 OR 695 OR 753 OR 1063 OR 1655) AND year:[2000 TO 2005] AND property:"refereed"
 ```
 
 ## Count the authors and mark the conflicts
@@ -95,10 +107,10 @@ for paper in active:
             conflicts.setdefault(name, "co-author")
 
 conflicts
-# -> {'Mayor, M': 'co-author', 'Brown, T': 'co-author', 'Latham, D': 'same institution'}
+# -> {'Sasselov, D': 'same institution', 'Mallén-Ornelas, G': 'co-author'}
 candidates = [(name, count) for name, count in papers_on_topic.most_common() if name not in conflicts]
 candidates
-# -> [('Queloz, D', 1)]
+# -> [('Fischer, D', 1), ('Valenti, J', 1)]
 ```
 
 ## Check the candidates over all years
@@ -117,7 +129,7 @@ def papers_together(name):
 
 shared = {name: papers_together(name) for name, _ in candidates}
 shared
-# -> {'Queloz, D': 0}
+# -> {'Fischer, D': 0, 'Valenti, J': 0}
 ```
 
 Each count is one small request.
@@ -133,9 +145,9 @@ would pair up by position to learn who was at your institution.
 - `"Lastname, F"` can stand for several people, and the name search in the last step finds all of them.
   A count above zero is a reason to look, not a verdict. See
   [One author among namesakes]({{< ref "guides/one-author-among-namesakes" >}}).
-- "Same institution" here means the candidate gave, on a paper about the topic, an institution that you
-  gave on one of yours. It says nothing about where they are now. Widen it to a whole university by
-  adding the institution's parents and their children to `my_institutions`.
+- "Same institution" here means the candidate gave, on a paper about the topic, an institution in your
+  set: one you gave on a paper of yours, or another under the same parent. It says nothing about where
+  they are now.
 - SciX assigns thesaurus concepts to recent papers from the main journals. For an older or a broader
   topic, use a text search such as `Document.abs == "hot Jupiters"` in place of `topic`.
 - Add your own rules in the loop: advisers and students, people at an institution you are about to join.

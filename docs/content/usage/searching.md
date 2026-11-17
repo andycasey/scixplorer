@@ -104,8 +104,8 @@ To match specific documents, `Document.in_()` takes bibcodes, documents or a
 [library]({{< ref "usage/libraries" >}}); `Document.not_in()` excludes them:
 
 ```python
-search.to_solr(Document.in_(["2015ApJ...808...16N", "1995Natur.378..355M"]))
-# -> bibcode:("2015ApJ...808...16N" OR "1995Natur.378..355M")
+search.to_solr(Document.in_(["2006MNRAS.372..961K", "2000ApJ...537..916S"]))
+# -> bibcode:("2006MNRAS.372..961K" OR "2000ApJ...537..916S")
 ```
 
 Sets of more than 50 bibcodes are sent differently; see
@@ -124,8 +124,8 @@ Text, name and keyword fields support three kinds of wildcard match:
 ```python
 search.to_solr(Document.title.like("star-form*"))
 # -> title:star\-form*
-search.to_solr(Document.author.like("Casey, A*"))
-# -> author:"Casey, A*"
+search.to_solr(Document.author.like("Kewley, L*"))
+# -> author:"Kewley, L*"
 ```
 
 `like()` uses the pattern exactly as written: `like("JWST")` matches only the word JWST. To match a
@@ -165,20 +165,20 @@ that says what to write instead:
 
 <!-- docs-test: raises TypeError -->
 ```python
-(Document.year == 2020) and (Document.author == "Ness, M")
+(Document.year == 2020) and (Document.author == "Kewley, L")
 ```
 
 ```text
 TypeError: A query expression cannot be used as a truth value. Combine expressions with & (and),
 | (or) and ~ (not) instead of the keywords and/or/not, wrap each comparison in parentheses, e.g.
-(Document.year == 2020) & (Document.author == 'Ness, M'), and use .in_(values) instead of the `in` operator.
+(Document.year == 2020) & (Document.author == 'Kewley, L'), and use .in_(values) instead of the `in` operator.
 ```
 
 Forgetting the parentheses fails too, with a less helpful message, because Python tries `2020 & ...` first:
 
 <!-- docs-test: raises TypeError -->
 ```python
-Document.year == 2020 & Document.author == "Ness, M"
+Document.year == 2020 & Document.author == "Kewley, L"
 ```
 
 ## Values are checked when you build the condition
@@ -195,7 +195,7 @@ Document.year == "2020"
 | `Document.year == "2020"` | `QueryError: Document.year needs an int, not '2020'` |
 | `Document.year == None` | `QueryError: Comparing <Document.year> with None is not supported` |
 | `Document.author[-1] == "x"` | `QueryError: ADS cannot search by position from the end` |
-| `Document.bibcode.in_("2015ApJ...808...16N")` | `TypeError`: `in_()` needs a collection, not a single string |
+| `Document.bibcode.in_("2006MNRAS.372..961K")` | `TypeError`: `in_()` needs a collection, not a single string |
 | `Document.links_data == "x"` | `QueryError`: the field is returned but not searchable |
 | `Document.year == Document.citation_count` | `TypeError`: fields can only be compared with values |
 
@@ -223,16 +223,16 @@ query = (
         Document.year,
     )
     .where(
-        Document.raw('author:"Mayor, M"'),
-        Document.raw("year:[1990 TO 2000]"),
+        Document.raw('author:"Seager, S"'),
+        Document.raw("year:[2000 TO 2005]"),
     )
     .order_by(Document.year.asc())
     .limit(5)
 )
 search.to_solr(query)
-# -> (author:"Mayor, M") AND (year:[1990 TO 2000])
+# -> (author:"Seager, S") AND (year:[2000 TO 2005])
 [paper.bibcode for paper in query]
-# -> ['1995Natur.378..355M', '2000ApJ...529L..45C']
+# -> ['2000ApJ...537..916S', '2003ApJ...585.1038S']
 ```
 
 The client does not check raw syntax; SciX reports any error in it as an `APIError`.

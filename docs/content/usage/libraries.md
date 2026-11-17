@@ -20,9 +20,9 @@ expressions as for documents:
 from scixplorer import Document, Library, search
 
 Library.select().all()
-# -> [<Library: id='Rk3bq7xQTgS0vVZ2mN8cWw' name='Data-driven spectroscopy'>, <Library: id='Z3x9QhVnS2uYtLm4KpWb7g' name='Exoplanet discoveries'>]
-spectroscopy = Library.get(name="Data-driven spectroscopy")
-spectroscopy.num_documents
+# -> [<Library: id='Rk3bq7xQTgS0vVZ2mN8cWw' name='Emission-line galaxies'>, <Library: id='Z3x9QhVnS2uYtLm4KpWb7g' name='Exoplanet transits'>]
+galaxies = Library.get(name="Emission-line galaxies")
+galaxies.num_documents
 # -> 2
 ```
 
@@ -32,7 +32,7 @@ no result:
 
 ```python
 Library.get(id="Z3x9QhVnS2uYtLm4KpWb7g")
-# -> <Library: id='Z3x9QhVnS2uYtLm4KpWb7g' name='Exoplanet discoveries'>
+# -> <Library: id='Z3x9QhVnS2uYtLm4KpWb7g' name='Exoplanet transits'>
 ```
 
 | Field | Meaning |
@@ -51,11 +51,11 @@ Library.get(id="Z3x9QhVnS2uYtLm4KpWb7g")
 library:
 
 ```python
-spectroscopy.bibcodes
-# -> ('2015ApJ...808...16N', '2016arXiv160303040C')
-"2015ApJ...808...16N" in spectroscopy
+galaxies.bibcodes
+# -> ('2006MNRAS.372..961K', '2008ApJ...681.1183K')
+"2006MNRAS.372..961K" in galaxies
 # -> True
-len(spectroscopy)
+len(galaxies)
 # -> 2
 ```
 
@@ -63,8 +63,8 @@ len(spectroscopy)
 iterating over a library runs it:
 
 ```python
-[paper.title[0] for paper in spectroscopy.documents]
-# -> The Cannon 2: A data-driven model of stellar spectra for detailed chemical abundance analyses
+[paper.title[0] for paper in galaxies.documents]
+# -> Metallicity Calibrations and the Mass-Metallicity Relation for Star-forming Galaxies
 ```
 
 ## Search within a library
@@ -73,15 +73,15 @@ iterating over a library runs it:
 tests membership itself, so the library's bibcodes are not fetched:
 
 ```python
-search.to_solr(Document.in_(spectroscopy) & (Document.year > 2015))
-# -> docs(library/Rk3bq7xQTgS0vVZ2mN8cWw) AND year:[2016 TO *]
+search.to_solr(Document.in_(galaxies) & (Document.year > 2006))
+# -> docs(library/Rk3bq7xQTgS0vVZ2mN8cWw) AND year:[2007 TO *]
 unread = (
     Document
     .select(Document.bibcode)
-    .where(Document.not_in(spectroscopy) & (Document.author == "Hogg, D"))
+    .where(Document.not_in(galaxies) & (Document.author == "Kewley, L"))
 )
 [paper.bibcode for paper in unread]
-# -> ['2013PASP..125..306F']
+# -> ['2001ApJ...556..121K']
 ```
 
 {{< callout type="warning" >}}
@@ -93,13 +93,13 @@ searches for them (with `/search/bigquery` for more than 50), which costs more r
 ## Create a library
 
 ```python
-hunters = Library.create(
-    name="Planet hunters",
-    description="First detections of exoplanets",
-    documents=["1995Natur.378..355M"],
+transits = Library.create(
+    name="Planet transits",
+    description="Transmission spectra of transiting planets",
+    documents=["2000ApJ...537..916S"],
 )
-hunters
-# -> <Library: id='NewLibrary01xQ7vT2mKp9w' name='Planet hunters'>
+transits
+# -> <Library: id='NewLibrary01xQ7vT2mKp9w' name='Planet transits'>
 ```
 
 `documents` (and the arguments of `add` and `remove`) can be bibcodes, documents, libraries, or lists and
@@ -118,12 +118,12 @@ queries of them, in any mix. A library given as a source contributes its bibcode
 | `delete()` | deletes the library; the object can no longer be used | `None` |
 
 ```python
-hunters.add("2000ApJ...529L..45C", Document.get(bibcode="1995Natur.378..355M"))
+transits.add("2003ApJ...585.1038S", Document.get(bibcode="2000ApJ...537..916S"))
 # -> 1
-hunters.num_documents
+transits.num_documents
 # -> 2
-hunters.update(name="Transiting planets", public=True)
-hunters.name
+transits.update(name="Transiting planets", public=True)
+transits.name
 # -> Transiting planets
 ```
 
@@ -136,9 +136,9 @@ The set operations create a new library on SciX and return it. Pass the other li
 and the new library's `name`, `description` and `public`:
 
 ```python
-both = spectroscopy.union(hunters, name="Spectra and planets")
+both = galaxies.union(transits, name="Galaxies and planets")
 both.bibcodes
-# -> '2015ApJ...808...16N', '2016arXiv160303040C', '1995Natur.378..355M', '2000ApJ...529L..45C'
+# -> '2006MNRAS.372..961K', '2008ApJ...681.1183K', '2000ApJ...537..916S', '2003ApJ...585.1038S'
 ```
 
 | Method | The new library holds documents |
@@ -152,9 +152,9 @@ both.bibcodes
 ## Share a library
 
 ```python
-hunters.get_permissions()
+transits.get_permissions()
 # -> {'example_user@example.org': ['owner']}
-hunters.set_permissions("colleague@example.org", read=True)
+transits.set_permissions("colleague@example.org", read=True)
 ```
 
 `set_permissions(email, read=, write=, admin=)` sets one SciX user's permissions; all `False` revokes
