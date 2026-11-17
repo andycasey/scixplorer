@@ -18,7 +18,7 @@ description: A typed Python client for SciX (Science Explorer), the successor to
 
 <div class="landing-buttons">
 {{< hextra/hero-button text="Get started" link="getting-started/install/" >}}
-{{< hextra/hero-button text="Coming from ads" link="getting-started/coming-from-ads/" >}}
+{{< hextra/hero-button text="Coming from `ads`" link="getting-started/coming-from-ads/" >}}
 </div>
 
 </div>

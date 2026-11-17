@@ -43,6 +43,15 @@
   box-shadow: inset 0 0 0 1px currentColor;
 }
 
+/* Code in a button's text, such as the package name `ads`. */
+.landing-buttons a code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.375rem;
+  background: var(--landing-rule);
+}
+
 /* Feature rows: an explanation beside its example. */
 .landing-row {
   display: grid;
