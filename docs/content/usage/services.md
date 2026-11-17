@@ -15,7 +15,7 @@ these. Each also takes `client=` to use a particular `Client`.
 ## Export
 
 ```python
-from scixplorer import *
+from scixplorer import Document, Library, citation_helper, export, resolver, vis
 
 print(export.bibtex("2015ApJ...808...16N", "2013PASP..125..306F"))
 # -> @ARTICLE{2015ApJ...808...16N,

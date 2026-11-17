@@ -20,7 +20,7 @@ Download the thesaurus once (see [Vocabularies]({{< ref "usage/vocabularies" >}}
 concept by searching the names:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, Library, UATConcept, data, days_ago, search
 
 results = data.refresh("uat")
 

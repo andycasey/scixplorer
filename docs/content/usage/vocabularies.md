@@ -18,7 +18,7 @@ Neither vocabulary is packaged with scixplorer, because of their licences and si
 they are kept in your cache directory and used from then on:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, PlanetaryFeature, UATConcept, data, search
 
 results = data.refresh("uat", "planetary_features")
 [(result.name, result.ok) for result in results]

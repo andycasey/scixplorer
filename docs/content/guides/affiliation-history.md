@@ -21,7 +21,7 @@ Search by ORCID iD, oldest paper first. On each paper, find the author who carri
 curated affiliations:
 
 ```python
-from scixplorer import *
+from scixplorer import Author, Document
 
 who = "0000-0003-2866-9403"
 

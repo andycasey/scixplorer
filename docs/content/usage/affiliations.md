@@ -14,7 +14,7 @@ SciX identifies the institutions in authors' affiliations with curated identifie
 scixplorer and searched in Python, so no request and no token are needed.
 
 ```python
-from scixplorer import *
+from scixplorer import Affiliation, Document, search, utils
 
 harvard = Affiliation.get(abbreviation="Harvard U")
 harvard

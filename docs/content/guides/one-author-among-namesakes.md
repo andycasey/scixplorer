@@ -21,7 +21,7 @@ This asks for papers with an author called M. Mayor and an author at the Center 
 finds a paper on which Mayor was in Geneva and two of his co-authors were at the CfA:
 
 ```python
-from scixplorer import *
+from scixplorer import Affiliation, Author, Document
 
 cfa = Affiliation.get(abbreviation="CfA")
 

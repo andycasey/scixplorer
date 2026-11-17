@@ -121,7 +121,7 @@ uv run python scripts/gen_docs.py
 
 `tests/test_docs_generated.py` runs `scripts/gen_docs.py --check`, which fails if any generated page is
 out of date. Docstrings are written in reST (`:class:`, `:param x:`, `::` blocks); the generator converts
-them to Markdown and writes public names as users write them after `from scixplorer import *`:
+them to Markdown and writes public names as users write them once imported from `scixplorer`:
 `Document`, `exceptions.QueryError`.
 
 The generator replaces a few docstrings (listed in `OVERRIDES` in the script), because the documentation
@@ -135,10 +135,12 @@ in one namespace per page, against the offline sample in `tests/docs_fakes.py`: 
 illustrative counts and affiliations), two libraries, and small extracts of the UAT and the planetary
 gazetteer. No token is set and nothing reaches the network.
 
-- Start the first Python block of a user-facing page with `from scixplorer import *`, and write public
-  names bare: `Document`, `data.refresh()`. Import an internal module only where the page is about it
-  (`from scixplorer import solr`). The test enforces this. Pages under `development/` may import
-  anything.
+- Import only the names a page uses. Start the first Python block of a user-facing page with one line
+  such as `from scixplorer import Document, search`, with the names sorted, and write those names bare:
+  `Document`, `search.to_solr()`. Never write `from scixplorer import *` or `import scixplorer`. Import an
+  internal module only where the page is about it (`from scixplorer import solr`). The test enforces
+  this: every public name a page uses must be imported, and every imported name must be used. Pages
+  under `development/` may import anything.
 - Write a query as a parenthesised chain with one method per line, starting from the model on its own
   line. Give `select()` one field per line when it has more than one. Assign the query to a name, then
   call `count()`, `explain()` and the like on that name:

@@ -13,7 +13,7 @@ Keep the query string you already have. Put it in `Document.raw()`, and write th
 number of rows as methods of the query:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, export, get_default_client, search
 
 query = (
     Document
@@ -36,7 +36,7 @@ The rest of this page covers the other parameters and what behaves differently.
 
 | In `ads` | In scixplorer |
 |---|---|
-| `import ads` | `from scixplorer import *` |
+| `import ads` | `from scixplorer import Document` |
 | `ads.config.token = "..."` | `config.token = "..."` |
 | `ads.SearchQuery(q="...")` | `Document.select().where(Document.raw("..."))` |
 | `fl=["bibcode", "title"]` | `.select(Document.bibcode, Document.title)` |

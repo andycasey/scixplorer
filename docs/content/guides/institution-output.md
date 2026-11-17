@@ -18,7 +18,7 @@ Authors give their affiliation at different levels, and a condition on an instit
 one identifier. Start with the institution together with its children:
 
 ```python
-from scixplorer import *
+from scixplorer import Affiliation, Document, export, search
 
 caltech = Affiliation.get(abbreviation="Caltech")
 family = [caltech, *caltech.children]

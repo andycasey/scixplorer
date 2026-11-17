@@ -13,7 +13,7 @@ to read the output of `explain()`.
 Comparing a field builds a small, immutable tree of nodes. Nothing is sent and nothing is compiled yet:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, Journal, get_default_client, search
 
 condition = (Document.author[0] == "Ness, M") & Document.year.between(2015, 2020)
 condition

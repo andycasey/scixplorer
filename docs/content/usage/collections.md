@@ -13,7 +13,7 @@ SciX covers several disciplines, which it calls collections (the `database` fiel
 ## Set a default collection
 
 ```python
-from scixplorer import *
+from scixplorer import Document, config, search
 
 config.collection = "astronomy"
 search.to_solr(Document.year == 2020)

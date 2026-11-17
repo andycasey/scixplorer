@@ -20,7 +20,7 @@ Suppose you want papers by A. Casey written at a German institution. This finds 
 Cambridge; the German affiliation belongs to co-authors:
 
 ```python
-from scixplorer import *
+from scixplorer import Affiliation, Author, Document, search
 
 careless = (
     Document

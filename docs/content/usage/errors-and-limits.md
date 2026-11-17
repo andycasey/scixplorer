@@ -41,7 +41,7 @@ Two warnings, which are not errors:
 response, or `None`). The message gives the method, the path and SciX's own explanation:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, exceptions, get_default_client, search
 
 query = (
     Document

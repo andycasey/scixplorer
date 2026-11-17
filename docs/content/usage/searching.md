@@ -14,7 +14,7 @@ example below uses it so you can see exactly what is sent.
 ## Compare a field with a value
 
 ```python
-from scixplorer import *
+from scixplorer import Document, days_ago, search
 
 search.to_solr(Document.year == 2015)
 # -> year:2015

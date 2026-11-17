@@ -37,7 +37,7 @@ The environment variable `SCIX_API_TOKEN` works too, and so does a token you alr
 package (`ADS_API_TOKEN`, `ADS_DEV_KEY`, `~/.ads/token` or `~/.ads/dev_key`). To set it in code:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, config, search
 
 config.token = "your-token"
 ```

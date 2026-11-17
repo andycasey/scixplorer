@@ -25,7 +25,7 @@ description: A typed Python client for SciX (Science Explorer), the successor to
 <div>
 
 ```python
-from scixplorer import *
+from scixplorer import Document
 
 papers = (
     Document
@@ -140,6 +140,8 @@ the first author, or about every author.
 <div>
 
 ```python
+from scixplorer import Author
+
 hogg_in_germany = (
     Document
     .select(Document.bibcode)

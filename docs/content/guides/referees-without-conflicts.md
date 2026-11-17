@@ -21,7 +21,7 @@ Search for your own papers over the period the conflict rule covers, and read ea
 is SciX's short form of a name, `"Lastname, F"`, which is the same from paper to paper:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, UATConcept, data, search
 
 me = "Charbonneau, D"
 

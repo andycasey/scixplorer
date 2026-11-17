@@ -25,7 +25,7 @@ SciX has no value:
 [field reference]({{< ref "reference/document-fields" >}}) lists every field with its type.
 
 ```python
-from scixplorer import *
+from scixplorer import Document, exceptions, utils
 
 paper = Document.get(bibcode="2000ApJ...529L..45C")
 paper.title

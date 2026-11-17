@@ -23,7 +23,7 @@ Search by ORCID iD and year. `select()` with no fields fetches every stored fiel
 ones `paper.authors` is built from:
 
 ```python
-from scixplorer import *
+from scixplorer import Author, Document
 
 me = "0000-0003-2866-9403"
 

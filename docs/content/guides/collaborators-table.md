@@ -20,7 +20,7 @@ Search by ORCID iD and publication date, and sort by date with the newest first.
 large collaborations if their author lists would swamp the table:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, search
 import datetime
 
 me = "0000-0003-2866-9403"

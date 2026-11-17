@@ -20,7 +20,7 @@ inside a [citation operator]({{< ref "usage/operators" >}}) and be negated outsi
 ones already in the library, and put the most cited first:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, Library, citation_helper, search
 
 library = Library.get(name="Data-driven spectroscopy")
 library.bibcodes

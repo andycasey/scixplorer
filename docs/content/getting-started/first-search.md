@@ -16,7 +16,7 @@ A search starts from `Document.select()`, and each method after it adds one part
 one method per line, inside parentheses:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, search
 
 query = (
     Document

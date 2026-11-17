@@ -68,7 +68,7 @@ is.
 To set the token in code, assign it to the configuration:
 
 ```python
-from scixplorer import *
+from scixplorer import Client, Document, config
 
 config.token = "your-token"
 ```

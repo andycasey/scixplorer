@@ -17,7 +17,7 @@ nothing is sent behind your back. Assigning to an attribute changes only your lo
 expressions as for documents:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, Library, search
 
 Library.select().all()
 # -> [<Library: id='Rk3bq7xQTgS0vVZ2mN8cWw' name='Data-driven spectroscopy'>, <Library: id='Z3x9QhVnS2uYtLm4KpWb7g' name='Exoplanet discoveries'>]

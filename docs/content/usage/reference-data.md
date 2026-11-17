@@ -23,7 +23,7 @@ The packaged data files are not covered by scixplorer's MIT licence. `data.notic
 notice that ships with them: where each file comes from, the commit it was taken from, and its licence.
 
 ```python
-from scixplorer import *
+from scixplorer import UATConcept, data
 
 print(data.notices())
 # -> These data files are not covered by the MIT licence of this package.

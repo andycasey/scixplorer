@@ -21,7 +21,7 @@ missing ones have to be found by name, and a name alone also finds other people.
 users' public ORCID profiles, and those claimed in ADS or SciX itself.
 
 ```python
-from scixplorer import *
+from scixplorer import Affiliation, Author, Document, Library, export
 
 me = "0000-0001-5082-6693"
 

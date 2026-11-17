@@ -21,7 +21,7 @@ The [field reference]({{< ref "reference/document-fields" >}}) gives the match k
 code, `describe()` reports it:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, search
 
 kinds = {field.name: field.match_kind for field in Document.describe()}
 kinds["bibcode"], kinds["title"], kinds["author"]

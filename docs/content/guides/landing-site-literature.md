@@ -22,7 +22,7 @@ Copernicus is a crater on the Moon and another on Mars. So give the body as well
 the whole name with `.exact()`:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, Library, PlanetaryFeature, data, export, search
 
 results = data.refresh("planetary_features")
 

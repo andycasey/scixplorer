@@ -15,7 +15,7 @@ each is a class method of `Document` that takes a condition (or a Solr query str
 condition, which you combine with others like any condition.
 
 ```python
-from scixplorer import *
+from scixplorer import Document, search
 
 cannon = Document.bibcode == "2015ApJ...808...16N"
 search.to_solr(Document.citations(cannon))

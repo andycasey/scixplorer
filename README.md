@@ -21,7 +21,7 @@ Get an API token at <https://scixplorer.org/user/settings/token> and put it in t
 ## Example
 
 ```python
-from scixplorer import *
+from scixplorer import Author, Document, export
 
 papers = (
     Document

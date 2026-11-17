@@ -14,7 +14,7 @@ abbreviation. The list (4502 journals) is packaged with scixplorer and searched 
 request and no token are needed:
 
 ```python
-from scixplorer import *
+from scixplorer import Document, Journal, search
 
 Journal.get(abbreviation="ApJ").title
 # -> The Astrophysical Journal
