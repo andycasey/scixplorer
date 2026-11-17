@@ -1,0 +1,45 @@
+# Run the read-only live tests against the real SciX API, every night and on request.
+#
+# Each run sends about 60 to 100 requests with the token in the repository secret SCIX_API_TOKEN. The
+# tests that create, change and delete libraries (--live-write) do not run here.
+name: Live tests
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: Live API
+    runs-on: ubuntu-latest
+    env:
+      SCIX_API_TOKEN: ${{ secrets.SCIX_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install the package and the development dependencies
+        run: uv sync --locked
+
+      # Without a token the API tests skip themselves, and the run would pass having checked nothing.
+      - name: Check the token is set
+        run: |
+          if [ -z "$SCIX_API_TOKEN" ]; then
+            echo "::error::The repository secret SCIX_API_TOKEN is not set."
+            exit 1
+          fi
+
+      - name: Run the read-only live tests
+        run: uv run pytest --live tests/live -rs

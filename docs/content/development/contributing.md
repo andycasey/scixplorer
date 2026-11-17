@@ -175,16 +175,25 @@ A failure names the page, the block's line and the problem, and shows the block.
 
 ## Continuous integration
 
-Three GitHub Actions workflows in `.github/workflows/` run on GitHub:
+Four GitHub Actions workflows in `.github/workflows/` run on GitHub:
 
 | Workflow | Runs on | What it does |
 |---|---|---|
 | `tests.yml` | a push to `main`, a pull request | Runs the offline suite, with warnings as errors, on Python 3.10 to 3.14, then reports the coverage of the five runs combined. |
 | `docs.yml` | a push to `main`, a pull request | Runs the build test and builds the site. From `main` it also publishes the site to GitHub Pages, at <https://andycasey.github.io/scixplorer/>. |
+| `live.yml` | every night, or on request | Runs the read-only [live tests]({{< ref "development/live-tests" >}}) against the real API. |
 | `release.yml` | a pushed tag `v…` | Releases that version; see below. |
 
 The coverage table is on the summary page of each run of `tests.yml`, and the line-by-line report is the
-`coverage-html` artifact of that run. The live tests do not run on GitHub: they need an API token.
+`coverage-html` artifact of that run.
+
+The live tests do not run with the others, because they need the network and an API token. `live.yml`
+runs them with the token in the repository secret `SCIX_API_TOKEN`, and never with `--live-write`. To
+run them at another time, choose **Run workflow** on the workflow's page, or:
+
+```shell
+gh workflow run live.yml
+```
 
 ## Release a version
 
