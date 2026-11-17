@@ -224,4 +224,19 @@ and run your [first search]({{< ref "getting-started/first-search" >}}).
 
 </div>
 
+<div class="landing-thanks content">
+
+## A community project, with thanks
+
+scixplorer is a community project, and it stands on the work of the NASA Astrophysics Data System team,
+now the [SciX](https://scixplorer.org) team. For more than thirty years they have gathered, curated and
+linked the scientific literature, and kept it open to everyone, so that any of us can find a paper,
+everything it cites and everything that cites it, in seconds. It is easy to forget how remarkable that is.
+
+The index, the API, the curated affiliations and the links between papers are all their work. scixplorer
+only tries to make that work a little easier to reach from Python. If it helps your research, the credit
+belongs to them. Thank you ❤️
+
+</div>
+
 </div>

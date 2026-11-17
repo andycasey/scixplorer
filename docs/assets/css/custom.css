@@ -82,6 +82,14 @@
   border-top: 1px solid var(--landing-rule);
 }
 
+/* The acknowledgement that closes the page. */
+.landing-thanks {
+  max-width: 48rem;
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--landing-rule);
+}
+
 .landing pre {
   margin-bottom: 0;
 }
