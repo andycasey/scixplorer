@@ -11,16 +11,22 @@ search that works.
 ## Install
 
 scixplorer needs Python 3.10 or later. Its only dependency is [httpx](https://www.python-httpx.org).
-It is not yet on PyPI, so install it from a copy of the source:
+We recommend installing it with [uv](https://docs.astral.sh/uv/). To add it to a project managed with uv:
 
 ```shell
-pip install /path/to/scixplorer
+uv add scixplorer
 ```
 
-or, in a project managed with [uv](https://docs.astral.sh/uv/):
+To try it without setting up a project, start Python with scixplorer available:
 
 ```shell
-uv add /path/to/scixplorer
+uv run --with scixplorer python
+```
+
+If you use pip instead:
+
+```shell
+pip install scixplorer
 ```
 
 ## Get an API token
