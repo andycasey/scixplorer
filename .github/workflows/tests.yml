@@ -1,0 +1,90 @@
+# Run the offline test suite on every supported Python, and report test coverage.
+#
+# The suite includes the mypy checks (tests/test_typing*.py), the documentation examples
+# (tests/test_docs_examples.py) and the check that the generated reference pages are up to date
+# (tests/test_docs_generated.py). The live tests stay skipped: they need an API token.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # The release workflow runs these tests before it publishes anything.
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+
+      - name: Install the package and the development dependencies
+        run: uv sync --locked
+
+      # -W error: a warning fails the suite. Coverage writes one data file per process (.coverage.*).
+      - name: Run the tests
+        run: uv run python -W error -m coverage run -m pytest
+
+      - name: Keep the coverage data
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-data-${{ matrix.python }}
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: error
+
+  coverage:
+    name: Coverage
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          python-version: "3.14"
+          enable-cache: true
+
+      - name: Install the package and the development dependencies
+        run: uv sync --locked
+
+      - name: Fetch the coverage data of every Python version
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-data-*
+          merge-multiple: true
+
+      # The table appears on the summary page of the workflow run.
+      - name: Report the combined coverage
+        run: |
+          uv run coverage combine
+          {
+            echo "## Test coverage"
+            echo
+            uv run coverage report --format=markdown
+          } >> "$GITHUB_STEP_SUMMARY"
+          uv run coverage html
+
+      - name: Keep the line-by-line report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-html
+          path: htmlcov
