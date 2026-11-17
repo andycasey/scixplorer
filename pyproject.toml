@@ -18,6 +18,11 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
 ]
 
+[project.urls]
+Documentation = "https://andycasey.github.io/scixplorer/"
+Repository = "https://github.com/andycasey/scixplorer"
+Issues = "https://github.com/andycasey/scixplorer/issues"
+
 [dependency-groups]
 dev = [
     "pytest>=8",
