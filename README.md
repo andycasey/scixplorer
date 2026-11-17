@@ -6,12 +6,14 @@ Solr query SciX expects, and returns typed results.
 
 ## Install
 
-scixplorer needs Python 3.10 or later; its only dependency is `httpx`. It is not yet on PyPI, so install
-it from a copy of the source:
+scixplorer needs Python 3.10 or later; its only dependency is `httpx`. We recommend
+[uv](https://docs.astral.sh/uv/):
 
 ```shell
-pip install /path/to/scixplorer
+uv add scixplorer
 ```
+
+or, with pip, `pip install scixplorer`.
 
 Get an API token at <https://scixplorer.org/user/settings/token> and put it in the environment variable
 `SCIX_API_TOKEN`, or on the first line of `~/.scix/token`.
