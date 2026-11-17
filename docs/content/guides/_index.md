@@ -1,0 +1,19 @@
+---
+title: Guides
+weight: 3
+description: Worked examples that each answer one whole question, from the search to the finished table.
+---
+
+Each guide answers one question from start to finish: the search, what to read from the results, and the
+table or library you end up with. The [Usage]({{< ref "usage" >}}) pages explain one feature at a time; the
+guides combine them.
+
+Most of these questions are hard to ask with the `ads` package. Each needs something SciX's query language
+does not have: a condition about one particular author, the country or the parent of an institution, the
+narrower terms of a concept, or the contents of a library.
+
+| Guide | Question |
+|---|---|
+
+The examples run against the small offline sample of papers used throughout this site, so the lists they
+print are short. Against SciX the same code returns everything that matches.

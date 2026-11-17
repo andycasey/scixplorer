@@ -118,3 +118,4 @@ field's type. Values are checked as you write a condition, so `Document.year == 
 | [Your first search]({{< ref "getting-started/first-search" >}}) | every way to run a query, what it sends, and how to read the documents it returns |
 | [Coming from ads]({{< ref "getting-started/coming-from-ads" >}}) | move code written for `ads.SearchQuery` |
 | [Usage]({{< ref "usage" >}}) | search by author, affiliation, journal and more, and use libraries, exports and async |
+| [Guides]({{< ref "guides" >}}) | answer whole questions, such as who you have written with and in which countries |

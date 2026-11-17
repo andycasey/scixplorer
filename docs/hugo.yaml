@@ -40,15 +40,18 @@ menu:
     - name: Usage
       pageRef: /usage
       weight: 2
+    - name: Guides
+      pageRef: /guides
+      weight: 3
     - name: Reference
       pageRef: /reference
-      weight: 3
-    - name: Search
       weight: 4
+    - name: Search
+      weight: 5
       params:
         type: search
     - name: Theme
-      weight: 5
+      weight: 6
       params:
         type: theme-toggle
 

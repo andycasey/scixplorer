@@ -28,6 +28,7 @@ KEY_PAGES = [
     "usage/searching/index.html",
     "usage/authors/index.html",
     "usage/errors-and-limits/index.html",
+    "guides/index.html",
     "reference/document-fields/index.html",
     "reference/expressions/index.html",
     "reference/api/query/index.html",

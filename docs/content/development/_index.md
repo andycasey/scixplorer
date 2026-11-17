@@ -1,6 +1,6 @@
 ---
 title: Development
-weight: 4
+weight: 5
 description: For contributors to scixplorer itself.
 ---
 
