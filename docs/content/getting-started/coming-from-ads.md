@@ -7,6 +7,31 @@ description: Move code written for the ads package (ads.SearchQuery, version 0.1
 After this page you can move code written for the `ads` package (`ads.SearchQuery(q=...)`, version 0.13
 and earlier) to scixplorer, and you will know each difference that could change your results.
 
+## The simplest change
+
+Keep the query string you already have. Put it in `Document.raw()`, and write the sort order and the
+number of rows as methods of the query:
+
+```python
+from scixplorer import *
+
+query = (
+    Document
+    .select()
+    .where(Document.raw('author:"Mayor, M" year:[1990 TO 2000]'))
+    .order_by(Document.citation_count.desc())
+    .limit(10)
+)
+[paper.bibcode for paper in query]
+# -> ['1995Natur.378..355M', '2000ApJ...529L..45C']
+```
+
+That replaces `ads.SearchQuery(q='author:"Mayor, M" year:[1990 TO 2000]', sort="citation_count desc",
+rows=10)`. For `sort="citation_count asc"`, write `.order_by(Document.citation_count.asc())`. Leave out
+`order_by()` to sort by relevance, and leave out `limit()` to get every match.
+
+The rest of this page covers the other parameters and what behaves differently.
+
 ## At a glance
 
 | In `ads` | In scixplorer |
@@ -39,20 +64,21 @@ scixplorer, `config.token` comes first, so setting it in code always takes effec
 
 ## Search with a query string
 
-Put the query string you already use in `Document.raw()`, and write the other parameters as methods of
-the query: `fl` becomes `select()`, `fq` another condition in `where()`, `sort` becomes `order_by()`, and
-`rows` becomes `limit()`.
+The other parameters of `ads.SearchQuery` are methods of the query too: `fl` becomes the fields in
+`select()`, and each `fq` becomes another condition in `where()`. This is the search above with
+`fl=["bibcode", "title"]` and `fq="year:[1990 TO 2000]"`:
 
 ```python
-from scixplorer import *
-
 query = (
     Document
     .select(
         Document.bibcode,
         Document.title,
     )
-    .where(Document.raw('author:"Mayor, M" year:[1990 TO 2000]'))
+    .where(
+        Document.raw('author:"Mayor, M"'),
+        Document.raw("year:[1990 TO 2000]"),
+    )
     .order_by(Document.citation_count.desc())
     .limit(10)
 )
@@ -60,6 +86,8 @@ query = (
 # -> ['1995Natur.378..355M', '2000ApJ...529L..45C']
 query.count()
 # -> 2
+search.to_solr(query)
+# -> (author:"Mayor, M") AND (year:[1990 TO 2000])
 ```
 
 The query string is sent as you wrote it, and SciX reports any error in it. A few things work differently
