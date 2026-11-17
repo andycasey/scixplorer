@@ -9,8 +9,9 @@ is parsed back into the client's own expression nodes and evaluated with
 :mod:`scixplorer.evaluate`, which follows ADS's documented matching rules
 (curated synonyms known only to the server are not applied).
 
-The sample records are real papers, but their counts, affiliations, keywords
-and vocabulary assignments are illustrative, not current SciX data.
+The sample records are real papers, but their counts, affiliations, keywords,
+vocabulary assignments and the papers on which an ORCID iD appears are
+illustrative, not current SciX data.
 
 ``UAT_JSON`` and ``PLANETARY_FEATURES_CSV`` are small extracts of the real
 vocabularies, so that the identifiers shown in the documentation are true:
@@ -82,6 +83,7 @@ SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
             "Department of Physics and Astronomy, Johns Hopkins University, Baltimore, MD 21218, USA",
         ],
         aff_id=["A01570", "A00951; A01570", "A01570", "A01093", "A00142"],
+        orcid_pub=["0000-0001-5082-6693", "0000-0003-2866-9403", "-", "-", "-"],
         year=2015,
         pubdate="2015-08-00",
         pub="The Astrophysical Journal",
@@ -110,6 +112,7 @@ SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
             "Institute of Astronomy, University of Cambridge, Madingley Road, Cambridge CB3 0HA, UK",
         ],
         aff_id=["A00319", "A00951", "A01570", "A01570", "A01093", "A00319"],
+        orcid_user=["-", "0000-0003-2866-9403", "-", "-", "-", "-"],
         year=2016,
         pubdate="2016-03-00",
         pub="arXiv e-prints",
@@ -222,6 +225,7 @@ SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
             "Courant Institute of Mathematical Sciences, New York University, New York, NY 10012, USA",
         ],
         aff_id=["A00951", "A00951", "-", "A00954"],
+        orcid_pub=["-", "0000-0003-2866-9403", "-", "-"],
         year=2013,
         pubdate="2013-03-00",
         pub="Publications of the Astronomical Society of the Pacific",
