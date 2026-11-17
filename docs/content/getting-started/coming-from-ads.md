@@ -11,34 +11,34 @@ scixplorer, and you will know every change that could silently alter a result.
 
 | In `ads` | In scixplorer |
 |---|---|
-| `import ads`, `from ads import Document` | `import scixplorer as scix`, then `scix.Document` |
-| `ads.Document.select().where(...)` | `scix.Document.select().where(...)`: the same shape |
-| `Document.get(Document.bibcode == "...")` | `scix.Document.get(bibcode="...")` (the expression form also works) |
-| `ads.SearchQuery(q="...", fl=[...])` | `scix.SearchQuery(q="...", fl=[...])`, which returns an ordinary query |
-| `not (Document.year == 2020)` | `~(scix.Document.year == 2020)` |
-| `Document.title.like("JWST")` (prefix match) | `scix.Document.title.like("JWST*")` or `scix.Document.title.startswith("JWST")` |
-| `Library(name=...)` then `library.save()` | `scix.Library.create(name=...)` |
+| `import ads`, `from ads import Document` | `from scixplorer import *`, then `Document` |
+| `ads.Document.select().where(...)` | `Document.select().where(...)`: the same shape |
+| `Document.get(Document.bibcode == "...")` | `Document.get(bibcode="...")` (the expression form also works) |
+| `ads.SearchQuery(q="...", fl=[...])` | `SearchQuery(q="...", fl=[...])`, which returns an ordinary query |
+| `not (Document.year == 2020)` | `~(Document.year == 2020)` |
+| `Document.title.like("JWST")` (prefix match) | `Document.title.like("JWST*")` or `Document.title.startswith("JWST")` |
+| `Library(name=...)` then `library.save()` | `Library.create(name=...)` |
 | `library += documents`, `library.save()` | `library.add(*documents)` |
 | `library.name = "New"`, `library.save()` | `library.update(name="New")` |
 | `ads-setup` after installing | nothing: the data is packaged, or downloaded on request |
-| `from ads.services import export` | `scix.export` |
-| the exceptions in `ads.exceptions` | `scix.exceptions.SciXError` and its subclasses |
+| `from ads.services import export` | `export` |
+| the exceptions in `ads.exceptions` | `exceptions.SciXError` and its subclasses |
 
 ## Breaking changes
 
 ### The package is `scixplorer`
 
-The package and its import name are `scixplorer`. These pages import it as `scix`:
+The package and its import name are `scixplorer`. These pages import every public name from it:
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 ```
 
 The default API host is `https://api.scixplorer.org/v1` (it was `https://api.adsabs.harvard.edu/v1`). It is
-`scix.config.api_url`, and you can change it:
+`config.api_url`, and you can change it:
 
 ```python
-scix.config.api_url
+config.api_url
 # -> https://api.scixplorer.org/v1
 ```
 
@@ -58,7 +58,7 @@ request: `create`, `update`, `add`, `remove`, `empty`, `delete`, `union`, `inter
 [Libraries]({{< ref "guide/libraries" >}}).
 
 ```python
-library = scix.Library.get(name="Data-driven spectroscopy")
+library = Library.get(name="Data-driven spectroscopy")
 library.add("2013PASP..125..306F")
 # -> 1
 library.update(description="The Cannon and the tools it uses")
@@ -72,15 +72,15 @@ to write instead:
 
 <!-- docs-test: raises TypeError -->
 ```python
-not (scix.Document.year == 2020)
+not (Document.year == 2020)
 ```
 
 Write `~` for not, `&` for and, `|` for or, and `.in_()` and `.not_in()` for membership. For "not one of
-these documents", write `scix.Document.not_in(...)`:
+these documents", write `Document.not_in(...)`:
 
 ```python
-recent = scix.Document.year >= 2015
-scix.search.to_solr(recent & scix.Document.not_in(["2015ApJ...808...16N"]))
+recent = Document.year >= 2015
+search.to_solr(recent & Document.not_in(["2015ApJ...808...16N"]))
 # -> year:[2015 TO *] AND -bibcode:"2015ApJ...808...16N"
 ```
 
@@ -90,21 +90,21 @@ In `ads`, `Document.title.like("JWST")` became the prefix search `title:JWST*`. 
 is used as written. Add `*` yourself, or use `startswith()`:
 
 ```python
-scix.search.to_solr(scix.Document.title.like("JWST"))
+search.to_solr(Document.title.like("JWST"))
 # -> title:JWST
-scix.search.to_solr(scix.Document.title.like("JWST*"))
+search.to_solr(Document.title.like("JWST*"))
 # -> title:JWST*
-scix.search.to_solr(scix.Document.title.startswith("JWST"))
+search.to_solr(Document.title.startswith("JWST"))
 # -> title:JWST*
 ```
 
 ### Slices are Python slices
 
-`scix.Document.author[0]` is the first author and `scix.Document.author[0:3]` the first three, as for a
+`Document.author[0]` is the first author and `Document.author[0:3]` the first three, as for a
 Python list. Check any slice carried over from `ads`, whose positions were converted differently.
 
 ```python
-scix.search.to_solr(scix.Document.author[0:3] == "Ness, M")
+search.to_solr(Document.author[0:3] == "Ness, M")
 # -> pos(author:"Ness, M", 1, 3)
 ```
 
@@ -116,7 +116,7 @@ Field values now have exactly the type the field declares, or `None`. Several fi
 
 | Field | In `ads` | In scixplorer |
 |---|---|---|
-| `id` | `int` | `str` of digits. Queries accept an `int`: `scix.Document.id == 1406395` |
+| `id` | `int` | `str` of digits. Queries accept an `int`: `Document.id == 1406395` |
 | `volume` | `int` | `str`, because some volumes are not numbers (`conf` in `2020svos.conf...11E`) |
 | `cite_read_boost` | `int` | `float` |
 | `keyword`, `alternate_title`, `arxiv_class`, `bibgroup`, `data`, `grant`, `isbn`, `links_data`, `vizier` | `str` | a list of `str` |
@@ -124,9 +124,9 @@ Field values now have exactly the type the field declares, or `None`. Several fi
 | `uat`, `planetary_feature` | text | relations to [`UATConcept` and `PlanetaryFeature`]({{< ref "guide/vocabularies" >}}); the text is now `uat_name` and `planetary_feature_name` |
 
 ```python
-scix.search.to_solr(scix.Document.id == 1406395)
+search.to_solr(Document.id == 1406395)
 # -> id:"1406395"
-paper = scix.Document.get(id=1406395)
+paper = Document.get(id=1406395)
 paper.id
 # -> '1406395'
 paper.volume
@@ -140,7 +140,7 @@ through with the wrong type. See [Results]({{< ref "guide/results#types-and-data
 
 ### Large fields are deferred
 
-`scix.Document.select()` with no fields fetches every field except `ack`, `body`, `caption`, `citation`,
+`Document.select()` with no fields fetches every field except `ack`, `body`, `caption`, `citation`,
 `credit`, `mention` and `reference`. Those can be very large (full text, or tens of thousands of
 bibcodes). Select them by name to fetch them; reading one you did not select loads it on demand.
 
@@ -153,14 +153,14 @@ same page of results, so reading `doc.citation_count` in a loop over 200 documen
 
 ### Affiliation countries are spelled out
 
-`scix.Affiliation.country` holds the country as the upstream data spells it, such as `"United States"`
+`Affiliation.country` holds the country as the upstream data spells it, such as `"United States"`
 or `"United Kingdom"`. A condition such as `country == "USA"` matches nothing. The new field
 `country_code` holds the ISO 3166-1 code, which is the stable way to filter:
 
 ```python
-scix.Affiliation.get(id="A00951").country
+Affiliation.get(id="A00951").country
 # -> United States
-scix.Affiliation.get(id="A00951").country_code
+Affiliation.get(id="A00951").country_code
 # -> US
 ```
 
@@ -169,35 +169,35 @@ scix.Affiliation.get(id="A00951").country_code
 `ads` built a SQLite database of journals and affiliations with the `ads-setup` command. scixplorer
 reads that data from files packaged with it, held in memory. Two vocabularies, the Unified Astronomy
 Thesaurus and the planetary nomenclature gazetteer, are not packaged: download them once with
-`scix.data.refresh()`. Nothing is downloaded unless you ask. See
+`data.refresh()`. Nothing is downloaded unless you ask. See
 [Reference data]({{< ref "guide/reference-data" >}}).
 
 ### One base exception
 
-Every exception the package raises derives from `scix.exceptions.SciXError`. Errors from the API are
+Every exception the package raises derives from `exceptions.SciXError`. Errors from the API are
 `APIError`, with the subclasses `AuthenticationError` and `RateLimitExceeded`. See
 [Errors and limits]({{< ref "guide/errors-and-limits" >}}).
 
 ```python
-issubclass(scix.exceptions.RateLimitExceeded, scix.exceptions.SciXError)
+issubclass(exceptions.RateLimitExceeded, exceptions.SciXError)
 # -> True
 ```
 
 ## What stayed the same
 
-- Searches start with `select()` on the document model (`scix.Document.select()`) and use `where`,
+- Searches start with `select()` on the document model (`Document.select()`) and use `where`,
   `order_by` and `limit`.
 - `&`, `|` and `~` combine conditions, and each comparison needs its own parentheses.
-- `scix.Document.journal`, `scix.Document.affiliation` and the operators such as
-  `scix.Document.citations()` and `scix.Document.top_n()` work as before, except that an operator takes a
-  condition, not a document: `scix.Document.citations(scix.Document.bibcode == paper.bibcode)`.
+- `Document.journal`, `Document.affiliation` and the operators such as
+  `Document.citations()` and `Document.top_n()` work as before, except that an operator takes a
+  condition, not a document: `Document.citations(Document.bibcode == paper.bibcode)`.
 - `SearchQuery` still exists for Solr query strings you already have. It returns an ordinary query:
 
 ```python
-query = scix.SearchQuery(q='author:"Mayor, M" year:[1990 TO 2000]', fl="bibcode,title", rows=10)
+query = SearchQuery(q='author:"Mayor, M" year:[1990 TO 2000]', fl="bibcode,title", rows=10)
 [paper.bibcode for paper in query]
 # -> 1995Natur.378..355M
 ```
 
-- `scix.export.bibtex(...)` and the other export formats are functions, as in `ads.services.export`. See
+- `export.bibtex(...)` and the other export formats are functions, as in `ads.services.export`. See
   [Services]({{< ref "guide/services" >}}).

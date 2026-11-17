@@ -19,23 +19,23 @@ Get an API token at <https://scixplorer.org/user/settings/token> and put it in t
 ## Example
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
 papers = (
-    scix.Document.select(scix.Document.bibcode, scix.Document.title, scix.Document.year)
+    Document.select(Document.bibcode, Document.title, Document.year)
     .where(
-        scix.Document.authors.any(
-            (scix.Author.name == "Hogg, D") & (scix.Author.affiliation.country_code == "DE")
+        Document.authors.any(
+            (Author.name == "Hogg, D") & (Author.affiliation.country_code == "DE")
         )
-        & scix.Document.year.between(2010, 2020)
+        & Document.year.between(2010, 2020)
     )
-    .order_by(scix.Document.citation_count.desc())
+    .order_by(Document.citation_count.desc())
     .limit(10)
 )
 for paper in papers:
     print(paper.year, paper.bibcode, paper.title[0])
 
-print(scix.export.bibtex(papers))
+print(export.bibtex(papers))
 # -> @ARTICLE{2015ApJ...808...16N
 ```
 
@@ -45,7 +45,7 @@ BibTeX. `papers.explain()` shows the request without sending it.
 ## Features
 
 - Searches as Python expressions on 101 typed document fields, checked when you write them.
-- Several conditions about the same author (`scix.Document.authors.any(...)`), or the author at a
+- Several conditions about the same author (`Document.authors.any(...)`), or the author at a
   position.
 - Search by journal title, institution, country, Unified Astronomy Thesaurus concept or planetary
   feature: resolved locally against packaged or downloaded reference data.

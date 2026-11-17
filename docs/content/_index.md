@@ -11,12 +11,12 @@ results. It also reads and writes your SciX libraries, exports citations, and kn
 institutions and controlled vocabularies that SciX uses.
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
 papers = (
-    scix.Document.select(scix.Document.bibcode, scix.Document.title)
-    .where((scix.Document.author[0] == "Ness, M") & (scix.Document.year >= 2015))
-    .order_by(scix.Document.citation_count.desc())
+    Document.select(Document.bibcode, Document.title)
+    .where((Document.author[0] == "Ness, M") & (Document.year >= 2015))
+    .order_by(Document.citation_count.desc())
     .limit(5)
 )
 [paper.title[0] for paper in papers]

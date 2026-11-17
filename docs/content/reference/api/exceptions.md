@@ -8,7 +8,7 @@ description: "Every exception and warning scixplorer raises."
 
 ## scixplorer.exceptions.SciXError
 
-Written `scix.exceptions.SciXError` after `import scixplorer as scix`.
+Written `exceptions.SciXError` after `from scixplorer import *`.
 
 *class*
 
@@ -18,47 +18,47 @@ Derives from `Exception`.
 
 ## scixplorer.exceptions.QueryError
 
-Written `scix.exceptions.QueryError` after `import scixplorer as scix`.
+Written `exceptions.QueryError` after `from scixplorer import *`.
 
 *class*
 
 A query expression is malformed or cannot be executed.
 
-Derives from `scix.exceptions.SciXError`.
+Derives from `exceptions.SciXError`.
 
 ## scixplorer.exceptions.UnsupportedQueryError
 
-Written `scix.exceptions.UnsupportedQueryError` after `import scixplorer as scix`.
+Written `exceptions.UnsupportedQueryError` after `from scixplorer import *`.
 
 *class*
 
 The expression is valid, but no execution plan exists for it.
 
-Derives from `scix.exceptions.QueryError`.
+Derives from `exceptions.QueryError`.
 
 ## scixplorer.exceptions.NotLocallyEvaluable
 
-Written `scix.exceptions.NotLocallyEvaluable` after `import scixplorer as scix`.
+Written `exceptions.NotLocallyEvaluable` after `from scixplorer import *`.
 
 *class*
 
 The expression can only be evaluated by the ADS search engine, not in Python.
 
-Derives from `scix.exceptions.QueryError`.
+Derives from `exceptions.QueryError`.
 
 ## scixplorer.exceptions.DoesNotExist
 
-Written `scix.exceptions.DoesNotExist` after `import scixplorer as scix`.
+Written `exceptions.DoesNotExist` after `from scixplorer import *`.
 
 *class*
 
 No object matched a query that required exactly one result.
 
-Derives from `scix.exceptions.SciXError`, `LookupError`.
+Derives from `exceptions.SciXError`, `LookupError`.
 
 ## scixplorer.exceptions.APIError
 
-Written `scix.exceptions.APIError` after `import scixplorer as scix`.
+Written `exceptions.APIError` after `from scixplorer import *`.
 
 ```python
 APIError(message, *, status_code=None, response=None)
@@ -68,11 +68,11 @@ APIError(message, *, status_code=None, response=None)
 
 The ADS API returned an error response.
 
-Derives from `scix.exceptions.SciXError`.
+Derives from `exceptions.SciXError`.
 
 ## scixplorer.exceptions.AuthenticationError
 
-Written `scix.exceptions.AuthenticationError` after `import scixplorer as scix`.
+Written `exceptions.AuthenticationError` after `from scixplorer import *`.
 
 ```python
 AuthenticationError(message, *, status_code=None, response=None)
@@ -82,11 +82,11 @@ AuthenticationError(message, *, status_code=None, response=None)
 
 No API token was found, or ADS rejected the one supplied.
 
-Derives from `scix.exceptions.APIError`.
+Derives from `exceptions.APIError`.
 
 ## scixplorer.exceptions.RateLimitExceeded
 
-Written `scix.exceptions.RateLimitExceeded` after `import scixplorer as scix`.
+Written `exceptions.RateLimitExceeded` after `from scixplorer import *`.
 
 ```python
 RateLimitExceeded(message, *, limit=None, remaining=None, reset=None, **kwargs)
@@ -96,21 +96,21 @@ RateLimitExceeded(message, *, limit=None, remaining=None, reset=None, **kwargs)
 
 The rate limit for an ADS service has been reached.
 
-Derives from `scix.exceptions.APIError`.
+Derives from `exceptions.APIError`.
 
 ## scixplorer.exceptions.DataNotAvailable
 
-Written `scix.exceptions.DataNotAvailable` after `import scixplorer as scix`.
+Written `exceptions.DataNotAvailable` after `from scixplorer import *`.
 
 *class*
 
 Reference data that is not packaged has not been downloaded yet; the message says how.
 
-Derives from `scix.exceptions.SciXError`.
+Derives from `exceptions.SciXError`.
 
 ## scixplorer.exceptions.LazyLoadWarning
 
-Written `scix.exceptions.LazyLoadWarning` after `import scixplorer as scix`.
+Written `exceptions.LazyLoadWarning` after `from scixplorer import *`.
 
 *class*
 
@@ -120,7 +120,7 @@ Derives from `UserWarning`.
 
 ## scixplorer.exceptions.DataWarning
 
-Written `scix.exceptions.DataWarning` after `import scixplorer as scix`.
+Written `exceptions.DataWarning` after `from scixplorer import *`.
 
 *class*
 

@@ -7,20 +7,20 @@ description: Build search conditions from fields and operators, combine them, an
 After this page you can write any search condition the expression language supports, combine conditions
 correctly, and pass raw Solr syntax for anything else.
 
-A condition is a Python expression on a field of `scix.Document`. Building one sends nothing; it is
-compiled to a Solr query when the search runs. `scix.search.to_solr()` shows that query, and every
+A condition is a Python expression on a field of `Document`. Building one sends nothing; it is
+compiled to a Solr query when the search runs. `search.to_solr()` shows that query, and every
 example below uses it so you can see exactly what is sent.
 
 ## Compare a field with a value
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-scix.search.to_solr(scix.Document.year == 2015)
+search.to_solr(Document.year == 2015)
 # -> year:2015
-scix.search.to_solr(scix.Document.bibstem == "ApJ")
+search.to_solr(Document.bibstem == "ApJ")
 # -> bibstem:"ApJ"
-scix.search.to_solr(scix.Document.title == "dark matter halo")
+search.to_solr(Document.title == "dark matter halo")
 # -> title:"dark matter halo"
 ```
 
@@ -32,7 +32,7 @@ to turn the expansion off with `.exact()`.
 `!=` is "not equal":
 
 ```python
-scix.search.to_solr(scix.Document.doctype != "eprint")
+search.to_solr(Document.doctype != "eprint")
 # -> *:* AND -doctype:"eprint"
 ```
 
@@ -43,11 +43,11 @@ A multi-valued field (such as `author`, `title` or `keyword`) matches if any of 
 Numeric and date fields support `<`, `<=`, `>`, `>=` and `between()`, which includes both ends:
 
 ```python
-scix.search.to_solr(scix.Document.year.between(2018, 2020))
+search.to_solr(Document.year.between(2018, 2020))
 # -> year:[2018 TO 2020]
-scix.search.to_solr(scix.Document.year > 2020)
+search.to_solr(Document.year > 2020)
 # -> year:[2021 TO *]
-scix.search.to_solr(scix.Document.citation_count < 10)
+search.to_solr(Document.citation_count < 10)
 # -> citation_count:[* TO 9]
 ```
 
@@ -55,7 +55,7 @@ Solr ranges here are inclusive, so an exclusive bound on an integer moves by one
 field it becomes an inclusive range that leaves out the bound itself:
 
 ```python
-scix.search.to_solr(scix.Document.citation_count_norm > 0.5)
+search.to_solr(Document.citation_count_norm > 0.5)
 # -> citation_count_norm:[0.5 TO *] AND -citation_count_norm:0.5
 ```
 
@@ -67,24 +67,24 @@ string; only the year and month count:
 ```python
 import datetime
 
-scix.search.to_solr(scix.Document.pubdate.between(datetime.date(2020, 1, 1), datetime.date(2020, 6, 30)))
+search.to_solr(Document.pubdate.between(datetime.date(2020, 1, 1), datetime.date(2020, 6, 30)))
 # -> pubdate:[2020-01 TO 2020-06]
-scix.search.to_solr(scix.Document.pubdate > "2020-03")
+search.to_solr(Document.pubdate > "2020-03")
 # -> pubdate:[2020-04 TO *]
 ```
 
 `date`, `entry_date` and `indexstamp` are timestamps. A naive `datetime` (or a `date`) is taken as UTC:
 
 ```python
-scix.search.to_solr(scix.Document.entry_date >= datetime.datetime(2024, 1, 1))
+search.to_solr(Document.entry_date >= datetime.datetime(2024, 1, 1))
 # -> entry_date:["2024-01-01T00:00:00Z" TO *]
 ```
 
-`scix.days_ago(n)` and `scix.now()` are evaluated by SciX when the search runs, so a saved query keeps
+`days_ago(n)` and `now()` are evaluated by SciX when the search runs, so a saved query keeps
 meaning "the last week":
 
 ```python
-scix.search.to_solr(scix.Document.entry_date >= scix.days_ago(7))
+search.to_solr(Document.entry_date >= days_ago(7))
 # -> entry_date:[NOW-7DAYS TO *]
 ```
 
@@ -94,17 +94,17 @@ scix.search.to_solr(scix.Document.entry_date >= scix.days_ago(7))
 single string:
 
 ```python
-scix.search.to_solr(scix.Document.year.in_([2019, 2021]))
+search.to_solr(Document.year.in_([2019, 2021]))
 # -> year:(2019 OR 2021)
-scix.search.to_solr(scix.Document.doctype.not_in(["eprint", "abstract"]))
+search.to_solr(Document.doctype.not_in(["eprint", "abstract"]))
 # -> *:* AND -doctype:("eprint" OR "abstract")
 ```
 
-To match specific documents, `scix.Document.in_()` takes bibcodes, documents or a
-[library]({{< ref "guide/libraries" >}}); `scix.Document.not_in()` excludes them:
+To match specific documents, `Document.in_()` takes bibcodes, documents or a
+[library]({{< ref "guide/libraries" >}}); `Document.not_in()` excludes them:
 
 ```python
-scix.search.to_solr(scix.Document.in_(["2015ApJ...808...16N", "1995Natur.378..355M"]))
+search.to_solr(Document.in_(["2015ApJ...808...16N", "1995Natur.378..355M"]))
 # -> bibcode:("2015ApJ...808...16N" OR "1995Natur.378..355M")
 ```
 
@@ -122,9 +122,9 @@ Text, name and keyword fields support three kinds of wildcard match:
 | `contains(text)` | contains `text`, taken literally | `title.contains("astro")` | `title:*astro*` |
 
 ```python
-scix.search.to_solr(scix.Document.title.like("star-form*"))
+search.to_solr(Document.title.like("star-form*"))
 # -> title:star\-form*
-scix.search.to_solr(scix.Document.author.like("Casey, A*"))
+search.to_solr(Document.author.like("Casey, A*"))
 # -> author:"Casey, A*"
 ```
 
@@ -138,18 +138,18 @@ Use `&` for "and", `|` for "or" and `~` for "not". Put every comparison in its o
 `&` and `|` bind more tightly than `==` in Python:
 
 ```python
-condition = ((scix.Document.year == 2020) | (scix.Document.year == 2022)) & (scix.Document.bibstem == "ApJ")
-scix.search.to_solr(condition)
+condition = ((Document.year == 2020) | (Document.year == 2022)) & (Document.bibstem == "ApJ")
+search.to_solr(condition)
 # -> (year:2020 OR year:2022) AND bibstem:"ApJ"
-scix.search.to_solr(~((scix.Document.year == 2020) & (scix.Document.bibstem == "ApJ")))
+search.to_solr(~((Document.year == 2020) & (Document.bibstem == "ApJ")))
 # -> *:* AND -(year:2020 AND bibstem:"ApJ")
 ```
 
 Passing several conditions to `where()`, or calling `where()` again, joins them with "and":
 
 ```python
-query = scix.Document.select().where(scix.Document.year == 2020, scix.Document.bibstem == "ApJ")
-scix.search.to_solr(query)
+query = Document.select().where(Document.year == 2020, Document.bibstem == "ApJ")
+search.to_solr(query)
 # -> year:2020 AND bibstem:"ApJ"
 ```
 
@@ -161,7 +161,7 @@ that says what to write instead:
 
 <!-- docs-test: raises TypeError -->
 ```python
-(scix.Document.year == 2020) and (scix.Document.author == "Ness, M")
+(Document.year == 2020) and (Document.author == "Ness, M")
 ```
 
 ```text
@@ -174,7 +174,7 @@ Forgetting the parentheses fails too, with a less helpful message, because Pytho
 
 <!-- docs-test: raises TypeError -->
 ```python
-scix.Document.year == 2020 & scix.Document.author == "Ness, M"
+Document.year == 2020 & Document.author == "Ness, M"
 ```
 
 ## Values are checked when you build the condition
@@ -183,42 +183,42 @@ A value of the wrong type, a comparison with `None`, or a field that cannot be s
 
 <!-- docs-test: raises QueryError -->
 ```python
-scix.Document.year == "2020"
+Document.year == "2020"
 ```
 
 | You wrote | You get |
 |---|---|
-| `scix.Document.year == "2020"` | `QueryError: Document.year needs an int, not '2020'` |
-| `scix.Document.year == None` | `QueryError: Comparing <Document.year> with None is not supported` |
-| `scix.Document.author[-1] == "x"` | `QueryError: ADS cannot search by position from the end` |
-| `scix.Document.bibcode.in_("2015ApJ...808...16N")` | `TypeError`: `in_()` needs a collection, not a single string |
-| `scix.Document.links_data == "x"` | `QueryError`: the field is returned but not searchable |
-| `scix.Document.year == scix.Document.citation_count` | `TypeError`: fields can only be compared with values |
+| `Document.year == "2020"` | `QueryError: Document.year needs an int, not '2020'` |
+| `Document.year == None` | `QueryError: Comparing <Document.year> with None is not supported` |
+| `Document.author[-1] == "x"` | `QueryError: ADS cannot search by position from the end` |
+| `Document.bibcode.in_("2015ApJ...808...16N")` | `TypeError`: `in_()` needs a collection, not a single string |
+| `Document.links_data == "x"` | `QueryError`: the field is returned but not searchable |
+| `Document.year == Document.citation_count` | `TypeError`: fields can only be compared with values |
 
 ## Raw Solr syntax
 
-For anything the expression language lacks, `scix.Document.raw()` takes Solr syntax and sends it as it is.
+For anything the expression language lacks, `Document.raw()` takes Solr syntax and sends it as it is.
 It combines with other conditions like any condition, and is parenthesised when nested:
 
 ```python
-dark_energy = scix.Document.raw('abs:"dark energy" OR abs:"cosmological constant"')
-scix.search.to_solr(dark_energy & (scix.Document.year < 2000))
+dark_energy = Document.raw('abs:"dark energy" OR abs:"cosmological constant"')
+search.to_solr(dark_energy & (Document.year < 2000))
 # -> (abs:"dark energy" OR abs:"cosmological constant") AND year:[* TO 1999]
 ```
 
-If you already have a whole query string, `scix.SearchQuery` turns Solr parameters into an ordinary query.
+If you already have a whole query string, `SearchQuery` turns Solr parameters into an ordinary query.
 `fl` is a list or a comma-separated string of field names, `fq` filter queries are joined to `q` with
 "and", and `rows` and `start` become the limit and offset:
 
 ```python
-query = scix.SearchQuery(
+query = SearchQuery(
     q='author:"Mayor, M"',
     fl="bibcode,title,year",
     fq=["year:[1990 TO 2000]"],
     sort="year asc",
     rows=5,
 )
-scix.search.to_solr(query)
+search.to_solr(query)
 # -> (author:"Mayor, M") AND (year:[1990 TO 2000])
 [paper.bibcode for paper in query]
 # -> ['1995Natur.378..355M', '2000ApJ...529L..45C']
@@ -232,8 +232,8 @@ Conditions can also go through a document's journal, its authors' affiliations, 
 concepts, which the client resolves before searching:
 
 ```python
-query = scix.Document.select().where(scix.Document.journal.title == "The Astrophysical Journal")
-scix.search.to_solr(query)
+query = Document.select().where(Document.journal.title == "The Astrophysical Journal")
+search.to_solr(query)
 # -> bibstem:"ApJ"
 ```
 

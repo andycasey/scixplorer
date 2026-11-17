@@ -8,30 +8,30 @@ After this page you can find your libraries (and other people's public ones), cr
 combine them with set operations, manage who can use them, and search within them.
 
 A library is a named collection of documents that SciX keeps for you. In scixplorer it is
-`scix.Library`. Every change is an explicit method that sends one request: there is no `save()`, and
+`Library`. Every change is an explicit method that sends one request: there is no `save()`, and
 nothing is sent behind your back. Assigning to an attribute changes only your local object.
 
 ## Find libraries
 
-`scix.Library.select()` lists your libraries with one request and filters them in Python. Use the same
+`Library.select()` lists your libraries with one request and filters them in Python. Use the same
 expressions as for documents:
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-scix.Library.select().all()
+Library.select().all()
 # -> [<Library: id='Rk3bq7xQTgS0vVZ2mN8cWw' name='Data-driven spectroscopy'>, <Library: id='Z3x9QhVnS2uYtLm4KpWb7g' name='Exoplanet discoveries'>]
-spectroscopy = scix.Library.get(name="Data-driven spectroscopy")
+spectroscopy = Library.get(name="Data-driven spectroscopy")
 spectroscopy.num_documents
 # -> 2
 ```
 
-A condition on `id` (`scix.Library.id == "..."`, or `.in_([...])`) fetches those libraries directly
+A condition on `id` (`Library.id == "..."`, or `.in_([...])`) fetches those libraries directly
 instead of listing yours, so it also finds other people's public libraries. An id SciX does not know gives
 no result:
 
 ```python
-scix.Library.get(id="Z3x9QhVnS2uYtLm4KpWb7g")
+Library.get(id="Z3x9QhVnS2uYtLm4KpWb7g")
 # -> <Library: id='Z3x9QhVnS2uYtLm4KpWb7g' name='Exoplanet discoveries'>
 ```
 
@@ -69,14 +69,14 @@ iterating over a library runs it:
 
 ## Search within a library
 
-`scix.Document.in_(library)` and `scix.Document.not_in(library)` combine with any other condition. SciX
+`Document.in_(library)` and `Document.not_in(library)` combine with any other condition. SciX
 tests membership itself, so the library's bibcodes are not fetched:
 
 ```python
-scix.search.to_solr(scix.Document.in_(spectroscopy) & (scix.Document.year > 2015))
+search.to_solr(Document.in_(spectroscopy) & (Document.year > 2015))
 # -> docs(library/Rk3bq7xQTgS0vVZ2mN8cWw) AND year:[2016 TO *]
-unread = scix.Document.select(scix.Document.bibcode).where(
-    scix.Document.not_in(spectroscopy) & (scix.Document.author == "Hogg, D")
+unread = Document.select(Document.bibcode).where(
+    Document.not_in(spectroscopy) & (Document.author == "Hogg, D")
 )
 [paper.bibcode for paper in unread]
 # -> ['2013PASP..125..306F']
@@ -84,14 +84,14 @@ unread = scix.Document.select(scix.Document.bibcode).where(
 
 {{< callout type="warning" >}}
 `docs(library/<id>)` is not yet confirmed against the live API. If it does not work, set
-`scix.config.library_membership = "bibcodes"`: the client then fetches the library's bibcodes first and
+`config.library_membership = "bibcodes"`: the client then fetches the library's bibcodes first and
 searches for them (with `/search/bigquery` for more than 50), which costs more requests.
 {{< /callout >}}
 
 ## Create a library
 
 ```python
-hunters = scix.Library.create(
+hunters = Library.create(
     name="Planet hunters",
     description="First detections of exoplanets",
     documents=["1995Natur.378..355M"],
@@ -116,7 +116,7 @@ queries of them, in any mix. A library given as a source contributes its bibcode
 | `delete()` | deletes the library; the object can no longer be used | `None` |
 
 ```python
-hunters.add("2000ApJ...529L..45C", scix.Document.get(bibcode="1995Natur.378..355M"))
+hunters.add("2000ApJ...529L..45C", Document.get(bibcode="1995Natur.378..355M"))
 # -> 1
 hunters.num_documents
 # -> 2
@@ -160,7 +160,7 @@ them. `transfer(email)` makes that user the owner, after which you have no acces
 
 ## Clients and retries
 
-Each method accepts `client=` to send its request with a particular `scix.Client`. Otherwise it uses the
+Each method accepts `client=` to send its request with a particular `Client`. Otherwise it uses the
 library's `client` attribute if you set one (`create()` and the set operations set it to the client you
 passed), and otherwise the default client. Libraries returned by a query do not remember the query's
 client.

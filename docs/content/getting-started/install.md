@@ -37,7 +37,7 @@ The client looks for the token when it sends a request, in this order, and uses 
 
 | Order | Source | Example |
 |---:|---|---|
-| 1 | `scix.config.token` | `scix.config.token = "..."` in your code |
+| 1 | `config.token` | `config.token = "..."` in your code |
 | 2 | Environment variable `SCIX_API_TOKEN` | `export SCIX_API_TOKEN=...` |
 | 3 | Environment variable `ADS_API_TOKEN` | |
 | 4 | Environment variable `ADS_DEV_KEY` | |
@@ -62,24 +62,24 @@ is.
 To set the token in code, assign it to the configuration:
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-scix.config.token = "your-token"
+config.token = "your-token"
 ```
 
-`scix.config` is the configuration every client uses unless it is given its own. Its `repr` leaves the
+`config` is the configuration every client uses unless it is given its own. Its `repr` leaves the
 token out:
 
 ```python
-scix.config
+config
 # -> api_url='https://api.scixplorer.org/v1'
 ```
 
 You can also give one client its own token, and send a query with it using `using()`:
 
 ```python
-client = scix.Client(token="your-token")
-query = scix.Document.select().where(scix.Document.year == 2020).using(client)
+client = Client(token="your-token")
+query = Document.select().where(Document.year == 2020).using(client)
 ```
 
 ## When there is no token
@@ -90,9 +90,9 @@ with the status code (401 or 403) and SciX's message:
 
 <!-- docs-test: raises AuthenticationError -->
 ```python
-scix.config.token = None
-anonymous = scix.Client()
-scix.Document.select().where(scix.Document.year == 2020).using(anonymous).first()
+config.token = None
+anonymous = Client()
+Document.select().where(Document.year == 2020).using(anonymous).first()
 ```
 
 Queries that never need a request, such as searches of [journals]({{< ref "guide/journals" >}}) and
@@ -103,14 +103,14 @@ Queries that never need a request, such as searches of [journals]({{< ref "guide
 With the token in place, search:
 
 ```python
-paper = scix.Document.get(bibcode="2015ApJ...808...16N")
+paper = Document.get(bibcode="2015ApJ...808...16N")
 paper.title
 # -> The Cannon: A data-driven approach to Stellar Label Determination from Spectra
 ```
 
 ## Other settings
 
-`scix.config` holds the other settings too. They are read each time a query runs or a request is sent,
+`config` holds the other settings too. They are read each time a query runs or a request is sent,
 so a change applies from then on.
 
 | Setting | Default | Meaning |

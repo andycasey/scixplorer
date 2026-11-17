@@ -8,7 +8,7 @@ description: "The HTTP client, its configuration, and the request and response v
 
 ## scixplorer.config
 
-The `Config` instance every client uses unless it is given its own. Written `scix.config`; change its attributes to change the settings.
+The `Config` instance every client uses unless it is given its own. Written `config`; change its attributes to change the settings.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -24,7 +24,7 @@ The `Config` instance every client uses unless it is given its own. Written `sci
 
 ## scixplorer._config.Config
 
-Written `scix.Config` after `import scixplorer as scix`.
+Written `Config` after `from scixplorer import *`.
 
 ```python
 Config(token=None, api_url='https://api.scixplorer.org/v1', timeout=30.0, max_retries=3, retry_backoff=1.0, page_size=200, max_inline_bibcodes=50, library_membership='docs', collection=None)
@@ -34,7 +34,7 @@ Config(token=None, api_url='https://api.scixplorer.org/v1', timeout=30.0, max_re
 
 Settings for talking to the SciX API.
 
-The module-level instance is `scix.config`. The HTTP client reads it at send time, so changing an attribute affects every later request. `token` is your API token; it is excluded from `repr`, so it never ends up in logs or tracebacks. `collection` limits open document searches to one SciX collection or several (see `resolve_collections`); `None`, the default, searches them all. The table of settings is above.
+The module-level instance is `config`. The HTTP client reads it at send time, so changing an attribute affects every later request. `token` is your API token; it is excluded from `repr`, so it never ends up in logs or tracebacks. `collection` limits open document searches to one SciX collection or several (see `resolve_collections`); `None`, the default, searches them all. The table of settings is above.
 
 ### scixplorer._config.Config.resolve_token
 
@@ -58,7 +58,7 @@ Return the collections that open document searches are limited to; empty for all
 
 ## scixplorer.client.Client
 
-Written `scix.Client` after `import scixplorer as scix`.
+Written `Client` after `from scixplorer import *`.
 
 ```python
 Client(token=None, *, config=None, transport=None, async_transport=None, sleep=time.sleep, async_sleep=asyncio.tasks.sleep, now=scixplorer.client._utcnow)
@@ -68,12 +68,12 @@ Client(token=None, *, config=None, transport=None, async_transport=None, sleep=t
 
 Executes `Request` objects against the SciX API, sync or async.
 
-The underlying `httpx.Client` and `httpx.AsyncClient` are created on first use. `close()` closes the sync one; `aclose()` closes both. A closed `scix.Client` creates fresh ones if used again. A `scix.Client` is not thread-safe: lazy creation and the rate-limit bookkeeping are unsynchronised.
+The underlying `httpx.Client` and `httpx.AsyncClient` are created on first use. `close()` closes the sync one; `aclose()` closes both. A closed `Client` creates fresh ones if used again. A `Client` is not thread-safe: lazy creation and the rate-limit bookkeeping are unsynchronised.
 
 **Parameters**
 
-- `token`: your API token. If omitted or blank, `scix.config.resolve_token()` is used. The token is resolved on every request and never appears in `repr` or exception messages.
-- `config`: settings to use; defaults to the module-level `scix.config`. Its `api_url`, `timeout`, `max_retries` and `retry_backoff` are read on every request.
+- `token`: your API token. If omitted or blank, `config.resolve_token()` is used. The token is resolved on every request and never appears in `repr` or exception messages.
+- `config`: settings to use; defaults to the module-level `config`. Its `api_url`, `timeout`, `max_retries` and `retry_backoff` are read on every request.
 - `transport`: optional `httpx` transport for the sync client.
 - `async_transport`: optional `httpx` transport for the async client.
 - `sleep`: called with the delay between sync retries.
@@ -90,7 +90,7 @@ Execute `request` and return its response, retrying transient failures.
 
 Idempotent requests are retried after connection errors, timeouts and HTTP 502/503/504. Non-idempotent requests (see `Request.is_idempotent`) are retried only if the connection could not be made, since otherwise the server may already have applied them.
 
-Raises `scix.exceptions.AuthenticationError` if there is no token or SciX rejects it, `scix.exceptions.RateLimitExceeded` when the rate limit for the request's service is used up (without sending the request if that is already known), and `scix.exceptions.APIError` for any other failure.
+Raises `exceptions.AuthenticationError` if there is no token or SciX rejects it, `exceptions.RateLimitExceeded` when the rate limit for the request's service is used up (without sending the request if that is already known), and `exceptions.APIError` for any other failure.
 
 ### scixplorer.client.Client.asend
 
@@ -124,19 +124,19 @@ A `dict` from service (such as `"search/query"`) to the `RateLimit` SciX last re
 
 ## scixplorer.client.get_default_client
 
-Written `scix.get_default_client` after `import scixplorer as scix`.
+Written `get_default_client` after `from scixplorer import *`.
 
 ```python
 get_default_client()
 ```
 
-Return the shared default `scix.Client`, creating it on first use.
+Return the shared default `Client`, creating it on first use.
 
-The default client uses the module-level `scix.config` (`scix._config.config`).
+The default client uses the module-level `config` (`scixplorer._config.config`).
 
 ## scixplorer.client.set_default_client
 
-Written `scix.set_default_client` after `import scixplorer as scix`.
+Written `set_default_client` after `from scixplorer import *`.
 
 ```python
 set_default_client(client)
@@ -146,8 +146,6 @@ Replace the shared default client; `None` makes the next `get_default_client` ca
 
 ## scixplorer.client.Request
 
-Written `scix.client.Request` after `import scixplorer as scix`.
-
 ```python
 Request(method, path, params=None, json=None, content=None, headers=None, idempotent=None)
 ```
@@ -156,9 +154,9 @@ Request(method, path, params=None, json=None, content=None, headers=None, idempo
 
 One HTTP request to the ADS API, described without performing it.
 
-`path` is relative to `scix.Config.api_url` (a leading slash is optional). `params` values may be `str`, `int`, `float`, `bool` or `None`; `None` values are dropped and booleans are sent as `true`/`false`. At most one of `json` (a JSON body) and `content` (a raw body, sent with the caller's `Content-Type` header) may be given; `json=None` means no JSON body. Construction raises `TypeError` for an unsupported parameter value and `ValueError` if both bodies are given.
+`path` is relative to `Config.api_url` (a leading slash is optional). `params` values may be `str`, `int`, `float`, `bool` or `None`; `None` values are dropped and booleans are sent as `true`/`false`. At most one of `json` (a JSON body) and `content` (a raw body, sent with the caller's `Content-Type` header) may be given; `json=None` means no JSON body. Construction raises `TypeError` for an unsupported parameter value and `ValueError` if both bodies are given.
 
-`idempotent` says whether sending the request twice has the same effect as sending it once, which decides how it may be retried (see `scix.Client.send`). `None` infers it from the method (see `is_idempotent`); set it to `True` for a POST that only reads, such as `/search/bigquery`.
+`idempotent` says whether sending the request twice has the same effect as sending it once, which decides how it may be retried (see `Client.send`). `None` infers it from the method (see `is_idempotent`); set it to `True` for a POST that only reads, such as `/search/bigquery`.
 
 ### scixplorer.client.Request.is_idempotent
 
@@ -170,8 +168,6 @@ So GET, HEAD, PUT and DELETE are idempotent by default; POST and PATCH are not.
 
 ## scixplorer.client.Response
 
-Written `scix.client.Response` after `import scixplorer as scix`.
-
 ```python
 Response(status_code, headers, data)
 ```
@@ -180,11 +176,9 @@ Response(status_code, headers, data)
 
 The parts of an HTTP response that backends need.
 
-`headers` is a plain `dict` with lower-cased keys (repeated headers are joined with `", "`), so look headers up in lower case. `scix.data` is the parsed JSON body if the body is valid JSON (whatever the declared content type), otherwise the body text, or `None` if the body is empty.
+`headers` is a plain `dict` with lower-cased keys (repeated headers are joined with `", "`), so look headers up in lower case. `data` is the parsed JSON body if the body is valid JSON (whatever the declared content type), otherwise the body text, or `None` if the body is empty.
 
 ## scixplorer.client.RateLimit
-
-Written `scix.client.RateLimit` after `import scixplorer as scix`.
 
 ```python
 RateLimit(limit, remaining, reset)

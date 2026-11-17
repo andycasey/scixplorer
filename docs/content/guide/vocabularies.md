@@ -10,7 +10,7 @@ in them, read the ones assigned to a document, and search for documents by them.
 SciX tags records with concepts from the [Unified Astronomy Thesaurus](https://astrothesaurus.org) (UAT)
 and with features from the IAU/USGS
 [Gazetteer of Planetary Nomenclature](https://planetarynames.wr.usgs.gov). In scixplorer these are
-`scix.UATConcept` and `scix.PlanetaryFeature`.
+`UATConcept` and `PlanetaryFeature`.
 
 ## Download them first
 
@@ -18,26 +18,26 @@ Neither vocabulary is packaged with scixplorer, because of their licences and si
 they are kept in your cache directory and used from then on:
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-results = scix.data.refresh("uat", "planetary_features")
+results = data.refresh("uat", "planetary_features")
 [(result.name, result.ok) for result in results]
 # -> [('uat', True), ('planetary_features', True)]
 ```
 
 The downloads come from GitHub (about 1.5 MB and 0.9 MB) and never carry your API token. Until you have
-downloaded a vocabulary, anything that needs it raises `scix.exceptions.DataNotAvailable`, whose message
+downloaded a vocabulary, anything that needs it raises `exceptions.DataNotAvailable`, whose message
 says what to run. See [Reference data]({{< ref "guide/reference-data" >}}) for where the files are kept and
 how to update them.
 
-You do not need the download to search by identifier: `scix.Document.uat == 498` is sent as it is.
+You do not need the download to search by identifier: `Document.uat == 498` is sent as it is.
 
 ## UAT concepts
 
 Each concept has a number, such as 498 for Exoplanets:
 
 ```python
-exoplanets = scix.UATConcept.lookup(498)
+exoplanets = UATConcept.lookup(498)
 exoplanets
 # -> <UATConcept: id=498 (Exoplanets)>
 exoplanets.alt_names
@@ -57,7 +57,7 @@ Search them like any model. `name` and `alt_names` are matched like SciX text: `
 phrase, ignoring case, and `.exact()` compares the whole name:
 
 ```python
-scix.UATConcept.select().where(scix.UATConcept.alt_names == "extrasolar planets").all()
+UATConcept.select().where(UATConcept.alt_names == "extrasolar planets").all()
 # -> [<UATConcept: id=498 (Exoplanets)>]
 ```
 
@@ -82,7 +82,7 @@ exoplanets.parents
 Each feature has the gazetteer's identifier, such as 2071 for Gale crater on Mars:
 
 ```python
-gale = scix.PlanetaryFeature.lookup(2071)
+gale = PlanetaryFeature.lookup(2071)
 gale.to_dict()
 # -> {'id': 2071, 'name': 'Gale', 'target': 'Mars', 'feature_type': 'Crater', 'approval_status': 'Approved', 'approval_year': 1991}
 ```
@@ -101,7 +101,7 @@ gale.to_dict()
 exactly, including case. Names are not unique across bodies:
 
 ```python
-scix.PlanetaryFeature.select().where(scix.PlanetaryFeature.name.exact("Copernicus")).all()
+PlanetaryFeature.select().where(PlanetaryFeature.name.exact("Copernicus")).all()
 # -> [<PlanetaryFeature: id=1297 (Copernicus, Mars)>, <PlanetaryFeature: id=1296 (Copernicus, Moon)>]
 ```
 
@@ -112,7 +112,7 @@ are built from `uat_id` and `planetary_feature_id`; identifiers missing from you
 are skipped, and a document with none gives an empty list:
 
 ```python
-paper = scix.Document.get(bibcode="2010GeoRL..3704201M")
+paper = Document.get(bibcode="2010GeoRL..3704201M")
 paper.planetary_feature
 # -> [<PlanetaryFeature: id=2071 (Gale, Mars)>]
 paper.uat
@@ -130,20 +130,20 @@ paper.planetary_feature_name
 
 ## Search for documents by concept or feature
 
-A condition through `scix.Document.uat` or `scix.Document.planetary_feature` is resolved against the
+A condition through `Document.uat` or `Document.planetary_feature` is resolved against the
 downloaded vocabulary, and becomes a condition on the identifiers:
 
 ```python
-scix.search.to_solr(scix.Document.uat.name == "Hot Jupiters")
+search.to_solr(Document.uat.name == "Hot Jupiters")
 # -> uat_id:753
-scix.search.to_solr(scix.Document.uat == exoplanets)
+search.to_solr(Document.uat == exoplanets)
 # -> uat_id:498
 ```
 
 To include narrower concepts, list them:
 
 ```python
-scix.search.to_solr(scix.Document.uat.in_([exoplanets, *exoplanets.descendants]))
+search.to_solr(Document.uat.in_([exoplanets, *exoplanets.descendants]))
 # -> uat_id:(498 OR 
 ```
 
@@ -157,36 +157,36 @@ To find papers about the crater Copernicus on Mars (not the one on the Moon), pu
 `.any()`:
 
 ```python
-martian_copernicus = scix.Document.planetary_feature.any(
-    (scix.PlanetaryFeature.target == "Mars") & scix.PlanetaryFeature.name.exact("Copernicus")
+martian_copernicus = Document.planetary_feature.any(
+    (PlanetaryFeature.target == "Mars") & PlanetaryFeature.name.exact("Copernicus")
 )
-scix.search.to_solr(martian_copernicus)
+search.to_solr(martian_copernicus)
 # -> planetary_feature_id:1297
 ```
 
-Written as two separate conditions, `(scix.Document.planetary_feature.target == "Mars") &
-(scix.Document.planetary_feature.name.exact("Copernicus"))`, it would also match a paper about Gale
+Written as two separate conditions, `(Document.planetary_feature.target == "Mars") &
+(Document.planetary_feature.name.exact("Copernicus"))`, it would also match a paper about Gale
 crater on Mars that mentions the lunar Copernicus. With the full gazetteer it is refused in any case: Mars
 alone has more than 1000 named features, more than one search request can carry (see
 [Limits]({{< ref "guide/vocabularies#limits" >}})). [Affiliations]({{< ref "guide/affiliations#several-conditions-on-one-affiliation" >}})
 shows the two forms side by side.
 
 ```python
-query = scix.Document.select(scix.Document.bibcode).where(
-    scix.Document.planetary_feature.any(
-        (scix.PlanetaryFeature.target == "Mars") & scix.PlanetaryFeature.name.exact("Gale")
+query = Document.select(Document.bibcode).where(
+    Document.planetary_feature.any(
+        (PlanetaryFeature.target == "Mars") & PlanetaryFeature.name.exact("Gale")
     )
 )
 [paper.bibcode for paper in query]
 # -> ['2010GeoRL..3704201M']
 ```
 
-`.any()` works on every relation: `scix.Document.uat`, `scix.Document.journal`,
-`scix.Document.affiliation`, and `scix.Author.affiliation` inside
-[`scix.Document.authors.any()`]({{< ref "guide/authors" >}}). There is no `.all()` on a relation: "every
+`.any()` works on every relation: `Document.uat`, `Document.journal`,
+`Document.affiliation`, and `Author.affiliation` inside
+[`Document.authors.any()`]({{< ref "guide/authors" >}}). There is no `.all()` on a relation: "every
 related feature" cannot be searched, and `.all` raises an `AttributeError` that says so.
 
-A condition directly on `scix.UATConcept` or `scix.PlanetaryFeature` fields can also be used in a document
+A condition directly on `UATConcept` or `PlanetaryFeature` fields can also be used in a document
 search, and is read as going through the relation.
 
 ## Limits
@@ -201,4 +201,4 @@ an approval year. See [Errors and limits]({{< ref "guide/errors-and-limits#relat
 
 The UAT is published by the American Astronomical Society under CC BY-SA 3.0. The gazetteer is in the
 public domain (IAU and USGS), downloaded from an MIT-licensed adsabs repository. Neither is distributed with
-scixplorer; `scix.data.refresh()` downloads them for you.
+scixplorer; `data.refresh()` downloads them for you.

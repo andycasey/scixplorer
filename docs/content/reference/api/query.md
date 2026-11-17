@@ -8,8 +8,6 @@ description: "Query, the immutable search builder, and Explanation."
 
 ## scixplorer.query.Query
 
-Written `scix.query.Query` after `import scixplorer as scix`.
-
 ```python
 Query(model, fields=())
 ```
@@ -78,7 +76,7 @@ order_by(*keys)
 
 Return a query sorted by `keys` (replacing any previous ordering).
 
-Each key is an `scix.expr.Order` (from `.asc()`/`.desc()`) or a field handle or name, meaning ascending. No keys removes the ordering.
+Each key is an `scixplorer.expr.Order` (from `.asc()`/`.desc()`) or a field handle or name, meaning ascending. No keys removes the ordering.
 
 ### scixplorer.query.Query.limit
 
@@ -193,8 +191,6 @@ explain()
 Describe how this query would be executed, without executing it.
 
 ## scixplorer.query.Explanation
-
-Written `scix.query.Explanation` after `import scixplorer as scix`.
 
 ```python
 Explanation(summary, requests=(), notes=())

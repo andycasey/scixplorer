@@ -13,18 +13,18 @@ SciX covers several disciplines, which it calls collections (the `database` fiel
 ## Set a default collection
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-scix.config.collection = "astronomy"
-scix.search.to_solr(scix.Document.year == 2020)
+config.collection = "astronomy"
+search.to_solr(Document.year == 2020)
 # -> year:2020 AND database:"astronomy"
 ```
 
 Give a list for several collections:
 
 ```python
-scix.config.collection = ["astronomy", "physics"]
-scix.search.to_solr(scix.Document.year == 2020)
+config.collection = ["astronomy", "physics"]
+search.to_solr(Document.year == 2020)
 # -> year:2020 AND database:("astronomy" OR "physics")
 ```
 
@@ -39,15 +39,15 @@ not already say which collection it wants, or which documents it wants. It is no
 
 | The search... | Example | Because |
 |---|---|---|
-| names a collection itself | `scix.Document.database == "physics"`, `scix.Document.collection == "physics"`, or raw Solr containing `database:` or `collection:` | your own choice wins |
+| names a collection itself | `Document.database == "physics"`, `Document.collection == "physics"`, or raw Solr containing `database:` or `collection:` | your own choice wins |
 | asks for specific documents | a top-level `==` or `in_()` on `bibcode`, `scix_id`, `id`, `identifier`, `doi` or `alternate_bibcode` | you know which documents you want, whatever their collection |
-| asks for a library's documents | a top-level `scix.Document.in_(library)` | the same |
+| asks for a library's documents | a top-level `Document.in_(library)` | the same |
 
 ```python
-scix.config.collection = "astronomy"
-scix.search.to_solr(scix.Document.bibcode == "2010GeoRL..3704201M")
+config.collection = "astronomy"
+search.to_solr(Document.bibcode == "2010GeoRL..3704201M")
 # -> bibcode:"2010GeoRL..3704201M"
-scix.search.to_solr(scix.Document.database == "earthscience")
+search.to_solr(Document.database == "earthscience")
 # -> database:"earthscience"
 ```
 
@@ -55,11 +55,11 @@ scix.search.to_solr(scix.Document.database == "earthscience")
 documents of the whole search, so the collection still applies:
 
 ```python
-scix.search.to_solr((scix.Document.bibcode == "2010GeoRL..3704201M") | (scix.Document.year == 2020))
+search.to_solr((Document.bibcode == "2010GeoRL..3704201M") | (Document.year == 2020))
 # -> (bibcode:"2010GeoRL..3704201M" OR year:2020) AND database:"astronomy"
 ```
 
-Because `scix.Document.get(bibcode=...)` and the requests that [lazy loading]({{< ref "guide/results#lazy-loading" >}})
+Because `Document.get(bibcode=...)` and the requests that [lazy loading]({{< ref "guide/results#lazy-loading" >}})
 sends name documents by identifier, they are never limited by the default collection.
 
 The setting applies only to document searches. Journals, affiliations, vocabularies and libraries are not
@@ -68,7 +68,7 @@ affected.
 `explain()` says whether the collection was applied, and why not:
 
 ```python
-print(scix.Document.select().where(scix.Document.year == 2020).explain())
+print(Document.select().where(Document.year == 2020).explain())
 # -> limited to collection 'astronomy' (scixplorer.config.collection): database:"astronomy" is added
 ```
 

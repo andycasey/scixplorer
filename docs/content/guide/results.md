@@ -9,7 +9,7 @@ unnecessary requests from lazy loading, and know when two documents are the same
 
 ## Fields and their types
 
-`scix.Document` has 101 fields. Every value you read has the type its field declares, or is `None` when
+`Document` has 101 fields. Every value you read has the type its field declares, or is `None` when
 SciX has no value:
 
 | Field class | Python type | Examples |
@@ -25,9 +25,9 @@ SciX has no value:
 [field reference]({{< ref "reference/document-fields" >}}) lists every field with its type.
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-paper = scix.Document.get(bibcode="2000ApJ...529L..45C")
+paper = Document.get(bibcode="2000ApJ...529L..45C")
 paper.title
 # -> ['Detection of Planetary Transits Across a Sun-like Star']
 paper.volume
@@ -43,7 +43,7 @@ paper.abstract is None
 Values from SciX are converted to the field's type. Conversions that lose nothing happen silently: an
 integer sent as `12.0` or `"12"`, a number sent for a text field, `"true"` or `"false"` for a boolean,
 a single value for a multi-valued field (it becomes a one-element list), or a one-element list for a
-single-valued field. Anything else becomes `None`, with a `scix.exceptions.DataWarning` naming the field
+single-valued field. Anything else becomes `None`, with a `exceptions.DataWarning` naming the field
 and the value. A value never has a type other than the declared one.
 
 To make such values stop your program instead, turn the warning into an error:
@@ -51,7 +51,7 @@ To make such values stop your program instead, turn the warning into an error:
 ```python
 import warnings
 
-warnings.simplefilter("error", scix.exceptions.DataWarning)
+warnings.simplefilter("error", exceptions.DataWarning)
 ```
 
 ## Choose the fields
@@ -60,8 +60,8 @@ warnings.simplefilter("error", scix.exceptions.DataWarning)
 those. The identifiers `bibcode`, `id` and `scix_id` are always fetched as well:
 
 ```python
-query = scix.Document.select(scix.Document.bibcode, scix.Document.title).where(
-    scix.Document.author == "Hogg, D"
+query = Document.select(Document.bibcode, Document.title).where(
+    Document.author == "Hogg, D"
 )
 query.first().to_dict()
 # -> 'title': ['The Cannon: A data-driven approach to Stellar Label Determination from Spectra']
@@ -79,7 +79,7 @@ demand, as described next.
 ### Lazy loading
 
 Reading a field that the search did not fetch sends one more search request, which loads that field for
-every document of the same page of results that lacks it. A `scix.exceptions.LazyLoadWarning` tells you
+every document of the same page of results that lacks it. A `exceptions.LazyLoadWarning` tells you
 it happened and how to avoid it:
 
 <!-- docs-test: warns LazyLoadWarning -->
@@ -95,7 +95,7 @@ request. Select the fields you need, e.g. Document.select(Document.citation_coun
 ```
 
 All three values came from one request, and reading `citation_count` again sends nothing. A page holds up
-to `scix.config.page_size` documents (200 by default), so a loop over 1000 documents that reads one
+to `config.page_size` documents (200 by default), so a loop over 1000 documents that reads one
 unfetched field sends 5 extra requests, one per page. A value SciX does not have is stored as `None`, so it
 is never requested twice.
 
@@ -138,7 +138,7 @@ never overlap.
 and indexed, its Solr name and its match kind:
 
 ```python
-info = scix.Document.describe()
+info = Document.describe()
 [field.name for field in info if field.multivalued][:5]
 # -> ['aff', 'aff_abbrev', 'aff_canonical', 'aff_id', 'alternate_bibcode']
 ```
@@ -162,11 +162,11 @@ Documents link to other models. These are computed from the document's fields an
 | `doc.uat` | a list of [`UATConcept`]({{< ref "guide/vocabularies" >}}) objects | `uat_id` |
 | `doc.planetary_feature` | a list of [`PlanetaryFeature`]({{< ref "guide/vocabularies" >}}) objects | `planetary_feature_id` |
 
-`scix.utils.flatten()` turns the per-author structure of `doc.affiliation` into a flat list:
+`utils.flatten()` turns the per-author structure of `doc.affiliation` into a flat list:
 
 ```python
-riess = scix.Document.get(bibcode="1998AJ....116.1009R")
-{affiliation.country for affiliation in scix.utils.flatten(riess.affiliation)}
+riess = Document.get(bibcode="1998AJ....116.1009R")
+{affiliation.country for affiliation in utils.flatten(riess.affiliation)}
 # -> Australia
 ```
 
@@ -177,6 +177,6 @@ equal, and hash alike, when that is the same field with the same value, so docum
 searches can be compared and put in sets. A document with no identifier is equal only to itself.
 
 ```python
-scix.Document.get(bibcode="2000ApJ...529L..45C") == paper
+Document.get(bibcode="2000ApJ...529L..45C") == paper
 # -> True
 ```

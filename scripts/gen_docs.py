@@ -66,7 +66,7 @@ def code(text: str) -> str:
     return f"{fence}{pad}{text.replace('|', chr(92) + '|')}{pad}{fence}"
 
 
-# Public names, for writing references as users write them (``scix.Document``).
+# Public names, for writing references as users write them after ``from scixplorer import *`` (``Document``).
 
 
 def _public_names() -> dict[str, str]:
@@ -75,47 +75,42 @@ def _public_names() -> dict[str, str]:
     for name in scix.__all__:
         obj = getattr(scix, name)
         if inspect.ismodule(obj):
-            names[obj.__name__] = f"scix.{name}"
+            names[obj.__name__] = name
             for member in getattr(obj, "__all__", ()):
                 value = getattr(obj, member)
                 key = f"{getattr(value, '__module__', obj.__name__)}.{getattr(value, '__qualname__', member)}"
-                names.setdefault(key, f"scix.{name}.{member}")
-                names.setdefault(f"{obj.__name__}.{member}", f"scix.{name}.{member}")
+                names.setdefault(key, f"{name}.{member}")
+                names.setdefault(f"{obj.__name__}.{member}", f"{name}.{member}")
         elif hasattr(obj, "__qualname__"):
-            names[f"{obj.__module__}.{obj.__qualname__}"] = f"scix.{name}"
+            names[f"{obj.__module__}.{obj.__qualname__}"] = name
         else:
-            names[f"scixplorer._config.{name}"] = f"scix.{name}"
+            names[f"scixplorer._config.{name}"] = name
     return names
 
 
 PUBLIC = _public_names()
-#: Top-level names that docstrings use unqualified (``Document.year``), written ``scix.Document.year`` here.
-_TOP_LEVEL = sorted((n for n in scix.__all__ if n[0].isupper() or n in ("config", "data", "export", "resolver", "vis")), key=len, reverse=True)
-_UNQUALIFIED = re.compile(r"(?<![\w.])(" + "|".join(_TOP_LEVEL) + r")(?=[.(\[ ]|$)")
+_EXPORTED = re.compile(r"\bscixplorer\.(?=(?:" + "|".join(scix.__all__) + r")\b)")
 
 
 def public(path: str) -> str:
-    """How users write the object at dotted ``path``: ``scix.Document``, ``scix.expr.Order``, ..."""
+    """How users write the object at dotted ``path``: ``Document``, ``search.to_solr``, ``scixplorer.expr.Order``."""
     if path in PUBLIC:
         return PUBLIC[path]
     for prefix in sorted(PUBLIC, key=len, reverse=True):
         if path.startswith(prefix + "."):
             return PUBLIC[prefix] + path[len(prefix) :]
-    if path.startswith("scixplorer."):
-        return "scix." + path[len("scixplorer.") :]
     return path
 
 
 def qualify(text: str) -> str:
-    """Code as users write it: ``scixplorer.x`` and bare public names become ``scix.x``.
+    """Code as users write it after ``from scixplorer import *``: ``scixplorer.Document`` becomes ``Document``.
 
-    Imports of the package in examples become ``import scixplorer as scix``.
+    Imports of exported names in examples become ``from scixplorer import *``.
     """
-    if re.search(r"^\s*(from|import)\s+scixplorer\b", text, flags=re.M):
-        text = re.sub(r"^\s*(from|import)\s+scixplorer\b.*\n?", "", text, flags=re.M)
-        text = "import scixplorer as scix\n" + text
-    text = re.sub(r"\bscixplorer\.(?=\w)", "scix.", text)
-    return _UNQUALIFIED.sub(lambda m: "scix." + m.group(1), text)
+    if re.search(r"^\s*(from\s+scixplorer\s+import|import\s+scixplorer\b)", text, flags=re.M):
+        text = re.sub(r"^\s*(from\s+scixplorer\s+import|import\s+scixplorer\b).*\n?", "", text, flags=re.M)
+        text = "from scixplorer import *\n" + text
+    return _EXPORTED.sub("", text)
 
 
 # Docstrings: reST to Markdown.
@@ -378,7 +373,7 @@ def members(cls: type, *, names: Iterable[str] | None = None, inherited: bool = 
 def class_entry(cls: type, *, names: Iterable[str] | None = None, inherited: bool = False, skip: Iterable[str] = ()) -> str:
     path = f"{cls.__module__}.{cls.__qualname__}"
     alias = public(path)
-    note = f"Written `{alias}` after `import scixplorer as scix`." if alias != path else ""
+    note = f"Written `{alias}` after `from scixplorer import *`." if alias != path else ""
     parts = [entry(path, cls, label=f"{path}", level=2, note=note)]
     for name, value in members(cls, names=names, inherited=inherited):
         if name in skip:
@@ -391,7 +386,7 @@ def function_entry(module: Any, name: str, *, level: int = 2) -> str:
     obj = getattr(module, name)
     path = f"{module.__name__}.{name}"
     alias = public(path)
-    note = f"Written `{alias}` after `import scixplorer as scix`." if alias != path else ""
+    note = f"Written `{alias}` after `from scixplorer import *`." if alias != path else ""
     return entry(path, obj, level=level, note=note)
 
 
@@ -487,13 +482,13 @@ def document_fields() -> str:
         raise SystemExit(f"gen_docs: DOCUMENT_GROUPS is out of date: missing {missing}, unknown {unknown}")
     infos = Document.describe()
     body = [
-        f"`scix.Document` has {len(infos)} fields: {sum(i.stored for i in infos)} that can be returned and "
-        f"{sum(not i.stored for i in infos)} that can only be searched. A plain `scix.Document.select()` fetches every "
+        f"`Document` has {len(infos)} fields: {sum(i.stored for i in infos)} that can be returned and "
+        f"{sum(not i.stored for i in infos)} that can only be searched. A plain `Document.select()` fetches every "
         f"returnable field except the {len(Document._deferred)} deferred ones.",
         "",
         "| Column | Meaning |",
         "|---|---|",
-        "| Field | the attribute: `scix.Document.<field>` in a search, `doc.<field>` on a result |",
+        "| Field | the attribute: `Document.<field>` in a search, `doc.<field>` on a result |",
         "| Solr name | the field's name in the Solr query, when it differs |",
         "| Type | the Python type of a value; `list[...]` for a multi-valued field. A missing value is `None` |",
         "| Match | how `==` matches: `keyword` (literally), `text` (words as a phrase, with synonyms), `name` (with name variants) |",
@@ -509,7 +504,7 @@ def document_fields() -> str:
         "## Relations",
         "",
         "Relations link a document to records of other models. Search through them "
-        "(`scix.Document.journal.title == ...`, `scix.Document.affiliation.any(...)`); on a result they give the "
+        "(`Document.journal.title == ...`, `Document.affiliation.any(...)`); on a result they give the "
         "related objects.",
         "",
         relation_table(Document),
@@ -527,7 +522,7 @@ def document_fields() -> str:
     return page(
         "Document fields",
         1,
-        "Every field of scix.Document: its Solr name, type, how it matches, and whether it is returned, deferred or searchable.",
+        "Every field of the Document model: its Solr name, type, how it matches, and whether it is returned, deferred or searchable.",
         "\n".join(body),
     )
 
@@ -536,13 +531,13 @@ def models_page() -> str:
     models = [
         (scix.Journal, "Packaged; searched in Python."),
         (scix.Affiliation, "Packaged; searched in Python."),
-        (scix.UATConcept, "Downloaded with `scix.data.refresh(\"uat\")`; searched in Python."),
-        (scix.PlanetaryFeature, "Downloaded with `scix.data.refresh(\"planetary_features\")`; searched in Python."),
+        (scix.UATConcept, "Downloaded with `data.refresh(\"uat\")`; searched in Python."),
+        (scix.PlanetaryFeature, "Downloaded with `data.refresh(\"planetary_features\")`; searched in Python."),
         (scix.Library, "Your SciX libraries: fetched from SciX, then filtered in Python."),
-        (scix.Author, "One author of a document, from `doc.authors`; used inside `scix.Document.authors.any(...)` and `.all(...)`."),
+        (scix.Author, "One author of a document, from `doc.authors`; used inside `Document.authors.any(...)` and `.all(...)`."),
     ]
     body = [
-        "The fields of every model except `scix.Document`, which has its own page. Every model can be described in "
+        "The fields of every model except `Document`, which has its own page. Every model can be described in "
         "code with `describe()`.",
         "",
     ]
@@ -565,140 +560,141 @@ def models_page() -> str:
 #: (section, [(expression source, note)]). Each expression is compiled with scix.search.to_solr.
 EXPRESSIONS: list[tuple[str, list[tuple[str, str]]]] = [
     ("Keyword fields", [
-        ('scix.Document.bibcode == "2015ApJ...808...16N"', "matched literally"),
-        ('scix.Document.bibcode.exact("2015ApJ...808...16N")', "the same: nothing to expand, no `=`"),
-        ('scix.Document.doctype != "eprint"', ""),
-        ('scix.Document.bibstem.in_(["ApJ", "AJ"])', ""),
-        ('scix.Document.doctype.not_in(["eprint", "abstract"])', ""),
-        ('scix.Document.doi == "10.1086/300499"', ""),
-        ('scix.Document.id == 1406395', "an `int` is accepted for `id`"),
-        ('scix.Document.volume == "808"', "volumes are strings"),
-        ('scix.Document.bibcode.like("2015ApJ...808*")', ""),
-        ('scix.Document.bibcode.startswith("2016arXiv")', ""),
+        ('Document.bibcode == "2015ApJ...808...16N"', "matched literally"),
+        ('Document.bibcode.exact("2015ApJ...808...16N")', "the same: nothing to expand, no `=`"),
+        ('Document.doctype != "eprint"', ""),
+        ('Document.bibstem.in_(["ApJ", "AJ"])', ""),
+        ('Document.doctype.not_in(["eprint", "abstract"])', ""),
+        ('Document.doi == "10.1086/300499"', ""),
+        ('Document.id == 1406395', "an `int` is accepted for `id`"),
+        ('Document.volume == "808"', "volumes are strings"),
+        ('Document.bibcode.like("2015ApJ...808*")', ""),
+        ('Document.bibcode.startswith("2016arXiv")', ""),
     ]),
     ("Text fields", [
-        ('scix.Document.title == "dark matter halo"', "a phrase, with synonyms"),
-        ('scix.Document.title.exact("dark matter halo")', "without synonyms"),
-        ('scix.Document.abs == "exoplanet atmospheres"', "title, abstract and keywords"),
-        ('scix.Document.full == "Gaia"', "also the full text"),
-        ('scix.Document.title == \'the "big" one\'', "quotes are escaped"),
-        ('scix.Document.title.like("JWST")', "no implicit wildcard"),
-        ('scix.Document.title.like("exoplanet*")', ""),
-        ('scix.Document.title.like("star-form*")', ""),
-        ('scix.Document.title.like("colo?r")', "`?` is one character"),
-        ('scix.Document.title.like("star%")', "`%` is the same as `*`"),
-        ('scix.Document.title.contains("astro")', ""),
-        ('scix.Document.title.startswith("The Cannon")', "a pattern with a space is quoted"),
-        ('scix.Document.keyword.in_(["galaxies", "quasars"], exact=True)', ""),
-        ('scix.Document.aff == "Max-Planck"', ""),
-        ('scix.Document.uat_name == "exoplanets"', "the text of the UAT concepts"),
+        ('Document.title == "dark matter halo"', "a phrase, with synonyms"),
+        ('Document.title.exact("dark matter halo")', "without synonyms"),
+        ('Document.abs == "exoplanet atmospheres"', "title, abstract and keywords"),
+        ('Document.full == "Gaia"', "also the full text"),
+        ('Document.title == \'the "big" one\'', "quotes are escaped"),
+        ('Document.title.like("JWST")', "no implicit wildcard"),
+        ('Document.title.like("exoplanet*")', ""),
+        ('Document.title.like("star-form*")', ""),
+        ('Document.title.like("colo?r")', "`?` is one character"),
+        ('Document.title.like("star%")', "`%` is the same as `*`"),
+        ('Document.title.contains("astro")', ""),
+        ('Document.title.startswith("The Cannon")', "a pattern with a space is quoted"),
+        ('Document.keyword.in_(["galaxies", "quasars"], exact=True)', ""),
+        ('Document.aff == "Max-Planck"', ""),
+        ('Document.uat_name == "exoplanets"', "the text of the UAT concepts"),
     ]),
     ("Name fields and positions", [
-        ('scix.Document.author == "Murray, S"', "with name variants"),
-        ('scix.Document.author.exact("Murray, Stephen")', "only that form"),
-        ('scix.Document.first_author == "Ness, M"', ""),
-        ('scix.Document.author[0] == "Ness, M"', "first author"),
-        ('scix.Document.author[1] == "Hogg, D"', "second author"),
-        ('scix.Document.author[0:3] == "Hogg, D"', "any of the first three"),
-        ('scix.Document.author[1].exact("Hogg, David W")', ""),
-        ('scix.Document.author.like("Casey, A*")', ""),
-        ('scix.Document.author.in_(["Casey, A", "Ness, M"], exact=True)', ""),
-        ('scix.Document.orcid == "0000-0002-1825-0097"', "any of the three ORCID fields"),
+        ('Document.author == "Murray, S"', "with name variants"),
+        ('Document.author.exact("Murray, Stephen")', "only that form"),
+        ('Document.first_author == "Ness, M"', ""),
+        ('Document.author[0] == "Ness, M"', "first author"),
+        ('Document.author[1] == "Hogg, D"', "second author"),
+        ('Document.author[0:3] == "Hogg, D"', "any of the first three"),
+        ('Document.author[1].exact("Hogg, David W")', ""),
+        ('Document.author.like("Casey, A*")', ""),
+        ('Document.author.in_(["Casey, A", "Ness, M"], exact=True)', ""),
+        ('Document.orcid == "0000-0002-1825-0097"', "any of the three ORCID fields"),
     ]),
     ("Numbers", [
-        ("scix.Document.year == 2015", ""),
-        ("scix.Document.year != 2015", ""),
-        ("scix.Document.year.between(2018, 2020)", "inclusive"),
-        ("scix.Document.year > 2020", "exclusive bound moved by one"),
-        ("scix.Document.year >= 2020", ""),
-        ("scix.Document.citation_count < 10", ""),
-        ("scix.Document.citation_count <= 10", ""),
-        ("scix.Document.year.in_([2019, 2021])", ""),
-        ("scix.Document.citation_count_norm > 0.5", "a float bound is excluded explicitly"),
-        ("scix.Document.citation_count_norm.between(0.5, 2.0)", ""),
+        ("Document.year == 2015", ""),
+        ("Document.year != 2015", ""),
+        ("Document.year.between(2018, 2020)", "inclusive"),
+        ("Document.year > 2020", "exclusive bound moved by one"),
+        ("Document.year >= 2020", ""),
+        ("Document.citation_count < 10", ""),
+        ("Document.citation_count <= 10", ""),
+        ("Document.year.in_([2019, 2021])", ""),
+        ("Document.citation_count_norm > 0.5", "a float bound is excluded explicitly"),
+        ("Document.citation_count_norm.between(0.5, 2.0)", ""),
     ]),
     ("Dates", [
-        ("scix.Document.pubdate.between(datetime.date(2020, 1, 1), datetime.date(2020, 6, 30))", "month precision"),
-        ('scix.Document.pubdate >= "2020-03"', ""),
-        ('scix.Document.pubdate > "2020-03"', "the next month"),
-        ("scix.Document.entry_date >= datetime.datetime(2024, 1, 1)", "UTC timestamps are quoted"),
-        ("scix.Document.date == datetime.datetime(2015, 7, 1)", ""),
-        ("scix.Document.entry_date >= scix.days_ago(7)", "evaluated by SciX"),
-        ("scix.Document.entry_date <= scix.now()", ""),
+        ("Document.pubdate.between(datetime.date(2020, 1, 1), datetime.date(2020, 6, 30))", "month precision"),
+        ('Document.pubdate >= "2020-03"', ""),
+        ('Document.pubdate > "2020-03"', "the next month"),
+        ("Document.entry_date >= datetime.datetime(2024, 1, 1)", "UTC timestamps are quoted"),
+        ("Document.date == datetime.datetime(2015, 7, 1)", ""),
+        ("Document.entry_date >= days_ago(7)", "evaluated by SciX"),
+        ("Document.entry_date <= now()", ""),
     ]),
     ("Combining", [
-        ('(scix.Document.year == 2020) & (scix.Document.bibstem == "ApJ")', ""),
-        ('(scix.Document.year == 2020) | (scix.Document.year == 2022)', ""),
-        ('((scix.Document.year == 2020) | (scix.Document.year == 2022)) & (scix.Document.bibstem == "ApJ")', "nested groups are parenthesised"),
-        ('(scix.Document.year == 2020) & ~(scix.Document.bibstem == "ApJ")', ""),
-        ("~(scix.Document.year == 2020)", "a negation on its own is anchored"),
-        ('~(scix.Document.year == 2020) & ~(scix.Document.bibstem == "ApJ")', ""),
-        ('(scix.Document.year == 2020) | ~(scix.Document.bibstem == "ApJ")', ""),
-        ('~((scix.Document.year == 2020) & (scix.Document.bibstem == "ApJ"))', ""),
-        ('scix.Document.raw(\'abs:"dark energy" OR abs:"cosmological constant"\') & (scix.Document.year < 2000)', "raw Solr is parenthesised when nested"),
+        ('(Document.year == 2020) & (Document.bibstem == "ApJ")', ""),
+        ('(Document.year == 2020) | (Document.year == 2022)', ""),
+        ('((Document.year == 2020) | (Document.year == 2022)) & (Document.bibstem == "ApJ")', "nested groups are parenthesised"),
+        ('(Document.year == 2020) & ~(Document.bibstem == "ApJ")', ""),
+        ("~(Document.year == 2020)", "a negation on its own is anchored"),
+        ('~(Document.year == 2020) & ~(Document.bibstem == "ApJ")', ""),
+        ('(Document.year == 2020) | ~(Document.bibstem == "ApJ")', ""),
+        ('~((Document.year == 2020) & (Document.bibstem == "ApJ"))', ""),
+        ('Document.raw(\'abs:"dark energy" OR abs:"cosmological constant"\') & (Document.year < 2000)', "raw Solr is parenthesised when nested"),
     ]),
     ("Documents and libraries", [
-        ('scix.Document.in_(["2015ApJ...808...16N", "1995Natur.378..355M"])', ""),
-        ('scix.Document.not_in(["2015ApJ...808...16N"]) & (scix.Document.year >= 2015)', ""),
-        ('scix.Document.in_(scix.Library(id="Rk3bq7xQTgS0vVZ2mN8cWw"))', "tested by SciX"),
-        ('scix.Document.not_in(scix.Library(id="Rk3bq7xQTgS0vVZ2mN8cWw")) & (scix.Document.year > 2015)', ""),
+        ('Document.in_(["2015ApJ...808...16N", "1995Natur.378..355M"])', ""),
+        ('Document.not_in(["2015ApJ...808...16N"]) & (Document.year >= 2015)', ""),
+        ('Document.in_(Library(id="Rk3bq7xQTgS0vVZ2mN8cWw"))', "tested by SciX"),
+        ('Document.not_in(Library(id="Rk3bq7xQTgS0vVZ2mN8cWw")) & (Document.year > 2015)', ""),
     ]),
     ("Through other models", [
-        ('scix.Document.journal == "AJ"', "an abbreviation is used as given"),
-        ('scix.Document.journal.in_(["ApJ", "AJ", "MNRAS"])', ""),
-        ('scix.Document.journal.title.startswith("The Astrophysical Journal")', "resolved against the packaged journal list"),
-        ('scix.Journal.title == "Icarus"', "a condition on Journal fields goes through the document's journal"),
-        ('scix.Document.affiliation == "A01400"', ""),
-        ('scix.Document.affiliation.any((scix.Affiliation.country_code == "AU") & (scix.Affiliation.abbreviation == "Dep Phy"))', "one affiliation meets both"),
-        ('scix.Document.affiliation.abbreviation == "MPIA Heidelberg"', ""),
-        ("scix.Document.uat == 498", "an identifier needs no downloaded data"),
-        ("scix.Document.planetary_feature == 2071", ""),
+        ('Document.journal == "AJ"', "an abbreviation is used as given"),
+        ('Document.journal.in_(["ApJ", "AJ", "MNRAS"])', ""),
+        ('Document.journal.title.startswith("The Astrophysical Journal")', "resolved against the packaged journal list"),
+        ('Journal.title == "Icarus"', "a condition on Journal fields goes through the document's journal"),
+        ('Document.affiliation == "A01400"', ""),
+        ('Document.affiliation.any((Affiliation.country_code == "AU") & (Affiliation.abbreviation == "Dep Phy"))', "one affiliation meets both"),
+        ('Document.affiliation.abbreviation == "MPIA Heidelberg"', ""),
+        ("Document.uat == 498", "an identifier needs no downloaded data"),
+        ("Document.planetary_feature == 2071", ""),
     ]),
     ("Authors", [
-        ('scix.Document.authors.any(scix.Author.name == "Ness, M")', "the same as the shorthand"),
-        ('scix.Document.authors[0].name == "Ness, M"', ""),
-        ('scix.Document.authors[0].affiliation.abbreviation == "IoA"', ""),
-        ('scix.Document.authors[1].aff == "Max-Planck"', ""),
-        ('scix.Document.authors[0:3].any(scix.Author.name == "Hogg, D")', ""),
-        ('scix.Document.authors.any((scix.Author.name == "Hogg, D") | (scix.Author.name == "Ness, M"))', "an `\\|` inside is exact"),
-        ('scix.Document.authors[0].any((scix.Author.name == "Ness, M") & (scix.Author.aff_id == "A01570"))', "one position: exact"),
-        ('scix.Document.authors.any((scix.Author.name == "Hogg, D") & (scix.Author.aff_id == "A01570"))', "necessary condition only; checked on each result"),
-        ('scix.Document.authors.all(scix.Author.aff_id == "A01570") & (scix.Document.year == 2015)', "necessary condition only; checked on each result"),
-        ('scix.Document.authors[0].email == "ness@example.org"', "not searched by position; checked on each result"),
+        ('Document.authors.any(Author.name == "Ness, M")', "the same as the shorthand"),
+        ('Document.authors[0].name == "Ness, M"', ""),
+        ('Document.authors[0].affiliation.abbreviation == "IoA"', ""),
+        ('Document.authors[1].aff == "Max-Planck"', ""),
+        ('Document.authors[0:3].any(Author.name == "Hogg, D")', ""),
+        ('Document.authors.any((Author.name == "Hogg, D") | (Author.name == "Ness, M"))', "an `\\|` inside is exact"),
+        ('Document.authors[0].any((Author.name == "Ness, M") & (Author.aff_id == "A01570"))', "one position: exact"),
+        ('Document.authors.any((Author.name == "Hogg, D") & (Author.aff_id == "A01570"))', "necessary condition only; checked on each result"),
+        ('Document.authors.all(Author.aff_id == "A01570") & (Document.year == 2015)', "necessary condition only; checked on each result"),
+        ('Document.authors[0].email == "ness@example.org"', "not searched by position; checked on each result"),
     ]),
     ("Operators", [
-        ('scix.Document.citations(scix.Document.bibcode == "2015ApJ...808...16N")', ""),
-        ('scix.Document.references(scix.Document.bibcode == "2015ApJ...808...16N")', ""),
-        ('scix.Document.trending(scix.Document.abs == "exoplanets")', ""),
-        ('scix.Document.useful(scix.Document.abs == "stellar spectroscopy")', ""),
-        ('scix.Document.reviews(scix.Document.abs == "gravitational waves")', ""),
-        ('scix.Document.instructive(scix.Document.abs == "gravitational waves")', ""),
-        ('scix.Document.similar(scix.Document.bibcode == "2015ApJ...808...16N")', ""),
-        ('scix.Document.citis(scix.Document.bibcode == "2015ApJ...808...16N")', ""),
-        ('scix.Document.classic_relevance(scix.Document.abs == "dark energy")', ""),
-        ('scix.Document.join_citations(scix.Document.bibcode == "2015ApJ...808...16N")', ""),
-        ('scix.Document.join_references(scix.Document.bibcode == "2015ApJ...808...16N")', ""),
-        ('scix.Document.reviews2(scix.Document.abs == "dark energy")', ""),
-        ('scix.Document.useful2(scix.Document.abs == "dark energy")', ""),
-        ('scix.Document.trending("exoplanets")', "a string is raw Solr"),
-        ('scix.Document.top_n(10, scix.Document.year == 2020, order_by=scix.Document.citation_count.desc())', ""),
-        ('scix.Document.top_n(5, scix.Document.author == "Hogg, D")', "by relevance"),
-        ('scix.Document.pos(\'author:"Ness, M"\', 1)', ""),
-        ('scix.Document.pos(scix.Document.aff == "Heidelberg", 1, 2)', ""),
+        ('Document.citations(Document.bibcode == "2015ApJ...808...16N")', ""),
+        ('Document.references(Document.bibcode == "2015ApJ...808...16N")', ""),
+        ('Document.trending(Document.abs == "exoplanets")', ""),
+        ('Document.useful(Document.abs == "stellar spectroscopy")', ""),
+        ('Document.reviews(Document.abs == "gravitational waves")', ""),
+        ('Document.instructive(Document.abs == "gravitational waves")', ""),
+        ('Document.similar(Document.bibcode == "2015ApJ...808...16N")', ""),
+        ('Document.citis(Document.bibcode == "2015ApJ...808...16N")', ""),
+        ('Document.classic_relevance(Document.abs == "dark energy")', ""),
+        ('Document.join_citations(Document.bibcode == "2015ApJ...808...16N")', ""),
+        ('Document.join_references(Document.bibcode == "2015ApJ...808...16N")', ""),
+        ('Document.reviews2(Document.abs == "dark energy")', ""),
+        ('Document.useful2(Document.abs == "dark energy")', ""),
+        ('Document.trending("exoplanets")', "a string is raw Solr"),
+        ('Document.top_n(10, Document.year == 2020, order_by=Document.citation_count.desc())', ""),
+        ('Document.top_n(5, Document.author == "Hogg, D")', "by relevance"),
+        ('Document.pos(\'author:"Ness, M"\', 1)', ""),
+        ('Document.pos(Document.aff == "Heidelberg", 1, 2)', ""),
     ]),
 ]
 
 
 def expressions_page() -> str:
-    namespace = {"scix": scix, "datetime": datetime}
+    namespace: dict[str, Any] = {"datetime": datetime}
+    exec("from scixplorer import *", namespace)
     rows = 0
     body = [
-        "Each row is a Python expression and the Solr query string that `scix.search.to_solr()` compiles it to. "
+        "Each row is a Python expression and the Solr query string that `search.to_solr()` compiles it to. "
         "The table is generated by compiling every expression, so it is always what the client sends. Conditions "
         "on other models are resolved against the packaged data; the identifier lists depend on the version of "
         "that data.",
         "",
-        "Expressions use `import scixplorer as scix` and `import datetime`.",
+        "Expressions use `from scixplorer import *` and `import datetime`.",
         "",
     ]
     for section, items in EXPRESSIONS:
@@ -722,8 +718,8 @@ def expressions_page() -> str:
 def api_index() -> str:
     body = """
 The public classes and functions, with their signatures and docstrings. Headings give the full dotted path;
-after `import scixplorer as scix`, write them as shown under each heading (for example
-`scixplorer.models.document.Document` is `scix.Document`). Signatures are shown without type annotations.
+after `from scixplorer import *`, write them as shown under each heading (for example
+`scixplorer.models.document.Document` is `Document`). Signatures are shown without type annotations.
 
 | Page | Contents |
 |---|---|
@@ -731,9 +727,9 @@ after `import scixplorer as scix`, write them as shown under each heading (for e
 | [Query]({{< ref "reference/api/query" >}}) | `Query` and `Explanation` |
 | [Client and Config]({{< ref "reference/api/client" >}}) | `Client`, `Config`, `config`, requests and responses |
 | [Exceptions]({{< ref "reference/api/exceptions" >}}) | every exception and warning |
-| [Data]({{< ref "reference/api/data" >}}) | `scix.data`: reference data |
-| [Services]({{< ref "reference/api/services" >}}) | `scix.export`, `scix.resolver`, `scix.vis`, `scix.citation_helper` |
-| [Utilities]({{< ref "reference/api/utils" >}}) | `scix.utils` |
+| [Data]({{< ref "reference/api/data" >}}) | `data`: reference data |
+| [Services]({{< ref "reference/api/services" >}}) | `export`, `resolver`, `vis`, `citation_helper` |
+| [Utilities]({{< ref "reference/api/utils" >}}) | `utils` |
 """
     return page("API", 4, "The public classes and functions of scixplorer, from their signatures and docstrings.", body)
 
@@ -746,7 +742,7 @@ def models_api() -> str:
 
     model = (
         "## scixplorer.model.Model\n\nThe base class of every model. These methods are available on all of them "
-        "(`scix.Document.select()`, `scix.Journal.get(...)`, ...).\n\n"
+        "(`Document.select()`, `Journal.get(...)`, ...).\n\n"
         + "\n\n".join(entry(f"scixplorer.model.Model.{name}", vars(Model)[name]) for name in MODEL_METHODS)
     )
     parts = [
@@ -805,7 +801,7 @@ def client_api() -> str:
     config = class_entry(_config.Config, names=["resolve_token", "resolve_collections"])
     parts = [
         "## scixplorer.config\n\nThe `Config` instance every client uses unless it is given its own. Written "
-        "`scix.config`; change its attributes to change the settings.\n\n" + "\n".join(rows),
+        "`config`; change its attributes to change the settings.\n\n" + "\n".join(rows),
         config,
         class_entry(client.Client, names=["send", "asend", "close", "aclose"]),
         "### scixplorer.client.Client.rate_limits\n\n*attribute* `rate_limits`\n\nA `dict` from service "
@@ -848,7 +844,7 @@ def data_api() -> str:
     parts.append("### scixplorer.data.DATASETS\n\nThe datasets, by name: a read-only mapping of `Dataset`.\n\n" + "\n".join(rows))
     parts.append("## For model authors\n\nModels use these to read their data; you do not need them to use scixplorer.")
     parts += [function_entry(data, name, level=3) for name in ("register", "load")]
-    return page("Data", 5, "scix.data: the reference data held locally, how it is downloaded and where it is kept.", "\n\n".join(parts))
+    return page("Data", 5, "The data module: the reference data held locally, how it is downloaded and where it is kept.", "\n\n".join(parts))
 
 
 def services_api() -> str:
@@ -879,7 +875,7 @@ def utils_api() -> str:
     from scixplorer import utils
 
     parts = [markdown(utils.__doc__)] + [function_entry(utils, name) for name in utils.__all__]
-    return page("Utilities", 7, "scix.utils: parsing bibcodes and collecting them from documents and libraries.", "\n\n".join(parts))
+    return page("Utilities", 7, "The utils module: parsing bibcodes and collecting them from documents and libraries.", "\n\n".join(parts))
 
 
 PAGES: dict[str, Callable[[], str]] = {

@@ -105,7 +105,8 @@ uv run python scripts/gen_docs.py
 
 `tests/test_docs_generated.py` runs `scripts/gen_docs.py --check`, which fails if any generated page is
 out of date. Docstrings are written in reST (`:class:`, `:param x:`, `::` blocks); the generator converts
-them to Markdown and writes public names as users write them, `scix.Document`.
+them to Markdown and writes public names as users write them after `from scixplorer import *`:
+`Document`, `exceptions.QueryError`.
 
 The generator replaces a few docstrings (listed in `OVERRIDES` in the script), because the documentation
 describes a single API token. If one of those docstrings changes, the generator stops and asks for the
@@ -118,9 +119,10 @@ in one namespace per page, against the offline sample in `tests/docs_fakes.py`: 
 illustrative counts and affiliations), two libraries, and small extracts of the UAT and the planetary
 gazetteer. No token is set and nothing reaches the network.
 
-- Start the first Python block of a user-facing page with `import scixplorer as scix`, and write every
-  name through it: `scix.Document`, `scix.data.refresh()`. The test enforces this. Pages under
-  `development/` may import internals.
+- Start the first Python block of a user-facing page with `from scixplorer import *`, and write public
+  names bare: `Document`, `data.refresh()`. Import an internal module only where the page is about it
+  (`from scixplorer import solr`). The test enforces this. Pages under `development/` may import
+  anything.
 - Show a value with a line `# -> text` right after an expression. The test checks that `text` is in the
   `repr` or `str` of the value, or in what the statement printed. Output shown any other way is not
   checked, so prefer this form. Pick text that is true of the real data too, not only of the sample.

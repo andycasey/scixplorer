@@ -21,9 +21,9 @@ The [field reference]({{< ref "reference/document-fields" >}}) gives the match k
 code, `describe()` reports it:
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-kinds = {field.name: field.match_kind for field in scix.Document.describe()}
+kinds = {field.name: field.match_kind for field in Document.describe()}
 kinds["bibcode"], kinds["title"], kinds["author"]
 # -> ('keyword', 'text', 'name')
 ```
@@ -33,9 +33,9 @@ kinds["bibcode"], kinds["title"], kinds["author"]
 `.exact(value)` asks SciX to match the value with no expansion. It is sent as `=field:"value"`:
 
 ```python
-scix.search.to_solr(scix.Document.title == "star")
+search.to_solr(Document.title == "star")
 # -> title:"star"
-scix.search.to_solr(scix.Document.title.exact("star"))
+search.to_solr(Document.title.exact("star"))
 # -> =title:"star"
 ```
 
@@ -43,14 +43,14 @@ On a keyword field nothing is expanded, so `.exact()` changes nothing and no `=`
 `=bibcode:"..."` with no documents, so the client never sends it.)
 
 ```python
-scix.search.to_solr(scix.Document.bibcode.exact("2015ApJ...808...16N"))
+search.to_solr(Document.bibcode.exact("2015ApJ...808...16N"))
 # -> bibcode:"2015ApJ...808...16N"
 ```
 
 `in_()` and `not_in()` take `exact=True` too:
 
 ```python
-scix.search.to_solr(scix.Document.author.in_(["Casey, A", "Ness, M"], exact=True))
+search.to_solr(Document.author.in_(["Casey, A", "Ness, M"], exact=True))
 # -> =author:"Casey, A" OR =author:"Ness, M"
 ```
 
@@ -69,8 +69,8 @@ Two rules from the ADS search documentation are worth knowing:
 To find words anywhere in the field rather than as a phrase, combine conditions with `&`:
 
 ```python
-both = (scix.Document.abs == "dark matter") & (scix.Document.abs == "halo")
-scix.search.to_solr(both)
+both = (Document.abs == "dark matter") & (Document.abs == "halo")
+search.to_solr(both)
 # -> abs:"dark matter" AND abs:"halo"
 ```
 
@@ -93,7 +93,7 @@ So a query with initials only is broad. Give the full first name to narrow it, a
 know exactly how the name is written:
 
 ```python
-scix.search.to_solr(scix.Document.author.exact("Ness, Melissa"))
+search.to_solr(Document.author.exact("Ness, Melissa"))
 # -> =author:"Ness, Melissa"
 ```
 
@@ -106,11 +106,11 @@ the server.
 Indices start at 0 and slices follow Python, so `[0:3]` is the first three:
 
 ```python
-scix.search.to_solr(scix.Document.author[0] == "Ness, M")
+search.to_solr(Document.author[0] == "Ness, M")
 # -> pos(author:"Ness, M", 1)
-scix.search.to_solr(scix.Document.author[0:3] == "Hogg, D")
+search.to_solr(Document.author[0:3] == "Hogg, D")
 # -> pos(author:"Hogg, D", 1, 3)
-scix.search.to_solr(scix.Document.author[1].exact("Hogg, David W"))
+search.to_solr(Document.author[1].exact("Hogg, David W"))
 # -> pos(=author:"Hogg, David W", 2)
 ```
 
@@ -118,13 +118,13 @@ SciX counts positions from 1, which is why the query says `1` for `[0]`. It cann
 negative indices and open-ended slices such as `[2:]` raise `QueryError`. Only multi-valued fields can be
 indexed.
 
-`first_author` holds the first author's name on its own, so `scix.Document.first_author == "Ness, M"`
+`first_author` holds the first author's name on its own, so `Document.first_author == "Ness, M"`
 is another way to search for a first author.
 
-For a condition written in Solr syntax, `scix.Document.pos()` does the same:
+For a condition written in Solr syntax, `Document.pos()` does the same:
 
 ```python
-scix.search.to_solr(scix.Document.pos('author:"Ness, M"', 1))
+search.to_solr(Document.pos('author:"Ness, M"', 1))
 # -> pos(author:"Ness, M", 1)
 ```
 

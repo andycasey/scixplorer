@@ -12,15 +12,15 @@ The examples on this site run against a small offline sample of real papers, so 
 
 ## Build a query
 
-A search starts from `scix.Document.select()`. Each method returns a new query, so you can build one in
+A search starts from `Document.select()`. Each method returns a new query, so you can build one in
 steps and reuse the parts:
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-query = scix.Document.select(scix.Document.bibcode, scix.Document.title, scix.Document.year)
-query = query.where(scix.Document.author == "Hogg, D")
-query = query.order_by(scix.Document.year.desc())
+query = Document.select(Document.bibcode, Document.title, Document.year)
+query = query.where(Document.author == "Hogg, D")
+query = query.order_by(Document.year.desc())
 query = query.limit(10)
 ```
 
@@ -28,7 +28,7 @@ query = query.limit(10)
 |---|---|
 | `select(*fields)` | Starts a query and says which fields to fetch. With no fields, every field except the large [deferred ones]({{< ref "guide/results#deferred-fields" >}}). |
 | `where(*conditions)` | Adds conditions. Several conditions, or several calls, must all hold. |
-| `order_by(*keys)` | Sorts by fields: `scix.Document.year.desc()`, `scix.Document.year.asc()`, or a bare field (ascending). It replaces any earlier order. |
+| `order_by(*keys)` | Sorts by fields: `Document.year.desc()`, `Document.year.asc()`, or a bare field (ascending). It replaces any earlier order. |
 | `limit(n)` | Returns at most `n` documents. `limit(None)` removes the limit. |
 | `offset(n)` | Skips the first `n` documents. |
 | `using(client)` | Sends the requests with this client instead of the default one. |
@@ -38,7 +38,7 @@ once, not when the query runs.
 
 <!-- docs-test: raises QueryError -->
 ```python
-scix.Document.year == "2015"
+Document.year == "2015"
 ```
 
 The message is `Document.year needs an int, not '2015'`.
@@ -80,19 +80,19 @@ Once a query has been iterated to the end, its results are kept. Iterating again
 `len()` and indexing then make no further requests. Each new query, including one made by adding a
 condition, starts afresh.
 
-To fetch one document by an identifier, use `scix.Document.get` with keyword arguments:
+To fetch one document by an identifier, use `Document.get` with keyword arguments:
 
 ```python
-paper = scix.Document.get(bibcode="1995Natur.378..355M")
+paper = Document.get(bibcode="1995Natur.378..355M")
 paper.title
 # -> A Jupiter-mass companion to a solar-type star
 ```
 
-If nothing matches, it raises `scix.Document.DoesNotExist`, which is also a `LookupError`:
+If nothing matches, it raises `Document.DoesNotExist`, which is also a `LookupError`:
 
 <!-- docs-test: raises DoesNotExist -->
 ```python
-scix.Document.get(bibcode="2099ApJ...999....1X")
+Document.get(bibcode="2099ApJ...999....1X")
 ```
 
 ## See what it sends
@@ -123,10 +123,10 @@ GET /search/query
 `bibcode`, `id` and `scix_id`, which are always fetched. The client adds `id asc` to every sort so that
 pages never overlap or skip a document.
 
-To see only the query string, use `scix.search.to_solr`:
+To see only the query string, use `search.to_solr`:
 
 ```python
-scix.search.to_solr(scix.Document.author[0] == "Ness, M")
+search.to_solr(Document.author[0] == "Ness, M")
 # -> pos(author:"Ness, M", 1)
 ```
 

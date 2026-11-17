@@ -20,24 +20,24 @@ Suppose you want papers by A. Casey written at a German institution. This finds 
 Cambridge; the German affiliation belongs to co-authors:
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-careless = scix.Document.select(scix.Document.bibcode).where(
-    (scix.Document.author == "Casey, A") & (scix.Document.affiliation.country_code == "DE")
+careless = Document.select(Document.bibcode).where(
+    (Document.author == "Casey, A") & (Document.affiliation.country_code == "DE")
 )
 [paper.bibcode for paper in careless]
 # -> ['2016arXiv160303040C']
 ```
 
-## One author: `scix.Document.authors.any()`
+## One author: `Document.authors.any()`
 
-Inside `scix.Document.authors.any(...)`, every condition is about the same author. The conditions use the
-fields of `scix.Author`:
+Inside `Document.authors.any(...)`, every condition is about the same author. The conditions use the
+fields of `Author`:
 
 ```python
-careful = scix.Document.select(scix.Document.bibcode).where(
-    scix.Document.authors.any(
-        (scix.Author.name == "Casey, A") & (scix.Author.affiliation.country_code == "DE")
+careful = Document.select(Document.bibcode).where(
+    Document.authors.any(
+        (Author.name == "Casey, A") & (Author.affiliation.country_code == "DE")
     )
 )
 [paper.bibcode for paper in careful]
@@ -47,22 +47,22 @@ careful = scix.Document.select(scix.Document.bibcode).where(
 The same search for D. Hogg finds the paper on which Hogg himself gave a German affiliation:
 
 ```python
-query = scix.Document.select(scix.Document.bibcode).where(
-    scix.Document.authors.any(
-        (scix.Author.name == "Hogg, D") & (scix.Author.affiliation.country_code == "DE")
+query = Document.select(Document.bibcode).where(
+    Document.authors.any(
+        (Author.name == "Hogg, D") & (Author.affiliation.country_code == "DE")
     )
 )
 [paper.bibcode for paper in query]
 # -> ['2015ApJ...808...16N']
 ```
 
-| `scix.Author` field | From the document's | Notes |
+| `Author` field | From the document's | Notes |
 |---|---|---|
 | `name` | `author` | a name field: matched with name variants |
 | `position` | the author's index | 0 for the first author |
 | `aff` | `aff` | the affiliation as written in the paper |
 | `aff_id` | `aff_id` | a list: an author can have several curated affiliations |
-| `affiliation` | `aff_id` | a relation to [`scix.Affiliation`]({{< ref "guide/affiliations" >}}) |
+| `affiliation` | `aff_id` | a relation to [`Affiliation`]({{< ref "guide/affiliations" >}}) |
 | `email` | `email` | |
 | `orcid_pub`, `orcid_user`, `orcid_other` | the three ORCID lists | from the publisher, from users with a public profile, from the ADS claiming interface |
 | `orcid` | the three ORCID lists | the first that is given; searched with the document's `orcid` field, which covers all three |
@@ -71,13 +71,13 @@ An author with several affiliations matches if any one of them does. To say seve
 affiliation of the author, use `.any()` on the relation as well:
 
 ```python
-one_affiliation = scix.Document.authors.any(
-    (scix.Author.name == "Schmidt, B")
-    & scix.Author.affiliation.any(
-        (scix.Affiliation.country_code == "AU") & (scix.Affiliation.abbreviation == "MSSSO")
+one_affiliation = Document.authors.any(
+    (Author.name == "Schmidt, B")
+    & Author.affiliation.any(
+        (Affiliation.country_code == "AU") & (Affiliation.abbreviation == "MSSSO")
     )
 )
-scix.search.to_solr(one_affiliation)
+search.to_solr(one_affiliation)
 # -> author:"Schmidt, B" AND aff_id:"A00343"
 ```
 
@@ -86,18 +86,18 @@ that says so:
 
 <!-- docs-test: raises QueryError -->
 ```python
-scix.Document.authors.any(scix.Document.year == 2015)
+Document.authors.any(Document.year == 2015)
 ```
 
-## Every author: `scix.Document.authors.all()`
+## Every author: `Document.authors.all()`
 
 `all(...)` matches documents on which every author meets the condition. A document must have at least one
 author to match.
 
 ```python
-swiss = scix.Document.select(scix.Document.bibcode).where(
-    scix.Document.authors.all(scix.Author.affiliation.country_code == "CH")
-    & (scix.Document.year < 2000)
+swiss = Document.select(Document.bibcode).where(
+    Document.authors.all(Author.affiliation.country_code == "CH")
+    & (Document.year < 2000)
 )
 [paper.bibcode for paper in swiss]
 # -> ['1995Natur.378..355M']
@@ -108,24 +108,24 @@ with any such author.
 
 ## By position
 
-Index `scix.Document.authors` to choose authors by position. With one index you can write conditions
-directly on its fields; `scix.Document.authors[0]` is the first author:
+Index `Document.authors` to choose authors by position. With one index you can write conditions
+directly on its fields; `Document.authors[0]` is the first author:
 
 ```python
-first_in_britain = scix.Document.select(scix.Document.bibcode).where(
-    scix.Document.authors[0].affiliation.country_code == "GB"
+first_in_britain = Document.select(Document.bibcode).where(
+    Document.authors[0].affiliation.country_code == "GB"
 )
 [paper.bibcode for paper in first_in_britain]
 # -> ['2016arXiv160303040C']
-scix.search.to_solr(scix.Document.authors[0].affiliation.abbreviation == "IoA")
+search.to_solr(Document.authors[0].affiliation.abbreviation == "IoA")
 # -> pos(aff_id:("A00319" OR "A13064"), 1)
 ```
 
 A slice selects several positions, and then you say whether any or all of them must match:
 
 ```python
-query = scix.Document.select(scix.Document.bibcode).where(
-    scix.Document.authors[0:2].any(scix.Author.affiliation.abbreviation == "MPIA Heidelberg")
+query = Document.select(Document.bibcode).where(
+    Document.authors[0:2].any(Author.affiliation.abbreviation == "MPIA Heidelberg")
 )
 [paper.bibcode for paper in query]
 # -> ['2015ApJ...808...16N']
@@ -136,7 +136,7 @@ that suggests `.any()`, `.all()` or an index:
 
 <!-- docs-test: raises AttributeError -->
 ```python
-scix.Document.authors.name == "Ness, M"
+Document.authors.name == "Ness, M"
 ```
 
 Positions count from 0 and slices follow Python. Negative or open-ended positions raise `QueryError`.
@@ -153,15 +153,15 @@ Simple per-author conditions have shorter forms, and both forms send the same qu
 
 | Per-author form | Shorthand |
 |---|---|
-| `scix.Document.authors[0].name == "Ness, M"` | `scix.Document.author[0] == "Ness, M"` |
-| `scix.Document.authors.any(scix.Author.name == "Ness, M")` | `scix.Document.author == "Ness, M"` |
-| `scix.Document.authors.any(scix.Author.affiliation.country_code == "AU")` | `scix.Document.affiliation.country_code == "AU"` |
-| `scix.Document.authors.any(scix.Author.orcid == "...")` | `scix.Document.orcid == "..."` |
+| `Document.authors[0].name == "Ness, M"` | `Document.author[0] == "Ness, M"` |
+| `Document.authors.any(Author.name == "Ness, M")` | `Document.author == "Ness, M"` |
+| `Document.authors.any(Author.affiliation.country_code == "AU")` | `Document.affiliation.country_code == "AU"` |
+| `Document.authors.any(Author.orcid == "...")` | `Document.orcid == "..."` |
 
 ```python
-long = scix.Document.authors.any(scix.Author.affiliation.country_code == "AU")
-short = scix.Document.affiliation.country_code == "AU"
-scix.search.to_solr(long) == scix.search.to_solr(short)
+long = Document.authors.any(Author.affiliation.country_code == "AU")
+short = Document.affiliation.country_code == "AU"
+search.to_solr(long) == search.to_solr(short)
 # -> True
 ```
 
@@ -169,10 +169,10 @@ Use the per-author form when you need more than one condition about an author.
 
 ## Read the authors of a document
 
-`doc.authors` is a list of `scix.Author` objects, one per author, in order:
+`doc.authors` is a list of `Author` objects, one per author, in order:
 
 ```python
-paper = scix.Document.get(bibcode="2015ApJ...808...16N")
+paper = Document.get(bibcode="2015ApJ...808...16N")
 paper.authors
 # -> [<Author 0: 'Ness, M.'>, <Author 1: 'Hogg, David W.'>, <Author 2: 'Rix, H. -W.'>, <Author 3: 'Ho, Anna. Y. Q.'>, <Author 4: 'Zasowski, G.'>]
 hogg = paper.authors[1]
@@ -190,7 +190,7 @@ list for `aff_id`). Affiliation identifiers that are not in the packaged
 
 Reading `doc.authors` needs the fields it is built from (`author`, `aff`, `aff_id`, `email` and the ORCID
 lists). If you selected only some fields, the missing ones are [loaded]({{< ref "guide/results#lazy-loading" >}})
-in one request. `scix.Author` objects exist only as part of a document; you cannot search for authors on
+in one request. `Author` objects exist only as part of a document; you cannot search for authors on
 their own.
 
 ## Where conditions are checked
@@ -202,7 +202,7 @@ condition on each document that comes back.
 
 | Condition | Checked by |
 |---|---|
-| A single condition: `authors.any(scix.Author.name == x)` | SciX |
+| A single condition: `authors.any(Author.name == x)` | SciX |
 | Conditions joined with `\|` | SciX |
 | Several conditions on one position: `authors[0].any((...) & (...))` | SciX, for `name`, `aff` and `aff_id` |
 | Several conditions joined with `&`, on any author or a slice | the client, after SciX narrows by each condition |
@@ -213,9 +213,9 @@ condition on each document that comes back.
 `explain()` says which it is:
 
 ```python
-query = scix.Document.select(scix.Document.bibcode).where(
-    scix.Document.authors.any(
-        (scix.Author.name == "Hogg, D") & (scix.Author.affiliation.abbreviation == "MPIA Heidelberg")
+query = Document.select(Document.bibcode).where(
+    Document.authors.any(
+        (Author.name == "Hogg, D") & (Author.affiliation.abbreviation == "MPIA Heidelberg")
     )
 )
 print(query.explain())
@@ -231,7 +231,7 @@ A condition checked by the client has three consequences:
 - Python compares names with the documented initial and full-name rule, and text by its words. It does not
   know SciX's curated synonyms (see [Matching]({{< ref "guide/matching#matching-in-python" >}})).
 - It must be a top-level condition of the search: joined to the rest with `&`, optionally negated with `~`.
-  Inside `|`, or inside an operator such as `scix.Document.citations()`, it raises
+  Inside `|`, or inside an operator such as `Document.citations()`, it raises
   `UnsupportedQueryError`, which explains how to restructure the query.
 
 If nothing else narrows the search, the client refuses to run it, because SciX would return every
@@ -239,8 +239,8 @@ document in the index for the client to check:
 
 <!-- docs-test: raises UnsupportedQueryError -->
 ```python
-scix.Document.select().where(
-    ~scix.Document.authors.any((scix.Author.name == "Hogg, D") & (scix.Author.aff_id == "A00951"))
+Document.select().where(
+    ~Document.authors.any((Author.name == "Hogg, D") & (Author.aff_id == "A00951"))
 ).count()
 ```
 

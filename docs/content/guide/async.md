@@ -21,14 +21,14 @@ Every query can be run asynchronously. The async methods mirror the synchronous 
 | `query.count()` | `await query.acount()` |
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
 import asyncio
 
 
 async def main():
-    query = scix.Document.select(scix.Document.bibcode, scix.Document.year).where(
-        scix.Document.author == "Hogg, D"
+    query = Document.select(Document.bibcode, Document.year).where(
+        Document.author == "Hogg, D"
     )
     total = await query.acount()
     papers = [paper.bibcode async for paper in query]
@@ -40,7 +40,7 @@ asyncio.run(main())
 ```
 
 Pages are requested one at a time as you consume them, exactly as in synchronous code. The same
-`scix.Client` serves both: it creates an `httpx.AsyncClient` the first time it is used asynchronously.
+`Client` serves both: it creates an `httpx.AsyncClient` the first time it is used asynchronously.
 
 ## Several searches at once
 
@@ -48,7 +48,7 @@ Run independent searches concurrently with `asyncio.gather`:
 
 ```python
 async def counts(years):
-    queries = [scix.Document.select().where(scix.Document.year == year) for year in years]
+    queries = [Document.select().where(Document.year == year) for year in years]
     return await asyncio.gather(*(query.acount() for query in queries))
 
 
@@ -66,14 +66,14 @@ event loop while they wait:
 | Synchronous only | What to do in async code |
 |---|---|
 | [Lazy loading]({{< ref "guide/results#lazy-loading" >}}) of a field that was not fetched (including `doc.authors` when its fields are missing) | select every field you will read |
-| [`scix.Library`]({{< ref "guide/libraries" >}}) methods and properties (`create`, `add`, `update`, `bibcodes`, ...) | call them before or outside the event loop, or in a thread with `asyncio.to_thread` |
-| [Services]({{< ref "guide/services" >}}) (`scix.export`, `scix.resolver`, `scix.vis`, `scix.citation_helper`) | the same |
-| [`scix.data.refresh()`]({{< ref "guide/reference-data" >}}) | the same |
+| [`Library`]({{< ref "guide/libraries" >}}) methods and properties (`create`, `add`, `update`, `bibcodes`, ...) | call them before or outside the event loop, or in a thread with `asyncio.to_thread` |
+| [Services]({{< ref "guide/services" >}}) (`export`, `resolver`, `vis`, `citation_helper`) | the same |
+| [`data.refresh()`]({{< ref "guide/reference-data" >}}) | the same |
 
-Queries over libraries (`await scix.Library.select().aall()`) run asynchronously like any query.
+Queries over libraries (`await Library.select().aall()`) run asynchronously like any query.
 Searching for documents in a library works asynchronously too, because SciX tests the
-membership: `await scix.Document.select().where(scix.Document.in_(library)).aall()`. With
-`scix.config.library_membership = "bibcodes"`, the library's bibcodes are fetched through the same async
+membership: `await Document.select().where(Document.in_(library)).aall()`. With
+`config.library_membership = "bibcodes"`, the library's bibcodes are fetched through the same async
 path.
 
 ## Closing the client
@@ -83,8 +83,8 @@ closed when you are done, or used as a context manager:
 
 ```python
 async def with_own_client():
-    async with scix.Client(token="your-token") as client:
-        query = scix.Document.select().where(scix.Document.year == 2015).using(client)
+    async with Client(token="your-token") as client:
+        query = Document.select().where(Document.year == 2015).using(client)
         return await query.acount()
 ```
 

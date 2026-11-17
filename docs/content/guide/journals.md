@@ -9,16 +9,16 @@ document, and search for documents by journal title without knowing the abbrevia
 
 ## The journal list
 
-`scix.Journal` holds the journals and other publication series SciX knows, each identified by its
+`Journal` holds the journals and other publication series SciX knows, each identified by its
 abbreviation. The list (4502 journals) is packaged with scixplorer and searched in Python, so no
 request and no token are needed:
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-scix.Journal.get(abbreviation="ApJ").title
+Journal.get(abbreviation="ApJ").title
 # -> The Astrophysical Journal
-scix.Journal.select().count()
+Journal.select().count()
 # -> 4502
 ```
 
@@ -31,30 +31,30 @@ Search the list with the same expressions as documents. `==` compares the whole 
 `like()`, `startswith()` and `contains()` ignore case:
 
 ```python
-planetary = scix.Journal.select().where(scix.Journal.title.contains("planetary")).order_by(scix.Journal.abbreviation)
+planetary = Journal.select().where(Journal.title.contains("planetary")).order_by(Journal.abbreviation)
 [journal.abbreviation for journal in planetary.limit(4)]
 # -> ['AREPS', 'AdEPS', 'CRASE', 'CoLPL']
 ```
 
-`scix.Journal.lookup()` finds one journal by abbreviation, and returns `None` if there is none:
+`Journal.lookup()` finds one journal by abbreviation, and returns `None` if there is none:
 
 ```python
-scix.Journal.lookup("MNRAS").title
+Journal.lookup("MNRAS").title
 # -> Monthly Notices of the Royal Astronomical Society
-scix.Journal.lookup("NotAJournal") is None
+Journal.lookup("NotAJournal") is None
 # -> True
 ```
 
 The packaged list is a snapshot of the ADS journal list taken in 2021. To replace it with the current
-list, run `scix.data.refresh("journals")`; see [Reference data]({{< ref "guide/reference-data" >}}).
+list, run `data.refresh("journals")`; see [Reference data]({{< ref "guide/reference-data" >}}).
 
 ## The journal of a document
 
-`doc.journal` is the `scix.Journal` named by the journal part of the document's bibcode (or, if the
+`doc.journal` is the `Journal` named by the journal part of the document's bibcode (or, if the
 bibcode cannot be parsed, its first `bibstem`), or `None` if the abbreviation is not in the list:
 
 ```python
-paper = scix.Document.get(bibcode="2013PASP..125..306F")
+paper = Document.get(bibcode="2013PASP..125..306F")
 paper.journal
 # -> <Journal: abbreviation='PASP'>
 paper.journal.title
@@ -65,47 +65,47 @@ This needs no request: it is computed from the bibcode.
 
 ## Search for documents by journal
 
-A condition on `scix.Document.journal` is resolved against the journal list before the search is sent,
+A condition on `Document.journal` is resolved against the journal list before the search is sent,
 and becomes a condition on the documents' `bibstem`:
 
 ```python
-scix.search.to_solr(scix.Document.journal.title.startswith("The Astrophysical Journal"))
+search.to_solr(Document.journal.title.startswith("The Astrophysical Journal"))
 # -> bibstem:("ApJ" OR "ApJS")
 ```
 
-To match one journal, compare the relation with an abbreviation or a `scix.Journal` object. An
+To match one journal, compare the relation with an abbreviation or a `Journal` object. An
 abbreviation is used as given, even one missing from the packaged list:
 
 ```python
-scix.search.to_solr(scix.Document.journal == "AJ")
+search.to_solr(Document.journal == "AJ")
 # -> bibstem:"AJ"
-scix.search.to_solr(scix.Document.journal.in_(["ApJ", "AJ", "MNRAS"]))
+search.to_solr(Document.journal.in_(["ApJ", "AJ", "MNRAS"]))
 # -> bibstem:("ApJ" OR "AJ" OR "MNRAS")
 ```
 
-A condition on `scix.Journal` fields can also be used directly in a document search. It is understood as
+A condition on `Journal` fields can also be used directly in a document search. It is understood as
 "the document's journal":
 
 ```python
-query = scix.Document.select().where(scix.Journal.title == "Icarus")
-scix.search.to_solr(query)
+query = Document.select().where(Journal.title == "Icarus")
+search.to_solr(query)
 # -> bibstem:"Icar"
 ```
 
 To say several things about the same journal, use `.any()`:
 
 ```python
-same_journal = scix.Document.journal.any(
-    scix.Journal.title.contains("astrophysical") & scix.Journal.abbreviation.startswith("Ap")
+same_journal = Document.journal.any(
+    Journal.title.contains("astrophysical") & Journal.abbreviation.startswith("Ap")
 )
-scix.search.to_solr(same_journal)
+search.to_solr(same_journal)
 # -> bibstem:("ApInv" OR "ApJ" OR "ApJS" OR "ApL" OR "ApL&C")
 ```
 
 If no journal matches, the condition can never be true and no request is sent:
 
 ```python
-print(scix.Document.select().where(scix.Document.journal.title == "No such journal").explain())
+print(Document.select().where(Document.journal.title == "No such journal").explain())
 # -> No request is made: the filter can never match.
 ```
 

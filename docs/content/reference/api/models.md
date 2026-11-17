@@ -8,7 +8,7 @@ description: "The model classes and the functions that build and inspect searche
 
 ## scixplorer.model.Model
 
-The base class of every model. These methods are available on all of them (`scix.Document.select()`, `scix.Journal.get(...)`, ...).
+The base class of every model. These methods are available on all of them (`Document.select()`, `Journal.get(...)`, ...).
 
 ### scixplorer.model.Model.select
 
@@ -54,7 +54,7 @@ Never loads missing values, and does not include relations.
 
 ## scixplorer.models.document.Document
 
-Written `scix.Document` after `import scixplorer as scix`.
+Written `Document` after `from scixplorer import *`.
 
 ```python
 Document(**values)
@@ -67,29 +67,29 @@ A document (paper, book, dataset, software, ...) in ADS / SciX.
 Search with `select` and `where`:
 
 ```python
-scix.Document.select(scix.Document.title).where(
-    (scix.Document.author[0] == "Casey, A") & scix.Document.year.between(2015, 2020)
-).order_by(scix.Document.citation_count.desc()).limit(10)
+Document.select(Document.title).where(
+    (Document.author[0] == "Casey, A") & Document.year.between(2015, 2020)
+).order_by(Document.citation_count.desc()).limit(10)
 ```
 
 Fields hold the values ADS returned; `None` means ADS had no value. Search-only fields (such as `full`) can be queried but not read.
 
-Deferred fields (`_deferred`): `ack`, `body`, `caption`, `citation`, `credit`, `mention` and `reference` are not fetched by a plain `scix.Document.select()`, because they are large (full text, or lists of bibcodes that can run to tens of thousands) and rarely needed. They are fetched when selected explicitly, or loaded on first access.
+Deferred fields (`_deferred`): `ack`, `body`, `caption`, `citation`, `credit`, `mention` and `reference` are not fetched by a plain `Document.select()`, because they are large (full text, or lists of bibcodes that can run to tens of thousands) and rarely needed. They are fetched when selected explicitly, or loaded on first access.
 
 Identity: a document is identified by the first of its identifiers (`_identifiers`: `bibcode`, `scix_id`, `id`) that has a value. Two documents are equal when that is the same field with the same value; a document with no identifier is equal only to itself.
 
-Lazy loading: reading a stored field that was not fetched sends one search request that loads it for every document of the same result page that lacks it, with a `scix.exceptions.LazyLoadWarning`. Documents are found by their identifier (in practice the bibcode; documents of the page identified by another field are loaded with one more request per field). The request is synchronous, even inside async code, so there select the fields you need. The identifiers (always fetched) and `score` (only meaningful for the query that produced the document) are never loaded this way, and a document with no identifier loads nothing.
+Lazy loading: reading a stored field that was not fetched sends one search request that loads it for every document of the same result page that lacks it, with a `exceptions.LazyLoadWarning`. Documents are found by their identifier (in practice the bibcode; documents of the page identified by another field are loaded with one more request per field). The request is synchronous, even inside async code, so there select the fields you need. The identifiers (always fetched) and `score` (only meaningful for the query that produced the document) are never loaded this way, and a document with no identifier loads nothing.
 
-Relations: `journal` (from the bibcode), `affiliation` (from `aff_id`), `uat` (from `uat_id`) and `planetary_feature` (from `planetary_feature_id`) give `scix.Journal`, `scix.Affiliation`, `scix.UATConcept` and `scix.PlanetaryFeature` objects, and can be searched by their fields (`scix.Document.journal.title.contains("astro")`), as can those models' fields directly (`scix.Journal.title.contains("astro")`). The last two need their data downloaded once (`scix.data.refresh("uat")`, `scix.data.refresh("planetary_features")`), except to match ids directly (`scix.Document.uat == 498`). Each such condition is about any related object; `.any(...)` makes several about the same one: `scix.Document.planetary_feature.any((scix.PlanetaryFeature.target == "Titan") & (scix.PlanetaryFeature.feature_type == "Mare"))`.
+Relations: `journal` (from the bibcode), `affiliation` (from `aff_id`), `uat` (from `uat_id`) and `planetary_feature` (from `planetary_feature_id`) give `Journal`, `Affiliation`, `UATConcept` and `PlanetaryFeature` objects, and can be searched by their fields (`Document.journal.title.contains("astro")`), as can those models' fields directly (`Journal.title.contains("astro")`). The last two need their data downloaded once (`data.refresh("uat")`, `data.refresh("planetary_features")`), except to match ids directly (`Document.uat == 498`). Each such condition is about any related object; `.any(...)` makes several about the same one: `Document.planetary_feature.any((PlanetaryFeature.target == "Titan") & (PlanetaryFeature.feature_type == "Mare"))`.
 
-Per-author conditions: `doc.authors` is one `scix.Author` per author (`.name`, `.aff`, `.affiliation`, `.email`, `.orcid`, ...), built from the per-author arrays `author`, `aff`, `aff_id`, `email` and the ORCID fields. In a search, everything inside one `scix.Document.authors.any(...)` (or `.all(...)`, every author) is about the same author, and an index picks a position:
+Per-author conditions: `doc.authors` is one `Author` per author (`.name`, `.aff`, `.affiliation`, `.email`, `.orcid`, ...), built from the per-author arrays `author`, `aff`, `aff_id`, `email` and the ORCID fields. In a search, everything inside one `Document.authors.any(...)` (or `.all(...)`, every author) is about the same author, and an index picks a position:
 
 ```python
-scix.Document.authors.any((scix.Author.name == "Casey, A") & (scix.Author.affiliation.country == "Australia"))
-scix.Document.authors[0].orcid == "0000-0002-1825-0097"
+Document.authors.any((Author.name == "Casey, A") & (Author.affiliation.country == "Australia"))
+Document.authors[0].orcid == "0000-0002-1825-0097"
 ```
 
-A single condition means the same as its shorthand: `scix.Document.authors[0].name == x` is `scix.Document.author[0] == x`, and `scix.Document.authors.any(scix.Author.affiliation.country == x)` is `scix.Document.affiliation.country == x`. A condition Solr cannot express exactly (several about one author at any position, or `all`) is sent as a necessary condition and checked on each returned document.
+A single condition means the same as its shorthand: `Document.authors[0].name == x` is `Document.author[0] == x`, and `Document.authors.any(Author.affiliation.country == x)` is `Document.affiliation.country == x`. A condition Solr cannot express exactly (several about one author at any position, or `all`) is sent as a necessary condition and checked on each returned document.
 
 Names: the Solr fields `uat` and `planetary_feature` (the names of the concepts and features as text) are `uat_name` and `planetary_feature_name` here, so that `uat` and `planetary_feature` can be the relations. Queries and `fl` use the Solr names (`Field.solr_name`).
 
@@ -103,7 +103,7 @@ citations(expr)
 
 Documents that cite the documents matching `expr`.
 
-`scix.Document.citations(scix.Document.bibcode == "2003AJ....125..525J")` finds the documents citing that one; `references` finds those it cites. See https://ui.adsabs.harvard.edu/help/search/citations-and-references.
+`Document.citations(Document.bibcode == "2003AJ....125..525J")` finds the documents citing that one; `references` finds those it cites. See https://ui.adsabs.harvard.edu/help/search/citations-and-references.
 
 **Parameters**
 
@@ -119,7 +119,7 @@ references(expr)
 
 Documents cited by the documents matching `expr`.
 
-`scix.Document.references(scix.Document.bibcode == "2003AJ....125..525J")` finds the documents that one cites; `citations` finds those citing it. See https://ui.adsabs.harvard.edu/help/search/citations-and-references.
+`Document.references(Document.bibcode == "2003AJ....125..525J")` finds the documents that one cites; `citations` finds those citing it. See https://ui.adsabs.harvard.edu/help/search/citations-and-references.
 
 **Parameters**
 
@@ -301,7 +301,7 @@ The first `n` documents matching `expr` (Solr `topn()`).
 
 - `n`: how many documents.
 - `expr`: an expression, or a Solr query string.
-- `order_by`: how to rank them before taking the first `n`: an `scix.expr.Order` such as `scix.Document.citation_count.desc()`, or a field handle (ascending). By default, by relevance.
+- `order_by`: how to rank them before taking the first `n`: an `scixplorer.expr.Order` such as `Document.citation_count.desc()`, or a field handle (ascending). By default, by relevance.
 
 ### scixplorer.models.document.Document.pos
 
@@ -313,7 +313,7 @@ pos(expr, start, end=None)
 
 Documents where `expr` matches at a position (1-indexed, inclusive) of a multivalued field.
 
-For authors prefer indexing: `scix.Document.author[0] == "Casey, A"` (first author) is `pos(author == ..., 1)`, and `scix.Document.author[0:3]` the first three. `pos` is for expressions written as Solr strings.
+For authors prefer indexing: `Document.author[0] == "Casey, A"` (first author) is `pos(author == ..., 1)`, and `Document.author[0:3]` the first three. `pos` is for expressions written as Solr strings.
 
 **Parameters**
 
@@ -339,9 +339,9 @@ in_(source)
 
 *class method*
 
-Documents in `source`: a `scix.Library`, or bibcodes.
+Documents in `source`: a `Library`, or bibcodes.
 
-A library is tested by ADS itself (`docs(library/<id>)`), without fetching its bibcodes. Anything else may be bibcode strings, documents, or iterables of them, and becomes `scix.Document.bibcode.in_(...)`.
+A library is tested by ADS itself (`docs(library/<id>)`), without fetching its bibcodes. Anything else may be bibcode strings, documents, or iterables of them, and becomes `Document.bibcode.in_(...)`.
 
 ### scixplorer.models.document.Document.not_in
 
@@ -355,7 +355,7 @@ Documents not in `source` (see `in_`).
 
 ## scixplorer.models.document.SearchQuery
 
-Written `scix.SearchQuery` after `import scixplorer as scix`.
+Written `SearchQuery` after `from scixplorer import *`.
 
 ```python
 SearchQuery(q, fl=None, sort=None, rows=None, start=0, fq=None)
@@ -363,7 +363,7 @@ SearchQuery(q, fl=None, sort=None, rows=None, start=0, fq=None)
 
 A document query from Solr parameters, for those who already have a query string.
 
-Returns `scix.Document.select(*fl).where(scix.Document.raw(q), ...)` with the order, limit and offset applied: a query like any other.
+Returns `Document.select(*fl).where(Document.raw(q), ...)` with the order, limit and offset applied: a query like any other.
 
 **Parameters**
 
@@ -376,7 +376,7 @@ Returns `scix.Document.select(*fl).where(scix.Document.raw(q), ...)` with the or
 
 ## scixplorer.models.library.Library
 
-Written `scix.Library` after `import scixplorer as scix`.
+Written `Library` after `from scixplorer import *`.
 
 ```python
 Library(**values)
@@ -386,11 +386,11 @@ Library(**values)
 
 An ADS library: a named collection of documents kept by ADS for a user.
 
-Find libraries with queries (`scix.Library.get(name="Gaia")`, `scix.Library.select().where(scix.Library.num_documents > 100)`), which list your libraries and filter them locally; a query pinning `scix.Library.id` fetches that library directly, so other users' public libraries work too. Create one with `create`. Every other change is an explicit method making one API call (`update`, `add`, `remove`, `empty`, `delete`, set operations, permissions); nothing is saved implicitly, and assigning to a field only changes the local object.
+Find libraries with queries (`Library.get(name="Gaia")`, `Library.select().where(Library.num_documents > 100)`), which list your libraries and filter them locally; a query pinning `Library.id` fetches that library directly, so other users' public libraries work too. Create one with `create`. Every other change is an explicit method making one API call (`update`, `add`, `remove`, `empty`, `delete`, set operations, permissions); nothing is saved implicitly, and assigning to a field only changes the local object.
 
 Metadata fields missing from the object (for example after `create`) are fetched together, once, on first access. `bibcodes` is fetched on first access and cached until a method changes the documents. Fields the server maintains (such as `date_last_modified`) are not updated locally by the methods; call `refresh` for that.
 
-Requests are sent with the `client=` argument of a method if given, else with the client in the `client` attribute (`None` unless set by the user, or by `create` and the set operations when given a client), else with `scix.get_default_client`. Lazy loading and `bibcodes` use the attribute or the default. Libraries returned by a query do not remember the query's client: set `library.client` if needed.
+Requests are sent with the `client=` argument of a method if given, else with the client in the `client` attribute (`None` unless set by the user, or by `create` and the set operations when given a client), else with `get_default_client`. Lazy loading and `bibcodes` use the attribute or the default. Libraries returned by a query do not remember the query's client: set `library.client` if needed.
 
 ### scixplorer.models.library.Library.create
 
@@ -504,7 +504,7 @@ Create a library holding the documents in this library but in none of `libraries
 copy_to(library, *, client=None)
 ```
 
-Add this library's documents to `library` (a `scix.Library` or an id).
+Add this library's documents to `library` (a `Library` or an id).
 
 ### scixplorer.models.library.Library.get_permissions
 
@@ -558,7 +558,7 @@ Whether a document (a bibcode or an object with a `bibcode`) is in the library.
 
 ## scixplorer.models.journal.Journal
 
-Written `scix.Journal` after `import scixplorer as scix`.
+Written `Journal` after `from scixplorer import *`.
 
 ```python
 Journal(**values)
@@ -571,8 +571,8 @@ A journal or other publication series, identified by its ADS abbreviation (bibst
 Journals are held in memory and queried locally:
 
 ```python
-scix.Journal.get(abbreviation="ApJ").title
-scix.Journal.select().where(scix.Journal.title.contains("astro")).order_by(scix.Journal.title)
+Journal.get(abbreviation="ApJ").title
+Journal.select().where(Journal.title.contains("astro")).order_by(Journal.title)
 ```
 
 ### scixplorer.models.journal.Journal.lookup
@@ -587,7 +587,7 @@ The journal with this abbreviation, or `None`. Constant time.
 
 ## scixplorer.models.affiliation.Affiliation
 
-Written `scix.Affiliation` after `import scixplorer as scix`.
+Written `Affiliation` after `from scixplorer import *`.
 
 ```python
 Affiliation(**values)
@@ -600,7 +600,7 @@ An institution, identified by its ADS canonical affiliation id (e.g. `'A00211'`)
 Affiliations are held in memory and queried locally:
 
 ```python
-scix.Affiliation.select().where(scix.Affiliation.country_code == "AU").order_by(scix.Affiliation.abbreviation)
+Affiliation.select().where(Affiliation.country_code == "AU").order_by(Affiliation.abbreviation)
 ```
 
 Countries are spelled out as the upstream data spells them ("United States", "United Kingdom"), and those spellings can change between releases of the data; `country == "USA"` simply matches nothing. Filter on `country_code` (ISO 3166-1 alpha-2, e.g. "US") for a stable condition.
@@ -643,7 +643,7 @@ A query for the other institutions sharing at least one parent with this one.
 
 ## scixplorer.models.uat.UATConcept
 
-Written `scix.UATConcept` after `import scixplorer as scix`.
+Written `UATConcept` after `from scixplorer import *`.
 
 ```python
 UATConcept(**values)
@@ -653,11 +653,11 @@ UATConcept(**values)
 
 A concept of the Unified Astronomy Thesaurus, identified by its number (e.g. `486`).
 
-Concepts are held in memory and queried locally once the thesaurus has been downloaded (`refresh("uat")` in `scix.data`):
+Concepts are held in memory and queried locally once the thesaurus has been downloaded (`refresh("uat")` in `data`):
 
 ```python
-scix.UATConcept.lookup(486).name
-scix.UATConcept.select().where(scix.UATConcept.name == "exoplanets").order_by(scix.UATConcept.name)
+UATConcept.lookup(486).name
+UATConcept.select().where(UATConcept.name == "exoplanets").order_by(UATConcept.name)
 ```
 
 Concepts form a hierarchy in which a concept may have several broader concepts: see `parents`, `children`, `ancestors` and `descendants`. `name` and `alt_names` are matched like SciX text (`==` finds the words as a phrase, ignoring case; use `.exact()` for the whole name).
@@ -698,7 +698,7 @@ Every narrower concept, nearest first, each once; safe if the data has cycles.
 
 ## scixplorer.models.planetary.PlanetaryFeature
 
-Written `scix.PlanetaryFeature` after `import scixplorer as scix`.
+Written `PlanetaryFeature` after `from scixplorer import *`.
 
 ```python
 PlanetaryFeature(**values)
@@ -708,12 +708,12 @@ PlanetaryFeature(**values)
 
 A named feature on a planet, moon or small body, identified by its gazetteer id (e.g. `2071`, Gale crater).
 
-Features are held in memory and queried locally once the gazetteer has been downloaded (`refresh("planetary_features")` in `scix.data`):
+Features are held in memory and queried locally once the gazetteer has been downloaded (`refresh("planetary_features")` in `data`):
 
 ```python
-scix.PlanetaryFeature.select().where(
-    (scix.PlanetaryFeature.target == "Mars") & (scix.PlanetaryFeature.feature_type == "Crater")
-).order_by(scix.PlanetaryFeature.name)
+PlanetaryFeature.select().where(
+    (PlanetaryFeature.target == "Mars") & (PlanetaryFeature.feature_type == "Crater")
+).order_by(PlanetaryFeature.name)
 ```
 
 `name` is matched like SciX text (`==` finds the words as a phrase, ignoring case, so `name == "Olympus"` also finds "Olympus Mons"; use `.exact("Olympus Mons")` for the whole name). The other text fields are matched exactly, including case.
@@ -730,7 +730,7 @@ The feature with this id (an int, or a string of digits), or `None`. Constant ti
 
 ## scixplorer.models.author.Author
 
-Written `scix.Author` after `import scixplorer as scix`.
+Written `Author` after `from scixplorer import *`.
 
 ```python
 Author(**values)
@@ -738,13 +738,13 @@ Author(**values)
 
 *class*
 
-One author of a `scix.Document`, from `doc.authors`.
+One author of a `Document`, from `doc.authors`.
 
-Values come from entry `position` of the document's per-author arrays; `"-"` (ADS's "none") and missing entries give `None` (an empty list for `aff_id`). Authors are not searched on their own: use their fields inside `scix.Document.authors.any(...)` / `.all(...)`, where everything is about one author.
+Values come from entry `position` of the document's per-author arrays; `"-"` (ADS's "none") and missing entries give `None` (an empty list for `aff_id`). Authors are not searched on their own: use their fields inside `Document.authors.any(...)` / `.all(...)`, where everything is about one author.
 
 ## scixplorer.expr.days_ago
 
-Written `scix.days_ago` after `import scixplorer as scix`.
+Written `days_ago` after `from scixplorer import *`.
 
 ```python
 days_ago(n)
@@ -754,7 +754,7 @@ The time `n` days before now, as evaluated by Solr.
 
 ## scixplorer.expr.now
 
-Written `scix.now` after `import scixplorer as scix`.
+Written `now` after `from scixplorer import *`.
 
 ```python
 now()
@@ -764,7 +764,7 @@ The current time, as evaluated by Solr.
 
 ## scixplorer.search.to_solr
 
-Written `scix.search.to_solr` after `import scixplorer as scix`.
+Written `search.to_solr` after `from scixplorer import *`.
 
 ```python
 to_solr(query_or_expr)
@@ -772,11 +772,11 @@ to_solr(query_or_expr)
 
 The Solr `q` string that a document query (or a filter expression) sends.
 
-For a search sent to `/search/bigquery` this is the query applied to the uploaded bibcodes, without them; for one with a per-record condition checked client-side, it holds only that condition's necessary part. A filter that can never match gives the query matching nothing. Raises `scix.exceptions.UnsupportedQueryError` if the query needs the bibcodes of a library (`library_membership="bibcodes"`).
+For a search sent to `/search/bigquery` this is the query applied to the uploaded bibcodes, without them; for one with a per-record condition checked client-side, it holds only that condition's necessary part. A filter that can never match gives the query matching nothing. Raises `exceptions.UnsupportedQueryError` if the query needs the bibcodes of a library (`library_membership="bibcodes"`).
 
 ## scixplorer.search.plan
 
-Written `scix.search.plan` after `import scixplorer as scix`.
+Written `search.plan` after `from scixplorer import *`.
 
 ```python
 plan(query, *, library_bibcodes=None)
@@ -784,4 +784,4 @@ plan(query, *, library_bibcodes=None)
 
 Plan `query`: decide the request parameters without performing any I/O.
 
-With `scix.config.library_membership == "bibcodes"`, `library_bibcodes` must map the id of every library in the filter to its bibcodes (the backend fetches them). Raises `scix.exceptions.QueryError` (or its subclass `scix.exceptions.UnsupportedQueryError`) for a query that cannot be sent, and `ValueError` for an invalid configuration.
+With `config.library_membership == "bibcodes"`, `library_bibcodes` must map the id of every library in the filter to its bibcodes (the backend fetches them). Raises `exceptions.QueryError` (or its subclass `exceptions.UnsupportedQueryError`) for a query that cannot be sent, and `ValueError` for an invalid configuration.

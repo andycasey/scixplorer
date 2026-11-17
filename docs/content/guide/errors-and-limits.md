@@ -15,7 +15,7 @@ simulated responses; how the server answers some requests is still to be confirm
 
 ## Exceptions
 
-Every exception scixplorer raises derives from `scix.exceptions.SciXError`, so one `except` clause can
+Every exception scixplorer raises derives from `exceptions.SciXError`, so one `except` clause can
 catch them all:
 
 | Exception | Derives from | Raised when |
@@ -24,7 +24,7 @@ catch them all:
 | `QueryError` | `SciXError` | a condition is malformed: a value of the wrong type, a field that cannot be searched or sorted, a bad position |
 | `UnsupportedQueryError` | `QueryError` | the condition is valid, but no search can carry it (see the limits below) |
 | `NotLocallyEvaluable` | `QueryError` | a condition the client must check in Python (on a journal, an affiliation, a vocabulary, or an author) uses something only SciX can evaluate |
-| `DoesNotExist` | `SciXError`, `LookupError` | `get()` found nothing; each model has its own subclass, such as `scix.Document.DoesNotExist` |
+| `DoesNotExist` | `SciXError`, `LookupError` | `get()` found nothing; each model has its own subclass, such as `Document.DoesNotExist` |
 | `APIError` | `SciXError` | SciX answered with an error, or with a response of an unexpected shape, or could not be reached |
 | `AuthenticationError` | `APIError` | there is no token, or SciX rejected it (HTTP 401 or 403) |
 | `RateLimitExceeded` | `APIError` | the rate limit for a service is used up (HTTP 429) |
@@ -41,14 +41,14 @@ Two warnings, which are not errors:
 response, or `None`). The message gives the method, the path and SciX's own explanation:
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-query = scix.Document.select().where(scix.Document.year == 2015)
+query = Document.select().where(Document.year == 2015)
 try:
     papers = query.all()
-except scix.exceptions.AuthenticationError:
+except exceptions.AuthenticationError:
     print("check your API token")
-except scix.exceptions.APIError as error:
+except exceptions.APIError as error:
     print(error.status_code, error.message)
 ```
 
@@ -58,7 +58,7 @@ SciX limits how many requests each token may send to each service per day. After
 client records what SciX reported, by service, in the client's `rate_limits`:
 
 ```python
-client = scix.get_default_client()
+client = get_default_client()
 client.rate_limits["search/query"]
 # -> RateLimit(limit=5000
 ```
@@ -74,7 +74,7 @@ response has reported no remaining requests for a service, later requests to tha
 ```python
 try:
     papers = query.all()
-except scix.exceptions.RateLimitExceeded as error:
+except exceptions.RateLimitExceeded as error:
     print(f"rate limited until {error.reset}")
 ```
 
@@ -83,8 +83,8 @@ documents, and select the fields you need to avoid [lazy loading]({{< ref "guide
 
 ## Retries
 
-A request that fails for a transient reason is sent again, up to `scix.config.max_retries` times (3 by
-default). The first retry waits `scix.config.retry_backoff` seconds (1.0 by default), and each later one
+A request that fails for a transient reason is sent again, up to `config.max_retries` times (3 by
+default). The first retry waits `config.retry_backoff` seconds (1.0 by default), and each later one
 twice as long as the one before.
 
 | Request | Retried after a timeout, a lost connection or HTTP 502/503/504 |
@@ -93,7 +93,7 @@ twice as long as the one before.
 | Library changes that SciX may already have applied: `create`, `add`, `remove`, `union`, `intersection`, `difference`, `copy_to`, `transfer` | only if the connection could not be made at all |
 
 These are never retried: HTTP 429 (see above), HTTP 401 and 403, any other 4xx, and HTTP 500. They raise
-at once. `scix.config.timeout` (30 seconds by default) limits each attempt.
+at once. `config.timeout` (30 seconds by default) limits each attempt.
 
 ## Limits on what a search can contain
 
@@ -105,7 +105,7 @@ that matches more raises `UnsupportedQueryError` when the search is planned:
 
 <!-- docs-test: raises UnsupportedQueryError -->
 ```python
-scix.Document.select().where(scix.Document.affiliation.country_code == "US").count()
+Document.select().where(Document.affiliation.country_code == "US").count()
 ```
 
 ```text
@@ -117,25 +117,25 @@ Narrow the condition, or split the search into several.
 
 ### Large sets of bibcodes
 
-Up to 50 bibcodes (`scix.config.max_inline_bibcodes`) are sent in the query string. A larger set is handled
+Up to 50 bibcodes (`config.max_inline_bibcodes`) are sent in the query string. A larger set is handled
 in one of two ways, depending on where it is:
 
 | Where the set is | What is sent |
 |---|---|
 | joined to the rest of the search with `&` | the bibcodes are uploaded to `/search/bigquery`, and the rest of the search filters them |
-| negated and joined with `&` (`scix.Document.not_in(...)`) | the rest of the search is sent, and the client drops the excluded bibcodes as results arrive |
+| negated and joined with `&` (`Document.not_in(...)`) | the rest of the search is sent, and the client drops the excluded bibcodes as results arrive |
 | inside `\|`, a nested `~`, or an operator | nothing: `UnsupportedQueryError` |
 
 ```python
 many = [f"2020ApJ...{900 + i}....1A" for i in range(60)]
-print(scix.Document.select(scix.Document.bibcode).where(scix.Document.in_(many) & (scix.Document.year > 2000)).explain())
+print(Document.select(Document.bibcode).where(Document.in_(many) & (Document.year > 2000)).explain())
 # -> POST /search/bigquery
 # -> searching /search/bigquery with 60 bibcode(s)
 ```
 
 When the client drops results itself, it also applies `offset()` and `limit()`, and `count()` pages through
 the results. If you need a large set inside a more complex condition, put the documents in a
-[library]({{< ref "guide/libraries" >}}) and use `scix.Document.in_(library)`, which SciX evaluates itself.
+[library]({{< ref "guide/libraries" >}}) and use `Document.in_(library)`, which SciX evaluates itself.
 
 ### Conditions checked by the client
 
@@ -148,11 +148,11 @@ raise `UnsupportedQueryError` with an explanation of how to restructure the sear
 
 A search whose only conditions are checked by the client would make SciX return every document in its
 index for the client to check. The client refuses such a search when it is planned, from `explain()`,
-`count()`, iteration, `first()` and `scix.search.to_solr()` alike:
+`count()`, iteration, `first()` and `search.to_solr()` alike:
 
 <!-- docs-test: raises UnsupportedQueryError -->
 ```python
-scix.Document.select().where(scix.Document.not_in(many)).first()
+Document.select().where(Document.not_in(many)).first()
 ```
 
 ```text
@@ -168,11 +168,11 @@ but a positive set of bibcodes uploaded to `/search/bigquery` does. Here an auth
 the excluded set is applied as results arrive:
 
 ```python
-scix.search.to_solr(scix.Document.not_in(many) & (scix.Document.author == "Hogg, D"))
+search.to_solr(Document.not_in(many) & (Document.author == "Hogg, D"))
 # -> author:"Hogg, D"
 ```
 
 ### Pages
 
-The client requests `scix.config.page_size` documents per request (200 by default). SciX returns at most
+The client requests `config.page_size` documents per request (200 by default). SciX returns at most
 2000 per request, so a larger setting is treated as 2000.

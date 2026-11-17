@@ -9,15 +9,15 @@ external resources of a document, get the data behind SciX's author and paper ne
 your set of papers probably should cite.
 
 Each service is a function that sends one request. They take documents in the same forms everywhere: any
-mix of bibcodes, `scix.Document` objects, `scix.Library` objects (their bibcodes), and lists or queries of
-these. Each also takes `client=` to use a particular `scix.Client`.
+mix of bibcodes, `Document` objects, `Library` objects (their bibcodes), and lists or queries of
+these. Each also takes `client=` to use a particular `Client`.
 
 ## Export
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-print(scix.export.bibtex("2015ApJ...808...16N", "2013PASP..125..306F"))
+print(export.bibtex("2015ApJ...808...16N", "2013PASP..125..306F"))
 # -> @ARTICLE{2015ApJ...808...16N,
 ```
 
@@ -40,7 +40,7 @@ The options:
 
 | Option | Meaning |
 |---|---|
-| `sort` | `None` (the default) asks SciX for no sort; a string such as `"date desc"` or a sort key such as `scix.Document.year.desc()` sorts; `False` sends no sort parameter |
+| `sort` | `None` (the default) asks SciX for no sort; a string such as `"date desc"` or a sort key such as `Document.year.desc()` sorts; `False` sends no sort parameter |
 | `max_author` | the most authors listed before the list is cut short |
 | `author_cutoff` | records with more authors than this list only `max_author` of them |
 | `key_format` | how BibTeX keys are built, for example `"%1H:%Y"` gives `Accomazzi:2019`; add `%zm` to number duplicate keys. `None` uses the bibcode |
@@ -49,51 +49,51 @@ The options:
 | `format` (`csl`) | 1: Unicode, 2: HTML, 3: LaTeX |
 
 ```python
-papers = scix.Document.select(scix.Document.bibcode).where(scix.Document.author == "Hogg, D")
-text = scix.export.bibtex(papers, max_author=3, key_format="%1H:%Y", sort=scix.Document.year.desc())
+papers = Document.select(Document.bibcode).where(Document.author == "Hogg, D")
+text = export.bibtex(papers, max_author=3, key_format="%1H:%Y", sort=Document.year.desc())
 ```
 
 ## Links to full text and data
 
-`scix.resolver.external_resources(document)` lists every kind of external resource SciX knows for one
+`resolver.external_resources(document)` lists every kind of external resource SciX knows for one
 document (full text from the publisher or arXiv, data archives, and so on). Each entry is a dict with keys
 such as `type`, `title`, `url` and `count`:
 
 ```python
-resources = scix.resolver.external_resources("2015ApJ...808...16N")
+resources = resolver.external_resources("2015ApJ...808...16N")
 [resource["type"] for resource in resources]
 # -> 'esource'
 ```
 
-`scix.resolver.external_resource(document, link_type)` returns the resolver's answer for one kind, as
+`resolver.external_resource(document, link_type)` returns the resolver's answer for one kind, as
 SciX sends it: with one link, a dict with `"action": "redirect"` and the `link`; with several, `"action":
-"display"` and the `links`. `link_type` is one of `scix.resolver.LINK_TYPES`, such as `"esource"` (all
+"display"` and the `links`. `link_type` is one of `resolver.LINK_TYPES`, such as `"esource"` (all
 full-text sources), `"pub_pdf"`, `"eprint_pdf"` or `"data"`:
 
 ```python
-answer = scix.resolver.external_resource("2015ApJ...808...16N", "esource")
+answer = resolver.external_resource("2015ApJ...808...16N", "esource")
 answer["action"]
 # -> redirect
 ```
 
 ## Network visualisations
 
-`scix.vis.author_network(*documents)` and `scix.vis.paper_network(*documents)` return the data SciX uses
+`vis.author_network(*documents)` and `vis.paper_network(*documents)` return the data SciX uses
 to draw its [author and paper networks](https://ui.adsabs.harvard.edu/help/actions/visualize), as SciX
 sends it, ready for a graph library such as D3:
 
 ```python
-network = scix.vis.author_network(scix.Library.get(name="Data-driven spectroscopy"))
+network = vis.author_network(Library.get(name="Data-driven spectroscopy"))
 ```
 
 ## Citation suggestions
 
-`scix.citation_helper(*documents)` suggests up to ten papers that the given documents probably should cite:
+`citation_helper(*documents)` suggests up to ten papers that the given documents probably should cite:
 papers that cite or are cited by them but are not among them. Each suggestion is a dict with `bibcode`,
 `score` (an integer), `title` and `author` (each a single string, not a list as in search results):
 
 ```python
-suggestions = scix.citation_helper("2015ApJ...808...16N", "2016arXiv160303040C")
+suggestions = citation_helper("2015ApJ...808...16N", "2016arXiv160303040C")
 [suggestion["bibcode"] for suggestion in suggestions]
 # -> ['2013PASP..125..306F']
 ```
@@ -101,5 +101,5 @@ suggestions = scix.citation_helper("2015ApJ...808...16N", "2016arXiv160303040C")
 ## Not covered
 
 The metrics service, myADS notifications and the other SciX services that are not listed above have no
-functions in scixplorer yet. Their responses would come straight from SciX, so a `scix.Client` can send
+functions in scixplorer yet. Their responses would come straight from SciX, so a `Client` can send
 the request if you need one now (see [How it works]({{< ref "guide/how-it-works#sending-your-own-requests" >}})).

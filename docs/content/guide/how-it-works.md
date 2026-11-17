@@ -13,9 +13,9 @@ to read the output of `explain()`.
 Comparing a field builds a small, immutable tree of nodes. Nothing is sent and nothing is compiled yet:
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-condition = (scix.Document.author[0] == "Ness, M") & scix.Document.year.between(2015, 2020)
+condition = (Document.author[0] == "Ness, M") & Document.year.between(2015, 2020)
 condition
 # -> And(operands=(Func(name='pos', args=(Match(field=<NameField Document.author>, value='Ness, M', exact=False), 1, 1)), Range(field=<IntegerField Document.year>, lo=2015, hi=2020, include_lo=True, include_hi=True)))
 ```
@@ -26,16 +26,18 @@ on text), and checks values as the tree is built. Expressions have no truth valu
 
 ## 2. Two interpreters
 
-The same tree can be read two ways:
+The same tree can be read two ways, by two internal modules:
 
-- `scix.solr.compile()` turns it into a Solr query string. It is the only place that knows Solr's quoting,
+- `solr.compile()` turns it into a Solr query string. It is the only place that knows Solr's quoting,
   escaping and range syntax.
-- `scix.evaluate.matches()` evaluates it in Python against an object.
+- `evaluate.matches()` evaluates it in Python against an object.
 
 ```python
-scix.solr.compile(condition)
+from scixplorer import evaluate, solr
+
+solr.compile(condition)
 # -> pos(author:"Ness, M", 1) AND year:[2015 TO 2020]
-scix.evaluate.matches(scix.Journal.title.contains("astrophysical"), scix.Journal.lookup("ApJ"))
+evaluate.matches(Journal.title.contains("astrophysical"), Journal.lookup("ApJ"))
 # -> True
 ```
 
@@ -44,15 +46,15 @@ Python interpreter, because they are held in memory. Documents are searched by S
 
 ## 3. The planner
 
-Before a document search is compiled, a planner (`scix.search.plan`) rewrites it, in this order:
+Before a document search is compiled, a planner (`search.plan`) rewrites it, in this order:
 
-1. A condition on another model's field, such as `scix.Journal.title == "Icarus"`, is attached to the
+1. A condition on another model's field, such as `Journal.title == "Icarus"`, is attached to the
    document relation that leads to that model.
 2. Each relation condition is evaluated in Python against the related model, and replaced by the matching
    identifiers: journal titles become `bibstem` values, affiliations become `aff_id` values, concepts and
    features become `uat_id` and `planetary_feature_id` values. At most 1000 are allowed.
 3. Library membership is left to SciX (`docs(library/<id>)`), or, with
-   `scix.config.library_membership = "bibcodes"`, replaced by the library's bibcodes.
+   `config.library_membership = "bibcodes"`, replaced by the library's bibcodes.
 4. The tree is simplified. A condition that can never match ends the planning: no request is sent.
    Then each [per-author condition]({{< ref "guide/authors#where-conditions-are-checked" >}}) is translated
    into a condition on the document's per-author lists, exactly where possible; otherwise a necessary
@@ -66,7 +68,7 @@ Before a document search is compiled, a planner (`scix.search.plan`) rewrites it
 The plan is pure: given the same query and configuration, it gives the same result without any I/O.
 
 ```python
-plan = scix.search.plan(scix.Document.select(scix.Document.bibcode).where(condition).limit(5))
+plan = search.plan(Document.select(Document.bibcode).where(condition).limit(5))
 plan.q
 # -> pos(author:"Ness, M", 1) AND year:[2015 TO 2020]
 plan.request(0, 5)
@@ -78,7 +80,7 @@ plan.request(0, 5)
 ## 4. Sending requests
 
 The code that runs a search never performs I/O itself. It yields request descriptions and receives
-responses, one page at a time. A small driver sends each request with a `scix.Client`, either
+responses, one page at a time. A small driver sends each request with a `Client`, either
 synchronously or asynchronously, so paging and result handling are written once and work both ways. This
 is why every query has both `all()` and `aall()`.
 
@@ -101,17 +103,19 @@ exceptions (see [Errors and limits]({{< ref "guide/errors-and-limits" >}})).
 | `/vis/author-network`, `/vis/paper-network` | POST | network data |
 | `/citation_helper` | POST | citation suggestions |
 
-Paths are relative to `scix.config.api_url`, `https://api.scixplorer.org/v1` by default.
+Paths are relative to `config.api_url`, `https://api.scixplorer.org/v1` by default.
 
 ## Sending your own requests
 
-For an endpoint scixplorer does not wrap, send a `scix.client.Request` with a client. You get the token,
-retries, rate-limit tracking and error handling, and a `scix.client.Response` whose `data` is the parsed
+For an endpoint scixplorer does not wrap, send a `Request` from `scixplorer.client` with a client. You get the token,
+retries, rate-limit tracking and error handling, and a `Response` whose `data` is the parsed
 JSON:
 
 ```python
-request = scix.client.Request("GET", "/resolver/2015ApJ...808...16N")
-response = scix.get_default_client().send(request)
+from scixplorer.client import Request
+
+request = Request("GET", "/resolver/2015ApJ...808...16N")
+response = get_default_client().send(request)
 response.status_code
 # -> 200
 ```

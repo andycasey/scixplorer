@@ -44,7 +44,7 @@ def test_generated_pages_start_with_front_matter_and_the_marker() -> None:
 
 def test_cheat_sheet_has_enough_rows() -> None:
     text = (REFERENCE / "expressions.md").read_text(encoding="utf-8")
-    rows = [line for line in text.splitlines() if line.startswith("| `scix.")]
+    rows = [line for line in text.splitlines() if re.match(r"\| `[A-Z]\w*\.", line)]
     assert len(rows) >= 60
 
 
@@ -56,7 +56,9 @@ def test_generated_pages_describe_a_single_token() -> None:
         assert not pattern.search(text), relative
 
 
-def test_generated_examples_import_the_package_as_scix() -> None:
+def test_generated_examples_star_import_the_package() -> None:
     for relative in GENERATED:
         text = (REFERENCE / relative).read_text(encoding="utf-8")
-        assert not re.search(r"^\s*from scixplorer\b|^\s*import scixplorer(?! as scix)", text, re.M), relative
+        assert not re.search(r"^\s*import scixplorer\b", text, re.M), relative
+        for match in re.finditer(r"^\s*from scixplorer import (?P<names>.+)$", text, re.M):
+            assert match.group("names").strip() == "*", (relative, match.group(0))

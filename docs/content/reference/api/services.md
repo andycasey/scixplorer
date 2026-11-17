@@ -10,16 +10,16 @@ description: "Export, resolver, visualisation networks and the citation helper."
 
 The ADS export service: citations for documents in BibTeX and other formats.
 
-Every function takes any mix of bibcodes, documents and libraries, or iterables of them (see `scix.utils.to_bibcodes`), sends one request to `/export/<format>` and returns the exported text:
+Every function takes any mix of bibcodes, documents and libraries, or iterables of them (see `utils.to_bibcodes`), sends one request to `/export/<format>` and returns the exported text:
 
 ```python
-import scixplorer as scix
-print(scix.export.bibtex("2015ApJ...808...16N", library, sort="date desc"))
+from scixplorer.services import export
+print(export.bibtex("2015ApJ...808...16N", library, sort="date desc"))
 ```
 
 ### scixplorer.services.export.aastex
 
-Written `scix.export.aastex` after `import scixplorer as scix`.
+Written `export.aastex` after `from scixplorer import *`.
 
 ```python
 aastex(*documents, journal_format=1, sort=None, client=None)
@@ -31,7 +31,7 @@ Export documents in AASTeX format.
 
 ### scixplorer.services.export.ads
 
-Written `scix.export.ads` after `import scixplorer as scix`.
+Written `export.ads` after `from scixplorer import *`.
 
 ```python
 ads(*documents, sort=None, client=None)
@@ -41,12 +41,12 @@ Export documents in the ADS generic tagged format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.bibtex
 
-Written `scix.export.bibtex` after `import scixplorer as scix`.
+Written `export.bibtex` after `from scixplorer import *`.
 
 ```python
 bibtex(*documents, max_author=10, author_cutoff=200, key_format=None, journal_format=1, sort=None, client=None)
@@ -60,12 +60,12 @@ Export documents as BibTeX.
 - `author_cutoff`: records with more authors than this list only `max_author`.
 - `key_format`: how citation keys are built from the first authors' last names (`%1H`, `%2H`, ...), year (`%Y`), journal (`%q`) and bibcode, for example `"%1H:%Y"` -&gt; `Accomazzi:2019`. Add `%zm` to have duplicate keys enumerated; without it duplicates are kept. `None` uses the bibcode.
 - `journal_format`: how journal names are written, one of `JOURNAL_FORMATS`: 1 = AASTeX macros where they exist, else the full name; 2 = abbreviations; 3 = full names.
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.bibtexabs
 
-Written `scix.export.bibtexabs` after `import scixplorer as scix`.
+Written `export.bibtexabs` after `from scixplorer import *`.
 
 ```python
 bibtexabs(*documents, max_author=0, author_cutoff=200, key_format=None, journal_format=1, sort=None, client=None)
@@ -77,7 +77,7 @@ The options are those of `bibtex`. The default `max_author` differs because the 
 
 ### scixplorer.services.export.csl
 
-Written `scix.export.csl` after `import scixplorer as scix`.
+Written `export.csl` after `from scixplorer import *`.
 
 ```python
 csl(*documents, style, format, journal_format=None, sort=None, client=None)
@@ -95,7 +95,7 @@ Export documents in a Citation Style Language style.
 
 ### scixplorer.services.export.custom
 
-Written `scix.export.custom` after `import scixplorer as scix`.
+Written `export.custom` after `from scixplorer import *`.
 
 ```python
 custom(*documents, format, client=None)
@@ -112,7 +112,7 @@ There is no `sort`: ADS answers `/export/custom` with HTTP 500 when given `sort=
 
 ### scixplorer.services.export.dcxml
 
-Written `scix.export.dcxml` after `import scixplorer as scix`.
+Written `export.dcxml` after `from scixplorer import *`.
 
 ```python
 dcxml(*documents, sort=None, client=None)
@@ -122,12 +122,12 @@ Export documents in Dublin Core (DC) XML format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.endnote
 
-Written `scix.export.endnote` after `import scixplorer as scix`.
+Written `export.endnote` after `from scixplorer import *`.
 
 ```python
 endnote(*documents, sort=None, client=None)
@@ -137,12 +137,12 @@ Export documents in EndNote format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.icarus
 
-Written `scix.export.icarus` after `import scixplorer as scix`.
+Written `export.icarus` after `from scixplorer import *`.
 
 ```python
 icarus(*documents, sort=None, client=None)
@@ -152,12 +152,12 @@ Export documents in Icarus format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.ieee
 
-Written `scix.export.ieee` after `import scixplorer as scix`.
+Written `export.ieee` after `from scixplorer import *`.
 
 ```python
 ieee(*documents, sort=None, client=None)
@@ -167,12 +167,12 @@ Export documents in IEEE format (Unicode).
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.medlars
 
-Written `scix.export.medlars` after `import scixplorer as scix`.
+Written `export.medlars` after `from scixplorer import *`.
 
 ```python
 medlars(*documents, sort=None, client=None)
@@ -182,12 +182,12 @@ Export documents in MEDLARS format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.mnras
 
-Written `scix.export.mnras` after `import scixplorer as scix`.
+Written `export.mnras` after `from scixplorer import *`.
 
 ```python
 mnras(*documents, sort=None, client=None)
@@ -197,12 +197,12 @@ Export documents in Monthly Notices of the Royal Astronomical Society format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.procite
 
-Written `scix.export.procite` after `import scixplorer as scix`.
+Written `export.procite` after `from scixplorer import *`.
 
 ```python
 procite(*documents, sort=None, client=None)
@@ -212,12 +212,12 @@ Export documents in ProCite format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.refabsxml
 
-Written `scix.export.refabsxml` after `import scixplorer as scix`.
+Written `export.refabsxml` after `from scixplorer import *`.
 
 ```python
 refabsxml(*documents, sort=None, client=None)
@@ -227,12 +227,12 @@ Export documents in REFABS-XML format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.refworks
 
-Written `scix.export.refworks` after `import scixplorer as scix`.
+Written `export.refworks` after `from scixplorer import *`.
 
 ```python
 refworks(*documents, sort=None, client=None)
@@ -242,12 +242,12 @@ Export documents in RefWorks format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.refxml
 
-Written `scix.export.refxml` after `import scixplorer as scix`.
+Written `export.refxml` after `from scixplorer import *`.
 
 ```python
 refxml(*documents, sort=None, client=None)
@@ -257,12 +257,12 @@ Export documents in REF-XML format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.ris
 
-Written `scix.export.ris` after `import scixplorer as scix`.
+Written `export.ris` after `from scixplorer import *`.
 
 ```python
 ris(*documents, sort=None, client=None)
@@ -272,12 +272,12 @@ Export documents in RIS (Refman) format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.soph
 
-Written `scix.export.soph` after `import scixplorer as scix`.
+Written `export.soph` after `from scixplorer import *`.
 
 ```python
 soph(*documents, sort=None, client=None)
@@ -287,12 +287,12 @@ Export documents in Solar Physics (SoPh) format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.votable
 
-Written `scix.export.votable` after `import scixplorer as scix`.
+Written `export.votable` after `from scixplorer import *`.
 
 ```python
 votable(*documents, sort=None, client=None)
@@ -302,8 +302,8 @@ Export documents in VOTable format.
 
 **Parameters**
 
-- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scix.expr.Order` such as `scix.Document.year.desc()` sorts; `False` sends no `sort` at all.
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `sort`: `None` (the default) sends ADS `"no sort"`; a string such as `"citation_count desc"` or an `scixplorer.expr.Order` such as `Document.year.desc()` sorts; `False` sends no `sort` at all.
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.export.JOURNAL_FORMATS
 
@@ -337,7 +337,7 @@ These are the full text (publisher, arXiv, scans), data archives, and other page
 
 ### scixplorer.services.resolver.external_resources
 
-Written `scix.resolver.external_resources` after `import scixplorer as scix`.
+Written `resolver.external_resources` after `from scixplorer import *`.
 
 ```python
 external_resources(document, *, client=None)
@@ -348,13 +348,13 @@ Return every external resource ADS knows for one document.
 **Parameters**
 
 - `document`: a bibcode, or an object with a `bibcode` (a document).
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `client`: the `Client` to use (default: `get_default_client`).
 
 **Returns** one dict per kind of resource, with keys such as `type` (a link type), `title`, `url` and `count`.
 
 ### scixplorer.services.resolver.external_resource
 
-Written `scix.resolver.external_resource` after `import scixplorer as scix`.
+Written `resolver.external_resource` after `from scixplorer import *`.
 
 ```python
 external_resource(document, link_type, *, client=None)
@@ -386,7 +386,7 @@ These are the networks drawn by the ADS web interface (https://ui.adsabs.harvard
 
 ### scixplorer.services.vis.author_network
 
-Written `scix.vis.author_network` after `import scixplorer as scix`.
+Written `vis.author_network` after `from scixplorer import *`.
 
 ```python
 author_network(*documents, client=None)
@@ -396,12 +396,12 @@ Return the data for a network of the authors of the given documents.
 
 **Parameters**
 
-- `documents`: any mix of bibcodes, documents and libraries, or iterables of them (see `scix.utils.to_bibcodes`).
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `documents`: any mix of bibcodes, documents and libraries, or iterables of them (see `utils.to_bibcodes`).
+- `client`: the `Client` to use (default: `get_default_client`).
 
 ### scixplorer.services.vis.paper_network
 
-Written `scix.vis.paper_network` after `import scixplorer as scix`.
+Written `vis.paper_network` after `from scixplorer import *`.
 
 ```python
 paper_network(*documents, client=None)
@@ -417,7 +417,7 @@ The ADS citation helper: suggest papers missing from a set of documents.
 
 ### scixplorer.services.citation_helper.citation_helper
 
-Written `scix.citation_helper` after `import scixplorer as scix`.
+Written `citation_helper` after `from scixplorer import *`.
 
 ```python
 citation_helper(*documents, client=None)
@@ -429,7 +429,7 @@ ADS uses a 'friends of friends' analysis: the suggestions cite, or are cited by,
 
 **Parameters**
 
-- `documents`: any mix of bibcodes, documents and libraries, or iterables of them (see `scix.utils.to_bibcodes`).
-- `client`: the `scix.Client` to use (default: `scix.get_default_client`).
+- `documents`: any mix of bibcodes, documents and libraries, or iterables of them (see `utils.to_bibcodes`).
+- `client`: the `Client` to use (default: `get_default_client`).
 
 **Returns** the suggestions as ADS sends them: dicts with keys `bibcode`, `score` (an int), and `title` and `author` (each one string, not a list as in search results).

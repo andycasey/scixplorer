@@ -10,13 +10,13 @@ search for documents by institution or country, and read the affiliations of a d
 ## The affiliation data
 
 SciX identifies the institutions in authors' affiliations with curated identifiers such as `A00211`
-(Harvard University). `scix.Affiliation` holds those institutions: 7382 of them, packaged with
+(Harvard University). `Affiliation` holds those institutions: 7382 of them, packaged with
 scixplorer and searched in Python, so no request and no token are needed.
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-harvard = scix.Affiliation.get(abbreviation="Harvard U")
+harvard = Affiliation.get(abbreviation="Harvard U")
 harvard
 # -> <Affiliation: id='A00211' (Harvard U)>
 harvard.canonical_name
@@ -32,10 +32,10 @@ harvard.canonical_name
 | `country_code` | the ISO 3166-1 alpha-2 code of that country, such as `"US"`, or `None` |
 | `parent_ids` | the identifiers of the parent institutions (empty for a top-level one) |
 
-`scix.Affiliation.lookup()` finds one by identifier, or returns `None`:
+`Affiliation.lookup()` finds one by identifier, or returns `None`:
 
 ```python
-scix.Affiliation.lookup("A01400")
+Affiliation.lookup("A01400")
 # -> <Affiliation: id='A01400' (CfA)>
 ```
 
@@ -46,9 +46,9 @@ scix.Affiliation.lookup("A01400")
 `country == "USA"` matches nothing. Filter on `country_code` for a condition that stays stable:
 
 ```python
-scix.Affiliation.select().where(scix.Affiliation.country == "USA").count()
+Affiliation.select().where(Affiliation.country == "USA").count()
 # -> 0
-scix.Affiliation.select().where(scix.Affiliation.country_code == "AU").count()
+Affiliation.select().where(Affiliation.country_code == "AU").count()
 # -> 118
 ```
 
@@ -58,7 +58,7 @@ Institutions form a hierarchy: a department belongs to a university, and some in
 than one parent. The Harvard-Smithsonian Center for Astrophysics has two:
 
 ```python
-cfa = scix.Affiliation.lookup("A01400")
+cfa = Affiliation.lookup("A01400")
 cfa.parents
 # -> [<Affiliation: id='A00211' (Harvard U)>, <Affiliation: id='A01397' (SI)>]
 cfa.parent
@@ -81,13 +81,13 @@ harvard.children.count()
 
 ## Search for documents by affiliation
 
-A condition on `scix.Document.affiliation` is resolved against the affiliation data before the search is
+A condition on `Document.affiliation` is resolved against the affiliation data before the search is
 sent, and becomes a condition on the documents' `aff_id`:
 
 ```python
-scix.search.to_solr(scix.Document.affiliation == cfa)
+search.to_solr(Document.affiliation == cfa)
 # -> aff_id:"A01400"
-query = scix.Document.select(scix.Document.bibcode).where(scix.Document.affiliation.country_code == "AU")
+query = Document.select(Document.bibcode).where(Document.affiliation.country_code == "AU")
 [paper.bibcode for paper in query]
 # -> ['1998AJ....116.1009R']
 ```
@@ -97,23 +97,23 @@ departments of a university, list them, or use SciX's `inst` field, which search
 together with its children:
 
 ```python
-scix.search.to_solr(scix.Document.affiliation.in_([harvard, *harvard.children]))
+search.to_solr(Document.affiliation.in_([harvard, *harvard.children]))
 # -> aff_id:("A00211" OR "A00212"
-scix.search.to_solr(scix.Document.inst == "CfA")
+search.to_solr(Document.inst == "CfA")
 # -> inst:"CfA"
 ```
 
 ### Several conditions on one affiliation
 
-Each condition through `scix.Document.affiliation` is resolved on its own, so two conditions can be met by
+Each condition through `Document.affiliation` is resolved on its own, so two conditions can be met by
 two different affiliations. To find papers from a physics department in Australia, put both conditions in
 one `.any(...)`:
 
 ```python
-one = scix.Document.affiliation.any(
-    (scix.Affiliation.country_code == "AU") & (scix.Affiliation.abbreviation == "Dep Phy")
+one = Document.affiliation.any(
+    (Affiliation.country_code == "AU") & (Affiliation.abbreviation == "Dep Phy")
 )
-scix.search.to_solr(one)
+search.to_solr(one)
 # -> aff_id:("A11677" OR "A00307" OR "A11671" OR "A00733")
 ```
 
@@ -122,13 +122,13 @@ physics department anywhere". They match a paper with an Australian astronomer a
 physics department, and send two long lists instead of four identifiers:
 
 ```python
-separate = (scix.Document.affiliation.country_code == "AU") & (scix.Document.affiliation.abbreviation == "Dep Phy")
-scix.search.to_solr(separate).count(" OR ") + 2
+separate = (Document.affiliation.country_code == "AU") & (Document.affiliation.abbreviation == "Dep Phy")
+search.to_solr(separate).count(" OR ") + 2
 # -> 324
 ```
 
-`scix.Document.affiliation` matches if *any* author has a matching affiliation. To tie an affiliation to
-a particular author (a name, or a position), use [`scix.Document.authors`]({{< ref "guide/authors" >}}).
+`Document.affiliation` matches if *any* author has a matching affiliation. To tie an affiliation to
+a particular author (a name, or a position), use [`Document.authors`]({{< ref "guide/authors" >}}).
 
 Other ways to search affiliations, which the client passes to SciX as they are:
 
@@ -149,19 +149,19 @@ Other ways to search affiliations, which the client passes to SciX as they are:
   `aff_id`), and some institutions have no country. A search by affiliation finds only documents whose
   affiliations SciX has identified.
 - Identifiers on a document that are missing from the packaged data are skipped in `doc.affiliation`. A
-  newer copy of the data may know them: run `scix.data.refresh("affiliations")`.
+  newer copy of the data may know them: run `data.refresh("affiliations")`.
 
 ## Affiliations of a document
 
 `doc.affiliation` has one entry per author: `None` for an author with no curated affiliation, an
-`Affiliation`, or a tuple of them for an author with several. `scix.utils.flatten()` turns it into a flat
+`Affiliation`, or a tuple of them for an author with several. `utils.flatten()` turns it into a flat
 list:
 
 ```python
-paper = scix.Document.get(bibcode="2015ApJ...808...16N")
+paper = Document.get(bibcode="2015ApJ...808...16N")
 paper.affiliation[1]
 # -> (<Affiliation: id='A00951' (NYU)>, <Affiliation: id='A01570' (MPIA Heidelberg)>)
-sorted({affiliation.country_code for affiliation in scix.utils.flatten(paper.affiliation)})
+sorted({affiliation.country_code for affiliation in utils.flatten(paper.affiliation)})
 # -> ['DE', 'US']
 ```
 
@@ -172,5 +172,5 @@ sorted({affiliation.country_code for affiliation in scix.utils.flatten(paper.aff
 
 The affiliation data comes unmodified from the
 [adsabs/CanonicalAffiliations](https://github.com/adsabs/CanonicalAffiliations) repository and is licensed
-under the GPL-3.0, not under scixplorer's MIT licence. `scix.data.notices()` returns the details. See
+under the GPL-3.0, not under scixplorer's MIT licence. `data.notices()` returns the details. See
 [Reference data]({{< ref "guide/reference-data" >}}).

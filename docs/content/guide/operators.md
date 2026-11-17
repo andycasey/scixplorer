@@ -11,14 +11,14 @@ positions in a list.
 ## Second-order operators
 
 A second-order operator takes a search and returns other documents related to its results. In scixplorer
-each is a class method of `scix.Document` that takes a condition (or a Solr query string) and returns a
+each is a class method of `Document` that takes a condition (or a Solr query string) and returns a
 condition, which you combine with others like any condition.
 
 ```python
-import scixplorer as scix
+from scixplorer import *
 
-cannon = scix.Document.bibcode == "2015ApJ...808...16N"
-scix.search.to_solr(scix.Document.citations(cannon))
+cannon = Document.bibcode == "2015ApJ...808...16N"
+search.to_solr(Document.citations(cannon))
 # -> citations(bibcode:"2015ApJ...808...16N")
 ```
 
@@ -45,20 +45,20 @@ The ADS help pages describe the
 To find the papers citing a paper, or the papers it cites, pass a condition that matches it:
 
 ```python
-emcee = scix.Document.bibcode == "2013PASP..125..306F"
-citing = scix.Document.select(scix.Document.bibcode).where(scix.Document.citations(emcee))
+emcee = Document.bibcode == "2013PASP..125..306F"
+citing = Document.select(Document.bibcode).where(Document.citations(emcee))
 [paper.bibcode for paper in citing]
 # -> ['2015ApJ...808...16N', '2016arXiv160303040C']
 ```
 
-The argument is a condition, not a document: write `scix.Document.citations(scix.Document.bibcode ==
+The argument is a condition, not a document: write `Document.citations(Document.bibcode ==
 paper.bibcode)` for a document you already have. The condition can be any search, so you can follow the
 citations of a whole set of papers:
 
 ```python
-first_author_papers = scix.Document.author[0] == "Ness, M"
-citing_others = scix.Document.citations(first_author_papers) & ~(scix.Document.author == "Ness, M")
-scix.search.to_solr(citing_others)
+first_author_papers = Document.author[0] == "Ness, M"
+citing_others = Document.citations(first_author_papers) & ~(Document.author == "Ness, M")
+search.to_solr(citing_others)
 # -> citations(pos(author:"Ness, M", 1)) AND -author:"Ness, M"
 ```
 
@@ -68,44 +68,44 @@ scix.search.to_solr(citing_others)
 syntax as a string:
 
 ```python
-scix.search.to_solr(scix.Document.useful(scix.Document.abs == "stellar spectroscopy") & (scix.Document.year >= 2010))
+search.to_solr(Document.useful(Document.abs == "stellar spectroscopy") & (Document.year >= 2010))
 # -> useful(abs:"stellar spectroscopy") AND year:[2010 TO *]
-scix.search.to_solr(scix.Document.trending("exoplanets"))
+search.to_solr(Document.trending("exoplanets"))
 # -> trending(exoplanets)
 ```
 
 ## The top of a search: `top_n`
 
-`scix.Document.top_n(n, expr, order_by=None)` matches the first `n` documents of a search, ranked by
+`Document.top_n(n, expr, order_by=None)` matches the first `n` documents of a search, ranked by
 relevance or by `order_by`. Unlike `limit()`, it is part of the condition, so you can combine it with
 others or pass it to another operator:
 
 ```python
-most_cited = scix.Document.top_n(
+most_cited = Document.top_n(
     10,
-    (scix.Document.year == 2020) & (scix.Document.bibstem == "ApJ"),
-    order_by=scix.Document.citation_count.desc(),
+    (Document.year == 2020) & (Document.bibstem == "ApJ"),
+    order_by=Document.citation_count.desc(),
 )
-scix.search.to_solr(most_cited)
+search.to_solr(most_cited)
 # -> topn(10, year:2020 AND bibstem:"ApJ", citation_count desc)
-scix.search.to_solr(scix.Document.references(most_cited))
+search.to_solr(Document.references(most_cited))
 # -> references(topn(10, year:2020 AND bibstem:"ApJ", citation_count desc))
 ```
 
-`order_by` is a sort key such as `scix.Document.citation_count.desc()`, or a field for ascending order.
+`order_by` is a sort key such as `Document.citation_count.desc()`, or a field for ascending order.
 `n` must be at least 1.
 
 ## Positions: `pos`
 
-Indexing a field restricts a condition to positions in it: `scix.Document.author[0] == "Ness, M"`. See
-[Matching]({{< ref "guide/matching#positions" >}}). `scix.Document.pos(expr, start, end=None)` does the same
+Indexing a field restricts a condition to positions in it: `Document.author[0] == "Ness, M"`. See
+[Matching]({{< ref "guide/matching#positions" >}}). `Document.pos(expr, start, end=None)` does the same
 for a condition written as Solr syntax, or on another multi-valued field. Its positions count from 1 and
 `end` is included:
 
 ```python
-scix.search.to_solr(scix.Document.pos('author:"Ness, M"', 1))
+search.to_solr(Document.pos('author:"Ness, M"', 1))
 # -> pos(author:"Ness, M", 1)
-scix.search.to_solr(scix.Document.pos(scix.Document.aff == "Heidelberg", 1, 2))
+search.to_solr(Document.pos(Document.aff == "Heidelberg", 1, 2))
 # -> pos(aff:"Heidelberg", 1, 2)
 ```
 
@@ -115,7 +115,7 @@ Anything SciX can search goes inside an operator, including conditions on journa
 vocabularies and libraries, which the client resolves first:
 
 ```python
-scix.search.to_solr(scix.Document.useful(scix.Document.journal == "AJ"))
+search.to_solr(Document.useful(Document.journal == "AJ"))
 # -> useful(bibstem:"AJ")
 ```
 
