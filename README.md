@@ -82,8 +82,8 @@ and open <http://localhost:1313/>. Every example in it is run by the test suite.
 
 ## Project status
 
-Pre-release (1.0.0.dev0). The client is tested offline in detail, but it has **not yet been validated
-against the live SciX API**; the opt-in live test suite (`uv run pytest --live`) does that.
+Pre-release (1.0.0.dev0). The client is tested offline in detail, and an opt-in live test suite
+(`uv run pytest --live`) checks what it assumes about the real SciX API.
 
 ## Licence
 

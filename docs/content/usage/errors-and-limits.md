@@ -7,12 +7,6 @@ description: The exceptions scixplorer raises, rate limits, retries, and the lim
 After this page you can catch the right exceptions, keep an eye on your rate limits, predict which failed
 requests are retried, and stay within the limits on what a search can contain.
 
-{{< callout type="info" >}}
-scixplorer has not yet been run against the live SciX API. The behaviour on this page is tested against
-simulated responses; how the server answers some requests is still to be confirmed by the
-[live test suite]({{< ref "development/live-tests" >}}).
-{{< /callout >}}
-
 ## Exceptions
 
 Every exception scixplorer raises derives from `exceptions.SciXError`, so one `except` clause can
