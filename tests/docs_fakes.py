@@ -646,7 +646,15 @@ def _test(expr: Expr, api: DocsAPI) -> Callable[[dict[str, Any]], bool]:
         members = {row["bibcode"] for row in api.operator(expr)}
         return lambda row: row["bibcode"] in members
     check = evaluate.predicate(expr)
-    return lambda row: check(_document(row))
+    return lambda row: check(_document(_as_indexed(row)))
+
+
+def _as_indexed(row: dict[str, Any]) -> dict[str, Any]:
+    """The row as SciX searches it: an ``aff_id`` entry naming several institutions matches each of them."""
+    entries = row.get("aff_id")
+    if not entries or not any(";" in entry for entry in entries):
+        return row
+    return dict(row, aff_id=[part.strip() for entry in entries for part in entry.split(";")])
 
 
 def _positional(expr: _Pos, api: DocsAPI) -> Callable[[dict[str, Any]], bool]:
