@@ -34,6 +34,13 @@ def test_models_services_and_helpers_are_reachable():
     assert issubclass(scixplorer.exceptions.RateLimitExceeded, scixplorer.exceptions.APIError)
 
 
+def test_search_and_utils_modules_are_exported():
+    namespace: dict[str, object] = {}
+    exec("from scixplorer import *", namespace)
+    assert namespace["search"] is scixplorer.search and namespace["utils"] is scixplorer.utils
+    assert callable(namespace["search"].to_solr) and callable(namespace["utils"].flatten)
+
+
 def test_library_documents_is_a_document_query():
     library = scixplorer.Library(id="abc", name="x")
     query = library.documents

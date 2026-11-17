@@ -25,6 +25,7 @@ from .client import Client, get_default_client, set_default_client
 from .expr import days_ago, now
 from .models import Affiliation, Author, Document, Journal, Library, PlanetaryFeature, SearchQuery, UATConcept
 from .services import citation_helper, export, resolver, vis
+from . import search, utils  # after the models, which search imports
 
 __all__ = [
     "Affiliation",
@@ -46,6 +47,8 @@ __all__ = [
     "get_default_client",
     "now",
     "resolver",
+    "search",
     "set_default_client",
+    "utils",
     "vis",
 ]
