@@ -13,7 +13,7 @@ from search_fakes import FakeSearch, bibcodes, make_docs
 from scixplorer import _config
 from scixplorer.exceptions import APIError, DataWarning, UnsupportedQueryError
 from scixplorer.models.affiliation import Affiliation
-from scixplorer.models.document import Document, SearchQuery
+from scixplorer.models.document import Document
 from scixplorer.models.journal import Journal
 from scixplorer.models.library import Library
 
@@ -428,9 +428,14 @@ def test_requested_fields_missing_from_the_response_are_none(recwarn: pytest.War
     assert not recwarn.list
 
 
-def test_search_query_request(page_size: None) -> None:
+def test_raw_query_request(page_size: None) -> None:
     fake = FakeSearch(make_docs(10))
-    query = SearchQuery(q="author:'Ness, M' AND year:2018", fl=["bibcode", "title"], sort="citation_count desc", rows=5)
+    query = (
+        Document.select(Document.bibcode, Document.title)
+        .where(Document.raw("author:'Ness, M' AND year:2018"))
+        .order_by(Document.citation_count.desc())
+        .limit(5)
+    )
     assert len(query.using(fake.client()).all()) == 5
     assert fake.params() == {
         "q": "author:'Ness, M' AND year:2018",

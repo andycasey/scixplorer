@@ -210,17 +210,24 @@ search.to_solr(dark_energy & (Document.year < 2000))
 # -> (abs:"dark energy" OR abs:"cosmological constant") AND year:[* TO 1999]
 ```
 
-If you already have a whole query string, `SearchQuery` turns Solr parameters into an ordinary query.
-`fl` is a list or a comma-separated string of field names, `fq` filter queries are joined to `q` with
-"and", and `rows` and `start` become the limit and offset:
+If you already have a whole query string, such as one copied from the SciX website, put it in
+`Document.raw()` and build the rest of the query as usual. Choose the fields with `select()`, add filter
+queries as more conditions in `where()`, and sort and limit with `order_by()` and `limit()`:
 
 ```python
-query = SearchQuery(
-    q='author:"Mayor, M"',
-    fl="bibcode,title,year",
-    fq=["year:[1990 TO 2000]"],
-    sort="year asc",
-    rows=5,
+query = (
+    Document
+    .select(
+        Document.bibcode,
+        Document.title,
+        Document.year,
+    )
+    .where(
+        Document.raw('author:"Mayor, M"'),
+        Document.raw("year:[1990 TO 2000]"),
+    )
+    .order_by(Document.year.asc())
+    .limit(5)
 )
 search.to_solr(query)
 # -> (author:"Mayor, M") AND (year:[1990 TO 2000])

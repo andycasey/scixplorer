@@ -13,11 +13,13 @@ and earlier) to scixplorer, and you will know each difference that could change 
 |---|---|
 | `import ads` | `from scixplorer import *` |
 | `ads.config.token = "..."` | `config.token = "..."` |
-| `ads.SearchQuery(q="...", fl=[...], sort="...")` | `SearchQuery(q="...", fl=[...], sort="...")` |
-| `ads.SearchQuery(author="Casey, A", year="2015")` | `Document.select().where((Document.author == "Casey, A") & (Document.year == 2015))` |
-| `sort="citation_count"` | `sort="citation_count desc"`: the direction is required |
-| `rows=50, max_pages=4` | `rows=200`: the most documents in total |
-| `next(ads.SearchQuery(...))` | `SearchQuery(...).first()` |
+| `ads.SearchQuery(q="...")` | `Document.select().where(Document.raw("..."))` |
+| `fl=["bibcode", "title"]` | `.select(Document.bibcode, Document.title)` |
+| `fq="..."` | another condition in `.where(...)` |
+| `sort="citation_count desc"` | `.order_by(Document.citation_count.desc())` |
+| `rows=50, max_pages=4` | `.limit(200)`: the most documents in total |
+| `ads.SearchQuery(author="Casey, A", year="2015")` | `.where((Document.author == "Casey, A") & (Document.year == 2015))` |
+| `next(ads.SearchQuery(...))` | `query.first()` |
 | `query.response.numFound` | `query.count()` |
 | `ads.search.Article` | `Document` |
 | `article.bibtex` | `export.bibtex(paper)` |
@@ -37,16 +39,22 @@ scixplorer, `config.token` comes first, so setting it in code always takes effec
 
 ## Search with a query string
 
-`SearchQuery` takes the Solr parameters you already use and returns a query:
+Put the query string you already use in `Document.raw()`, and write the other parameters as methods of
+the query: `fl` becomes `select()`, `fq` another condition in `where()`, `sort` becomes `order_by()`, and
+`rows` becomes `limit()`.
 
 ```python
 from scixplorer import *
 
-query = SearchQuery(
-    q='author:"Mayor, M" year:[1990 TO 2000]',
-    fl="bibcode,title",
-    sort="citation_count desc",
-    rows=10,
+query = (
+    Document
+    .select(
+        Document.bibcode,
+        Document.title,
+    )
+    .where(Document.raw('author:"Mayor, M" year:[1990 TO 2000]'))
+    .order_by(Document.citation_count.desc())
+    .limit(10)
 )
 [paper.bibcode for paper in query]
 # -> ['1995Natur.378..355M', '2000ApJ...529L..45C']
@@ -54,29 +62,25 @@ query.count()
 # -> 2
 ```
 
-It takes `q`, `fl` (a list, or a comma-separated string), `sort`, `rows`, `start` and `fq`. Several of
-them behave differently:
+The query string is sent as you wrote it, and SciX reports any error in it. A few things work differently
+from `ads.SearchQuery`:
 
-- **`rows` is the total.** In `ads`, `rows` was the size of each page and `max_pages` (1 by default)
+- **`limit()` is the total.** In `ads`, `rows` was the size of each page and `max_pages` (1 by default)
   the number of pages, so a search stopped at 50 documents unless you asked for more. In scixplorer,
-  `rows` is the most documents the query returns, and without it a query returns every match. Pages are
-  fetched as you iterate. There is no `max_pages`.
-- **`sort` needs a direction.** `ads` read `sort="citation_count"` as descending and accepted
-  `"citation_count+desc"`. scixplorer needs `"citation_count desc"`, and raises `QueryError` otherwise.
-  Without a sort, results are ordered by relevance.
-- **`fl` names must be real fields.** A misspelt name raises `QueryError` instead of being sent. Without
-  `fl`, every field is fetched except a few large ones (see below), where `ads` fetched six.
-- **There are no keyword arguments.** `ads.SearchQuery(author="Casey, A")` added `author:"Casey, A"` to
-  the query string. Write the condition in Python instead (next section), or add it to `q`.
-- **There is no `hl`, `cursorMark` or `token`.** Highlights are not supported yet. Paging is handled for
-  you. To search with another token, use a client: `SearchQuery(...).using(Client(token="..."))`.
+  `limit()` is the most documents the query returns, and without it a query returns every match. Pages
+  are fetched as you iterate.
+- **Without `select()` fields, every field is fetched** except a few large ones (see below), where `ads`
+  fetched six.
+- **Without `order_by()`, results are ordered by relevance**, as in `ads`.
+- **There is no `hl` or `cursorMark`.** Highlights are not supported yet, and paging is handled for you.
+  To search with another token, use a client: `query.using(Client(token="..."))`.
 - **A query can be read more than once.** An `ads.SearchQuery` was an iterator that could be read once.
   A scixplorer query can be iterated again, and once read to the end, its results are kept, so iterating
   again, `count()` and `len()` send nothing.
 
 ## Write the search in Python
 
-You do not have to write Solr query strings at all. The same search, written with Python expressions:
+You can also replace the query string itself with Python expressions. The same search:
 
 ```python
 query = (
@@ -94,6 +98,8 @@ query = (
 search.to_solr(query)
 # -> author:"Mayor, M" AND year:[1990 TO 2000]
 ```
+
+`Document.raw()` and expressions mix freely: `.where(Document.raw("..."), Document.year >= 2015)`.
 
 Conditions are checked as you write them, your editor completes the field names, and you can search by
 things a query string cannot easily express, such as an author's affiliation or country. Start with

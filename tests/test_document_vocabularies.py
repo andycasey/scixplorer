@@ -15,7 +15,7 @@ import scixplorer.search
 from scixplorer.exceptions import DataNotAvailable, LazyLoadWarning, UnsupportedQueryError
 from scixplorer.expr import Expr
 from scixplorer.fields import IntegerField, StringField, TextField
-from scixplorer.models.document import Document, SearchQuery
+from scixplorer.models.document import Document
 from scixplorer.models.planetary import PlanetaryFeature
 from scixplorer.models.uat import UATConcept
 from scixplorer.search import plan, to_solr
@@ -250,8 +250,3 @@ def test_relations_and_names() -> None:
     with pytest.raises(TypeError, match="unexpected field 'uat_concepts'"):
         Document(uat_concepts=["Stars"])
 
-
-def test_search_query_takes_solr_names() -> None:
-    query = SearchQuery("star", fl="bibcode,uat,planetary_feature", sort="year desc")
-    assert plan(query).fl == ("bibcode", "id", "planetary_feature", "scix_id", "uat")
-    assert {field.name for field in query.fields} == {"bibcode", "uat", "planetary_feature"}

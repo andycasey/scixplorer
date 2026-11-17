@@ -12,7 +12,7 @@ after `from scixplorer import *`, write them as shown under each heading (for ex
 
 | Page | Contents |
 |---|---|
-| [Models]({{< ref "reference/api/models" >}}) | `Document`, `SearchQuery`, `Library`, `Journal`, `Affiliation`, `UATConcept`, `PlanetaryFeature`, `Author`, `days_ago`, `now`, `to_solr` |
+| [Models]({{< ref "reference/api/models" >}}) | `Document`, `Library`, `Journal`, `Affiliation`, `UATConcept`, `PlanetaryFeature`, `Author`, `days_ago`, `now`, `to_solr` |
 | [Query]({{< ref "reference/api/query" >}}) | `Query` and `Explanation` |
 | [Client and Config]({{< ref "reference/api/client" >}}) | `Client`, `Config`, `config`, requests and responses |
 | [Exceptions]({{< ref "reference/api/exceptions" >}}) | every exception and warning |

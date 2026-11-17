@@ -14,7 +14,7 @@ from scixplorer.expr import EVERYTHING, Expr, SolrLiteral
 from scixplorer.fields import StringField
 from scixplorer.model import Model, Relation
 from scixplorer.models.affiliation import Affiliation
-from scixplorer.models.document import Document, SearchQuery
+from scixplorer.models.document import Document
 from scixplorer.models.journal import Journal
 from scixplorer.models.library import Library
 from scixplorer.query import Query
@@ -450,16 +450,19 @@ def test_selecting_a_search_only_field(field: str) -> None:
         plan(Document.select(field))
 
 
-# to_solr and SearchQuery.
+# to_solr and raw queries.
 
 
 def test_to_solr_accepts_queries() -> None:
     assert to_solr(Document.select().where(Document.year == 2020).limit(3)) == "year:2020"
 
 
-def test_search_query() -> None:
-    query = SearchQuery(
-        q="author:'Ness, M' AND year:2018", fl=["bibcode", "title"], sort="citation_count desc", rows=5
+def test_raw_query() -> None:
+    query = (
+        Document.select(Document.bibcode, Document.title)
+        .where(Document.raw("author:'Ness, M' AND year:2018"))
+        .order_by(Document.citation_count.desc())
+        .limit(5)
     )
     search = plan(query)
     assert search.q == "author:'Ness, M' AND year:2018"
@@ -468,24 +471,13 @@ def test_search_query() -> None:
     assert (query.limit_, query.offset_) == (5, 0)
 
 
-def test_search_query_filters_and_sort() -> None:
-    query = SearchQuery("star", fl="bibcode, year", sort="year asc, bibcode desc", start=10, fq=["year:2020", "doctype:article"])
+def test_several_raw_conditions_are_joined() -> None:
+    query = (
+        Document.select(Document.bibcode, Document.year)
+        .where(Document.raw("star"), Document.raw("year:2020"), Document.raw("doctype:article"))
+        .order_by(Document.year.asc(), Document.bibcode.desc())
+        .offset(10)
+    )
     search = plan(query)
     assert search.q == "(star) AND (year:2020) AND (doctype:article)"
     assert search.sort == "year asc,bibcode desc"
-    assert query.offset_ == 10 and query.limit_ is None
-    assert plan(SearchQuery("star", fq="year:2020")).q == "(star) AND (year:2020)"
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "match"),
-    [
-        ({"sort": "nonsense desc"}, "unknown field"),
-        ({"sort": "year sideways"}, "Cannot parse"),
-        ({"sort": "year"}, "Cannot parse"),
-        ({"fl": ["no_such_field"]}, "no field"),
-    ],
-)
-def test_search_query_errors(kwargs: dict[str, Any], match: str) -> None:
-    with pytest.raises(QueryError, match=match):
-        SearchQuery("star", **kwargs)

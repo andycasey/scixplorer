@@ -27,7 +27,7 @@ from . import data, exceptions
 from ._config import Config, config
 from .client import Client, get_default_client, set_default_client
 from .expr import days_ago, now
-from .models import Affiliation, Author, Document, Journal, Library, PlanetaryFeature, SearchQuery, UATConcept
+from .models import Affiliation, Author, Document, Journal, Library, PlanetaryFeature, UATConcept
 from .services import citation_helper, export, resolver, vis
 from . import search, utils  # after the models, which search imports
 
@@ -40,7 +40,6 @@ __all__ = [
     "Journal",
     "Library",
     "PlanetaryFeature",
-    "SearchQuery",
     "UATConcept",
     "citation_helper",
     "config",

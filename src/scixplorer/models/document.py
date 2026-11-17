@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import sys
 import warnings
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from typing import Any, ClassVar, TypeAlias
 
 from ..exceptions import LazyLoadWarning, QueryError
@@ -28,7 +28,6 @@ from ..fields import (
     VirtualField,
 )
 from ..model import Model, Relation
-from ..query import Query
 from ..search import ResultPage, SearchBackend
 from ..utils import parse_bibcode, to_bibcodes
 from .affiliation import Affiliation
@@ -38,7 +37,7 @@ from .library import Library
 from .planetary import PlanetaryFeature
 from .uat import UATConcept
 
-__all__ = ["Document", "SearchQuery"]
+__all__ = ["Document"]
 
 #: One entry of ``Document.affiliation``: per author, an affiliation, several, or none.
 AuthorAffiliation: TypeAlias = Affiliation | tuple[Affiliation, ...] | None
@@ -737,52 +736,3 @@ class Document(Model):
                     if field.name not in document._data:
                         document._data[field.name] = None if row is None else row._data.get(field.name)
                 document._related.clear()
-
-
-def SearchQuery(
-    q: str,
-    fl: Sequence[str] | str | None = None,
-    sort: str | None = None,
-    rows: int | None = None,
-    start: int = 0,
-    fq: str | Iterable[str] | None = None,
-) -> Query[Document]:
-    """A document query from Solr parameters, for those who already have a query string.
-
-    :param q: the Solr query.
-    :param fl: Solr field names to fetch (a list, or a comma-separated string);
-        all non-deferred fields if ``None``.
-    :param sort: e.g. ``"citation_count desc, bibcode asc"``.
-    :param rows: the most documents to return (``None`` for all).
-    :param start: how many leading documents to skip.
-    :param fq: filter queries, AND-ed with ``q``.
-
-    Returns ``Document.select(*fl).where(Document.raw(q), ...)`` with the order,
-    limit and offset applied: a query like any other.
-    """
-    names = [name.strip() for name in fl.split(",")] if isinstance(fl, str) else list(fl or ())
-    by_solr_name = {field.solr_name: field for field in Document._fields.values()}
-    unknown = [name for name in names if name and name not in by_solr_name]
-    if unknown:
-        raise QueryError(f"Document has no field {unknown[0]!r}; fields are: {', '.join(by_solr_name)}")
-    query = Document.select(*(by_solr_name[name] for name in names if name))
-    filters = [fq] if isinstance(fq, str) else list(fq or ())
-    query = query.where(Document.raw(q), *(Document.raw(f) for f in filters))
-    if sort is not None:
-        query = query.order_by(*_parse_sort(sort))
-    return query.limit(rows).offset(start)
-
-
-def _parse_sort(sort: str) -> list[Order]:
-    """Parse ``"field dir[, field dir]"`` (Solr field names) into orders."""
-    by_solr_name = {field.solr_name: field for field in Document._fields.values()}
-    orders = []
-    for clause in sort.split(","):
-        parts = clause.split()
-        if len(parts) != 2 or parts[1].lower() not in ("asc", "desc"):
-            raise QueryError(f"Cannot parse sort clause {clause.strip()!r}: expected 'field asc' or 'field desc'")
-        field = by_solr_name.get(parts[0])
-        if field is None:
-            raise QueryError(f"Cannot sort by unknown field {parts[0]!r}")
-        orders.append(Order(field, parts[1].lower() == "desc"))
-    return orders

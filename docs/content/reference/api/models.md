@@ -355,27 +355,6 @@ not_in(source)
 
 Documents not in `source` (see `in_`).
 
-## scixplorer.models.document.SearchQuery
-
-Written `SearchQuery` after `from scixplorer import *`.
-
-```python
-SearchQuery(q, fl=None, sort=None, rows=None, start=0, fq=None)
-```
-
-A document query from Solr parameters, for those who already have a query string.
-
-Returns `Document.select(*fl).where(Document.raw(q), ...)` with the order, limit and offset applied: a query like any other.
-
-**Parameters**
-
-- `q`: the Solr query.
-- `fl`: Solr field names to fetch (a list, or a comma-separated string); all non-deferred fields if `None`.
-- `sort`: e.g. `"citation_count desc, bibcode asc"`.
-- `rows`: the most documents to return (`None` for all).
-- `start`: how many leading documents to skip.
-- `fq`: filter queries, AND-ed with `q`.
-
 ## scixplorer.models.library.Library
 
 Written `Library` after `from scixplorer import *`.

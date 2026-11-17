@@ -36,7 +36,7 @@ The only runtime dependency is `httpx`.
 | `_config.py` | `Config` and the module-level `config` (public as `scixplorer.config`) |
 | `client.py` | `Request`, `Response`, `RateLimit`, `Client` and the default client |
 | `search.py` | the planner (`plan`, `to_solr`) and `SearchBackend` |
-| `models/` | `Document` (and `SearchQuery`), `Author`, `Journal`, `Affiliation`, `Library`, `UATConcept`, `PlanetaryFeature` |
+| `models/` | `Document`, `Author`, `Journal`, `Affiliation`, `Library`, `UATConcept`, `PlanetaryFeature` |
 | `services/` | `export`, `resolver`, `vis`, `citation_helper`: thin functions, one request each |
 | `data/` | the packaged data files and the functions that download, cache and load reference data |
 | `utils.py` | `parse_bibcode`, `to_bibcodes`, `flatten` |

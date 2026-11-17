@@ -2,7 +2,7 @@
 
 from .affiliation import Affiliation
 from .author import Author
-from .document import Document, SearchQuery
+from .document import Document
 from .journal import Journal
 from .library import Library
 from .planetary import PlanetaryFeature
@@ -15,6 +15,5 @@ __all__ = [
     "Journal",
     "Library",
     "PlanetaryFeature",
-    "SearchQuery",
     "UATConcept",
 ]
