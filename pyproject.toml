@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scixplorer"
-version = "1.0.0.dev0"
+version = "1.0.0"
 description = "A Python client for SciX (Science Explorer), the successor to NASA/ADS, with composable, typed search expressions."
 readme = "README.md"
 requires-python = ">=3.10"
