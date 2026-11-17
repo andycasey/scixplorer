@@ -2,7 +2,7 @@
 
 Search with Python expressions on the model classes::
 
-    from scixplorer import *
+    from scixplorer import Document
 
     docs = (
         Document
@@ -16,6 +16,8 @@ Search with Python expressions on the model classes::
     )
 
 Several conditions about the same author go inside one ``Document.authors.any(...)``::
+
+    from scixplorer import Author
 
     Document.authors.any((Author.name == "Casey, A") & (Author.affiliation.country == "Australia"))
 """
