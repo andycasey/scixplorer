@@ -136,7 +136,13 @@ class UATConcept(Model):
     downloaded (``refresh("uat")`` in :mod:`scixplorer.data`)::
 
         UATConcept.lookup(486).name
-        UATConcept.select().where(UATConcept.name == "exoplanets").order_by(UATConcept.name)
+
+        concepts = (
+            UATConcept
+            .select()
+            .where(UATConcept.name == "exoplanets")
+            .order_by(UATConcept.name)
+        )
 
     Concepts form a hierarchy in which a concept may have several broader
     concepts: see :attr:`parents`, :attr:`children`, :attr:`ancestors` and

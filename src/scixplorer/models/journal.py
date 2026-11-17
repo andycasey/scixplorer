@@ -41,7 +41,13 @@ class Journal(Model):
     Journals are held in memory and queried locally::
 
         Journal.get(abbreviation="ApJ").title
-        Journal.select().where(Journal.title.contains("astro")).order_by(Journal.title)
+
+        journals = (
+            Journal
+            .select()
+            .where(Journal.title.contains("astro"))
+            .order_by(Journal.title)
+        )
     """
 
     _key = "abbreviation"

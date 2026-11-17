@@ -143,9 +143,13 @@ class Document(Model):
 
     Search with :meth:`select` and ``where``::
 
-        Document.select(Document.title).where(
-            (Document.author[0] == "Casey, A") & Document.year.between(2015, 2020)
-        ).order_by(Document.citation_count.desc()).limit(10)
+        papers = (
+            Document
+            .select(Document.title)
+            .where((Document.author[0] == "Casey, A") & Document.year.between(2015, 2020))
+            .order_by(Document.citation_count.desc())
+            .limit(10)
+        )
 
     Fields hold the values ADS returned; ``None`` means ADS had no value.
     Search-only fields (such as :attr:`full`) can be queried but not read.

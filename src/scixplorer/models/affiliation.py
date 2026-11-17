@@ -177,7 +177,12 @@ class Affiliation(Model):
 
     Affiliations are held in memory and queried locally::
 
-        Affiliation.select().where(Affiliation.country_code == "AU").order_by(Affiliation.abbreviation)
+        affiliations = (
+            Affiliation
+            .select()
+            .where(Affiliation.country_code == "AU")
+            .order_by(Affiliation.abbreviation)
+        )
 
     Countries are spelled out as the upstream data spells them ("United
     States", "United Kingdom"), and those spellings can change between

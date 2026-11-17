@@ -87,9 +87,12 @@ class PlanetaryFeature(Model):
     Features are held in memory and queried locally once the gazetteer has been
     downloaded (``refresh("planetary_features")`` in :mod:`scixplorer.data`)::
 
-        PlanetaryFeature.select().where(
-            (PlanetaryFeature.target == "Mars") & (PlanetaryFeature.feature_type == "Crater")
-        ).order_by(PlanetaryFeature.name)
+        craters = (
+            PlanetaryFeature
+            .select()
+            .where((PlanetaryFeature.target == "Mars") & (PlanetaryFeature.feature_type == "Crater"))
+            .order_by(PlanetaryFeature.name)
+        )
 
     ``name`` is matched like SciX text (``==`` finds the words as a phrase,
     ignoring case, so ``name == "Olympus"`` also finds "Olympus Mons"; use

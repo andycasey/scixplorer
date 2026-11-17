@@ -67,9 +67,13 @@ A document (paper, book, dataset, software, ...) in ADS / SciX.
 Search with `select` and `where`:
 
 ```python
-Document.select(Document.title).where(
-    (Document.author[0] == "Casey, A") & Document.year.between(2015, 2020)
-).order_by(Document.citation_count.desc()).limit(10)
+papers = (
+    Document
+    .select(Document.title)
+    .where((Document.author[0] == "Casey, A") & Document.year.between(2015, 2020))
+    .order_by(Document.citation_count.desc())
+    .limit(10)
+)
 ```
 
 Fields hold the values ADS returned; `None` means ADS had no value. Search-only fields (such as `full`) can be queried but not read.
@@ -570,7 +574,13 @@ Journals are held in memory and queried locally:
 
 ```python
 Journal.get(abbreviation="ApJ").title
-Journal.select().where(Journal.title.contains("astro")).order_by(Journal.title)
+
+journals = (
+    Journal
+    .select()
+    .where(Journal.title.contains("astro"))
+    .order_by(Journal.title)
+)
 ```
 
 ### scixplorer.models.journal.Journal.lookup
@@ -598,7 +608,12 @@ An institution, identified by its ADS canonical affiliation id (e.g. `'A00211'`)
 Affiliations are held in memory and queried locally:
 
 ```python
-Affiliation.select().where(Affiliation.country_code == "AU").order_by(Affiliation.abbreviation)
+affiliations = (
+    Affiliation
+    .select()
+    .where(Affiliation.country_code == "AU")
+    .order_by(Affiliation.abbreviation)
+)
 ```
 
 Countries are spelled out as the upstream data spells them ("United States", "United Kingdom"), and those spellings can change between releases of the data; `country == "USA"` simply matches nothing. Filter on `country_code` (ISO 3166-1 alpha-2, e.g. "US") for a stable condition.
@@ -655,7 +670,13 @@ Concepts are held in memory and queried locally once the thesaurus has been down
 
 ```python
 UATConcept.lookup(486).name
-UATConcept.select().where(UATConcept.name == "exoplanets").order_by(UATConcept.name)
+
+concepts = (
+    UATConcept
+    .select()
+    .where(UATConcept.name == "exoplanets")
+    .order_by(UATConcept.name)
+)
 ```
 
 Concepts form a hierarchy in which a concept may have several broader concepts: see `parents`, `children`, `ancestors` and `descendants`. `name` and `alt_names` are matched like SciX text (`==` finds the words as a phrase, ignoring case; use `.exact()` for the whole name).
@@ -709,9 +730,12 @@ A named feature on a planet, moon or small body, identified by its gazetteer id 
 Features are held in memory and queried locally once the gazetteer has been downloaded (`refresh("planetary_features")` in `data`):
 
 ```python
-PlanetaryFeature.select().where(
-    (PlanetaryFeature.target == "Mars") & (PlanetaryFeature.feature_type == "Crater")
-).order_by(PlanetaryFeature.name)
+craters = (
+    PlanetaryFeature
+    .select()
+    .where((PlanetaryFeature.target == "Mars") & (PlanetaryFeature.feature_type == "Crater"))
+    .order_by(PlanetaryFeature.name)
+)
 ```
 
 `name` is matched like SciX text (`==` finds the words as a phrase, ignoring case, so `name == "Olympus"` also finds "Olympus Mons"; use `.exact("Olympus Mons")` for the whole name). The other text fields are matched exactly, including case.

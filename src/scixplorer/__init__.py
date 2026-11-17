@@ -2,10 +2,14 @@
 
 Search with Python expressions on the model classes::
 
-    from scixplorer import Document
+    from scixplorer import *
 
     docs = (
-        Document.select(Document.bibcode, Document.title)
+        Document
+        .select(
+            Document.bibcode,
+            Document.title,
+        )
         .where((Document.author[0] == "Casey, A") & (Document.year >= 2020))
         .order_by(Document.citation_count.desc())
         .limit(10)
