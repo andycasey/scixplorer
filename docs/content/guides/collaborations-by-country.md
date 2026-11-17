@@ -148,5 +148,6 @@ your own table from institution identifier to country.
 - The country is that of the institution the author gave **on that paper**, not where they work now.
 - Only curated affiliations have a country. An affiliation string SciX has not identified gives no
   `Affiliation`, and a few institutions in the data have no country: for those `country` is `None`.
-- A search by ORCID iD finds only the papers that carry the iD.
+- A search by ORCID iD finds only the papers that carry the iD. See
+  [Papers to claim on ORCID]({{< ref "guides/papers-to-claim-on-orcid" >}}) for finding the rest.
 - `"Lastname, F"` can stand for two people. Where it matters, compare `author.orcid` as well.

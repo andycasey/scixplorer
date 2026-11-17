@@ -105,6 +105,7 @@ table of your own, and parse the dates.
 - The key is SciX's short form of the name, `"Lastname, F"`, so that `"Ness, M."` and `"Ness, Melissa"` are
   one row. Two people who share a surname and a first initial would also become one row; compare
   `author.orcid` where that matters.
-- Only papers that carry your ORCID iD are found. Search by name as well if your older papers lack it.
+- Only papers that carry your ORCID iD are found. See
+  [Papers to claim on ORCID]({{< ref "guides/papers-to-claim-on-orcid" >}}) for finding the rest.
 - [Collaborations by country]({{< ref "guides/collaborations-by-country" >}}) groups the same co-authors by
   the country of their institution.

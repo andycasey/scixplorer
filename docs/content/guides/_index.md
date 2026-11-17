@@ -17,6 +17,7 @@ narrower terms of a concept, or the contents of a library.
 | [Collaborations by country]({{< ref "guides/collaborations-by-country" >}}) | Which co-authors have I had abroad, and in which countries? |
 | [A collaborators table]({{< ref "guides/collaborators-table" >}}) | Who have I published with recently, where were they, and when? |
 | [One author among namesakes]({{< ref "guides/one-author-among-namesakes" >}}) | Which papers are by this person, and not by someone else of the same name? |
+| [Papers to claim on ORCID]({{< ref "guides/papers-to-claim-on-orcid" >}}) | Which of my papers do not carry my ORCID iD yet? |
 
 The examples run against the small offline sample of papers used throughout this site, so the lists they
 print are short. Against SciX the same code returns everything that matches.
