@@ -59,6 +59,28 @@ print(export.bibtex(papers))
 This finds papers from 2000 to 2010 on which G. Kauffmann gave a German affiliation, and exports them as
 BibTeX. `papers.explain()` shows the request without sending it.
 
+Coming from the `ads` package? This is how a search changes
+([more in the documentation](https://andycasey.github.io/scixplorer/getting-started/coming-from-ads/)):
+
+```python
+# With ads:
+# papers = ads.SearchQuery(q='author:"Kewley, L" year:2008')
+
+# The simplest change: keep your query string.
+papers = (
+    Document
+    .select()
+    .where(Document.raw('author:"Kewley, L" year:2008'))
+)
+
+# The recommended change: write the search in Python.
+papers = (
+    Document
+    .select()
+    .where((Document.author == "Kewley, L") & (Document.year == 2008))
+)
+```
+
 ## Features
 
 - Searches as Python expressions on 101 typed document fields, checked when you write them.
