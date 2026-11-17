@@ -1,13 +1,120 @@
 ---
 title: Getting started
 weight: 1
-description: Install scixplorer, set your API token, and run your first search.
+description: Install scixplorer, set your API token, and run your first search, all on one page.
 ---
 
-Start here if you are new to scixplorer.
+This page takes you from nothing to a working search. The pages in this section go into each step in
+more detail.
+
+## 1. Install
+
+scixplorer needs Python 3.10 or later. We recommend [uv](https://docs.astral.sh/uv/):
+
+```shell
+uv add scixplorer
+```
+
+or, with pip:
+
+```shell
+pip install scixplorer
+```
+
+## 2. Set your API token
+
+Every request to SciX needs a personal API token. Sign in at [scixplorer.org](https://scixplorer.org),
+create a token at <https://scixplorer.org/user/settings/token>, and save it where the client looks for
+it:
+
+```shell
+mkdir -p ~/.scix
+echo "your-token" > ~/.scix/token
+chmod 600 ~/.scix/token
+```
+
+The environment variable `SCIX_API_TOKEN` works too, and so does a token you already use with the `ads`
+package (`ADS_API_TOKEN`, `ADS_DEV_KEY`, `~/.ads/token` or `~/.ads/dev_key`). To set it in code:
+
+```python
+from scixplorer import *
+
+config.token = "your-token"
+```
+
+Treat the token like a password. scixplorer never shows it in a `repr` or an error message.
+
+## 3. Search
+
+A search starts from a model, usually `Document`. Write one method per line: `select()` says which
+fields to fetch, `where()` which documents match, `order_by()` how to sort them, and `limit()` how many
+to return.
+
+```python
+query = (
+    Document
+    .select(
+        Document.bibcode,
+        Document.title,
+        Document.year,
+    )
+    .where(Document.author == "Hogg, D")
+    .order_by(Document.year.desc())
+    .limit(10)
+)
+```
+
+Building a query sends nothing. Iterating sends it, a page of results at a time:
+
+```python
+[(paper.year, paper.bibcode) for paper in query]
+# -> [(2016, '2016arXiv160303040C'), (2015, '2015ApJ...808...16N'), (2013, '2013PASP..125..306F')]
+```
+
+`count()`, `first()` and `all()` run it too, and `Document.get()` fetches one document by an identifier:
+
+```python
+query.count()
+# -> 3
+paper = Document.get(bibcode="1995Natur.378..355M")
+paper.title
+# -> ['A Jupiter-mass companion to a solar-type star']
+```
+
+Combine conditions with `&` (and), `|` (or) and `~` (not), each in its own parentheses:
+
+```python
+recent_hogg = (Document.author == "Hogg, D") & (Document.year >= 2015)
+search.to_solr(recent_hogg)
+# -> author:"Hogg, D" AND year:[2015 TO *]
+```
+
+`search.to_solr()` shows the Solr query a condition becomes, and `query.explain()` shows the whole
+request a query would send, without sending it.
+
+## 4. Read the results
+
+A document's fields are attributes with Python types: `int` for counts and years, `datetime.date` for
+dates, lists for fields with several values, and `None` where SciX has no value.
+
+```python
+paper.year
+# -> 1995
+paper.pubdate
+# -> datetime.date(1995, 11, 1)
+paper.author
+# -> ['Mayor, Michel', 'Queloz, Didier']
+```
+
+Your editor completes the field names (`Document.` lists them all), and a type checker knows each
+field's type. Values are checked as you write a condition, so `Document.year == "1995"` raises
+`QueryError` straight away.
+
+## Next
 
 | Page | You will learn to |
 |---|---|
-| [Install and set your token]({{< ref "getting-started/install" >}}) | install the package and tell it your SciX API token |
-| [Your first search]({{< ref "getting-started/first-search" >}}) | build a search, run it, and read the documents it returns |
-| [Coming from ads]({{< ref "getting-started/coming-from-ads" >}}) | move code written for the old `ads` package |
+| [Install and set your token]({{< ref "getting-started/install" >}}) | every place the token can go, using several tokens, and the other settings |
+| [Your first search]({{< ref "getting-started/first-search" >}}) | every way to run a query, what it sends, and how to read the documents it returns |
+| [Coming from ads]({{< ref "getting-started/coming-from-ads" >}}) | move code written for `ads.SearchQuery` |
+| [Guide]({{< ref "guide" >}}) | search by author, affiliation, journal and more, and use libraries, exports and async |
