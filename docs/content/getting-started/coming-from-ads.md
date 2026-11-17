@@ -57,7 +57,7 @@ The rest of this page covers the other parameters and what behaves differently.
 
 scixplorer reads your token from the places `ads` did: the environment variables `ADS_API_TOKEN` and
 `ADS_DEV_KEY`, and the files `~/.ads/token` and `~/.ads/dev_key`. It also reads the new `SCIX_API_TOKEN`
-and `~/.scix/token`, which come before them. See [Install and set your token]({{< ref "getting-started/install" >}}).
+and `~/.scix/token`, which come before them. See [Token management]({{< ref "getting-started/token-management" >}}).
 
 One order changed. In `ads`, a token in the environment or in a file won over `ads.config.token`. In
 scixplorer, `config.token` comes first, so setting it in code always takes effect.

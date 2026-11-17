@@ -2,7 +2,7 @@
 title: Install and set your token
 linkTitle: Install
 weight: 1
-description: Install scixplorer, get a SciX API token, and tell the client where to find it.
+description: Install scixplorer, put your API token where the client reads it, and run one search.
 ---
 
 After this page you will have scixplorer installed, an API token in a place the client reads, and one
@@ -29,32 +29,21 @@ If you use pip instead:
 pip install scixplorer
 ```
 
-## Get an API token
+## Set your API token
 
-Every request to SciX needs a personal API token. Sign in at [scixplorer.org](https://scixplorer.org) and
-create one at <https://scixplorer.org/user/settings/token>.
+Every request to SciX needs a personal API token. If you have a NASA/ADS token, you already have one:
+SciX accepts it as it is.
 
-Treat the token like a password. scixplorer never puts it in the `repr` of a configuration or a client,
-or in an exception message.
+{{< callout type="warning" >}}
+**No token yet?** Sign in at [scixplorer.org](https://scixplorer.org) and create one at
+<https://scixplorer.org/user/settings/token>.
+{{< /callout >}}
 
-## Tell the client where the token is
+If you have used the `ads` package, there is nothing to do. scixplorer reads the token from the places
+`ads` did: the environment variables `ADS_API_TOKEN` and `ADS_DEV_KEY`, and the files `~/.ads/token` and
+`~/.ads/dev_key`.
 
-The client looks for the token when it sends a request, in this order, and uses the first one it finds:
-
-| Order | Source | Example |
-|---:|---|---|
-| 1 | `config.token` | `config.token = "..."` in your code |
-| 2 | Environment variable `SCIX_API_TOKEN` | `export SCIX_API_TOKEN=...` |
-| 3 | Environment variable `ADS_API_TOKEN` | |
-| 4 | Environment variable `ADS_DEV_KEY` | |
-| 5 | First line of `~/.scix/token` | |
-| 6 | First line of `~/.ads/token` | |
-| 7 | First line of `~/.ads/dev_key` | |
-
-Surrounding whitespace is removed, and an empty value is skipped. The environment and the files are read
-again for every request, so a token you set while Python is running is picked up straight away.
-
-The most durable place is the file:
+Otherwise, put the token on the first line of the file `~/.scix/token`:
 
 ```shell
 mkdir -p ~/.scix
@@ -62,64 +51,21 @@ echo "your-token" > ~/.scix/token
 chmod 600 ~/.scix/token
 ```
 
-If you already used the `ads` package, your `ADS_API_TOKEN` variable or `~/.ads/dev_key` file works as it
-is.
+or in the environment variable `SCIX_API_TOKEN`.
 
-To set the token in code, assign it to the configuration:
+Treat the token like a password. scixplorer never puts it in the `repr` of a configuration or a client,
+or in an exception message.
 
-```python
-from scixplorer import Client, Document, config
-
-config.token = "your-token"
-```
-
-`config` is the configuration every client uses unless it is given its own. Its `repr` leaves the
-token out:
-
-```python
-config
-# -> api_url='https://api.scixplorer.org/v1'
-```
-
-You can also give one client its own token, and send a query with it using `using()`:
-
-```python
-client = Client(token="your-token")
-query = (
-    Document
-    .select()
-    .where(Document.year == 2020)
-    .using(client)
-)
-```
-
-## When there is no token
-
-Without a token, the first request fails before anything is sent, with an
-`AuthenticationError` that lists the places above. A token that SciX rejects raises the same exception,
-with the status code (401 or 403) and SciX's message:
-
-<!-- docs-test: raises AuthenticationError -->
-```python
-config.token = None
-anonymous = Client()
-query = (
-    Document
-    .select()
-    .where(Document.year == 2020)
-    .using(anonymous)
-)
-query.first()
-```
-
-Queries that never need a request, such as searches of [journals]({{< ref "usage/journals" >}}) and
-[affiliations]({{< ref "usage/affiliations" >}}), work without a token.
+[Token management]({{< ref "getting-started/token-management" >}}) lists every place the client looks and
+the order it checks them in, and shows how to set a token in code.
 
 ## Your first search
 
 With the token in place, search:
 
 ```python
+from scixplorer import Document
+
 paper = Document.get(bibcode="2006MNRAS.372..961K")
 paper.title
 # -> The host galaxies and classification of active galactic nuclei

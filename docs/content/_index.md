@@ -219,7 +219,7 @@ scixplorer needs Python 3.10 or later, and its only dependency is `httpx`. We re
 uv add scixplorer
 ```
 
-or, with pip, `pip install scixplorer`. Then [get an API token]({{< ref "getting-started/install#get-an-api-token" >}})
+or, with pip, `pip install scixplorer`. Then [get an API token]({{< ref "getting-started/install#set-your-api-token" >}})
 and run your [first search]({{< ref "getting-started/first-search" >}}).
 
 </div>

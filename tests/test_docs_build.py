@@ -23,6 +23,7 @@ pytestmark = [
 KEY_PAGES = [
     "index.html",
     "getting-started/install/index.html",
+    "getting-started/token-management/index.html",
     "getting-started/first-search/index.html",
     "getting-started/coming-from-ads/index.html",
     "usage/searching/index.html",
