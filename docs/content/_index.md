@@ -10,7 +10,7 @@ description: A typed Python client for SciX (Science Explorer), the successor to
 <div class="landing-hero">
 <div class="landing-hero-text">
 
-{{< hextra/hero-badge link="#project-status" >}}Pre-release · 1.0.0.dev0{{< /hextra/hero-badge >}}
+{{< hextra/hero-badge >}}Pre-release · 1.0.0.dev0{{< /hextra/hero-badge >}}
 
 {{< hextra/hero-headline >}}Search SciX with Python{{< /hextra/hero-headline >}}
 
@@ -210,40 +210,15 @@ asyncio.run(counts([1995, 1998, 2015]))
 
 ## Install
 
-scixplorer needs Python 3.10 or later, and its only dependency is `httpx`. It is not yet published on
-PyPI, so install it from a copy of the source:
+scixplorer needs Python 3.10 or later, and its only dependency is `httpx`. We recommend
+[uv](https://docs.astral.sh/uv/):
 
 ```shell
-pip install /path/to/scixplorer
+uv add scixplorer
 ```
 
-Then [get an API token]({{< ref "getting-started/install" >}}) and run your
-[first search]({{< ref "getting-started/first-search" >}}).
-
-## Where to go next
-
-| If you want to | Read |
-|---|---|
-| Install, set your token and search | [Getting started]({{< ref "getting-started" >}}) |
-| Move code from the `ads` package | [Coming from `ads`]({{< ref "getting-started/coming-from-ads" >}}) |
-| Build searches and read results | [Guide]({{< ref "guide" >}}) |
-| Look up a field, model or function | [Reference]({{< ref "reference" >}}) |
-| Work on scixplorer itself | [Development]({{< ref "development" >}}) |
-
-## Project status
-
-scixplorer is pre-release software (version 1.0.0.dev0).
-
-- **It has not yet been run against the live SciX API.** Every part of it is tested offline against
-  recorded and simulated responses, but no valid API token was available while it was written. Some
-  behaviour rests on assumptions about the server that only the
-  [live test suite]({{< ref "development/live-tests" >}}) can confirm. Where a documented behaviour depends on
-  one of those assumptions in a way you could trip over, the page says so.
-- **The outputs on this site come from a sample.** Every example on these pages is run by the test suite
-  against a small offline set of real papers. Counts, citation numbers, affiliations and other values in
-  the outputs are illustrative, not current SciX data.
-- The package is MIT-licensed. The reference data packaged with it is not: see
-  [Reference data]({{< ref "guide/reference-data" >}}).
+or, with pip, `pip install scixplorer`. Then [get an API token]({{< ref "getting-started/install#get-an-api-token" >}})
+and run your [first search]({{< ref "getting-started/first-search" >}}).
 
 </div>
 
