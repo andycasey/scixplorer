@@ -18,6 +18,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
 ]
 
+[project.scripts]
+scix = "scixplorer.cli:main"
+
 [project.urls]
 Documentation = "https://andycasey.github.io/scixplorer/"
 Repository = "https://github.com/andycasey/scixplorer"
