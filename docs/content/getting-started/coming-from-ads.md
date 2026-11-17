@@ -1,202 +1,183 @@
 ---
 title: Coming from ads
 weight: 3
-description: What changed for users of the old ads package, and how to update code written for it.
+description: Move code written for the ads package (ads.SearchQuery, version 0.13 and earlier) to scixplorer, and know what behaves differently.
 ---
 
-After this page you can move code written for the `ads` package (version 1, and the older 0.12) to
-scixplorer, and you will know every change that could silently alter a result.
+After this page you can move code written for the `ads` package (`ads.SearchQuery(q=...)`, version 0.13
+and earlier) to scixplorer, and you will know each difference that could change your results.
 
 ## At a glance
 
 | In `ads` | In scixplorer |
 |---|---|
-| `import ads`, `from ads import Document` | `from scixplorer import *`, then `Document` |
-| `ads.Document.select().where(...)` | `Document.select().where(...)`: the same shape |
-| `Document.get(Document.bibcode == "...")` | `Document.get(bibcode="...")` (the expression form also works) |
-| `ads.SearchQuery(q="...", fl=[...])` | `SearchQuery(q="...", fl=[...])`, which returns an ordinary query |
-| `not (Document.year == 2020)` | `~(Document.year == 2020)` |
-| `Document.title.like("JWST")` (prefix match) | `Document.title.like("JWST*")` or `Document.title.startswith("JWST")` |
-| `Library(name=...)` then `library.save()` | `Library.create(name=...)` |
-| `library += documents`, `library.save()` | `library.add(*documents)` |
-| `library.name = "New"`, `library.save()` | `library.update(name="New")` |
-| `ads-setup` after installing | nothing: the data is packaged, or downloaded on request |
-| `from ads.services import export` | `export` |
-| the exceptions in `ads.exceptions` | `exceptions.SciXError` and its subclasses |
+| `import ads` | `from scixplorer import *` |
+| `ads.config.token = "..."` | `config.token = "..."` |
+| `ads.SearchQuery(q="...", fl=[...], sort="...")` | `SearchQuery(q="...", fl=[...], sort="...")` |
+| `ads.SearchQuery(author="Casey, A", year="2015")` | `Document.select().where((Document.author == "Casey, A") & (Document.year == 2015))` |
+| `sort="citation_count"` | `sort="citation_count desc"`: the direction is required |
+| `rows=50, max_pages=4` | `rows=200`: the most documents in total |
+| `next(ads.SearchQuery(...))` | `SearchQuery(...).first()` |
+| `query.response.numFound` | `query.count()` |
+| `ads.search.Article` | `Document` |
+| `article.bibtex` | `export.bibtex(paper)` |
+| `ads.ExportQuery(bibcodes, format="aastex").execute()` | `export.aastex(bibcodes)` |
+| `ads.MetricsQuery(bibcodes).execute()` | no equivalent yet: [send the request yourself](#metrics) |
+| `ads.RateLimits.getRateLimits("SearchQuery").to_dict()` | `get_default_client().rate_limits["search/query"]` |
+| `ads.exceptions.APIResponseError` | `exceptions.APIError` |
 
-## Breaking changes
+## Your token
 
-### The package is `scixplorer`
+scixplorer reads your token from the places `ads` did: the environment variables `ADS_API_TOKEN` and
+`ADS_DEV_KEY`, and the files `~/.ads/token` and `~/.ads/dev_key`. It also reads the new `SCIX_API_TOKEN`
+and `~/.scix/token`, which come before them. See [Install and set your token]({{< ref "getting-started/install" >}}).
 
-The package and its import name are `scixplorer`. These pages import every public name from it:
+One order changed. In `ads`, a token in the environment or in a file won over `ads.config.token`. In
+scixplorer, `config.token` comes first, so setting it in code always takes effect.
+
+## Search with a query string
+
+`SearchQuery` takes the Solr parameters you already use and returns a query:
 
 ```python
 from scixplorer import *
-```
 
-The default API host is `https://api.scixplorer.org/v1` (it was `https://api.adsabs.harvard.edu/v1`). It is
-`config.api_url`, and you can change it:
-
-```python
-config.api_url
-# -> https://api.scixplorer.org/v1
-```
-
-Your token is still found where `ads` looked for it (`ADS_API_TOKEN`, `ADS_DEV_KEY`, `~/.ads/token`,
-`~/.ads/dev_key`), after the new places `SCIX_API_TOKEN` and `~/.scix/token`. See
-[Install and set your token]({{< ref "getting-started/install" >}}).
-
-### There is no ORM and no `save()`
-
-`ads` was built on the peewee ORM. scixplorer has its own small expression language and no ORM, so
-peewee's methods and its `ModelSelect` are gone. Queries are `scixplorer.query.Query` objects with
-`where`, `order_by`, `limit`, `offset`, `count`, `first`, `get`, `exists`, `all` and `explain`.
-
-`Library` has no `save()`, and nothing is saved implicitly. Every change is an explicit method that sends one
-request: `create`, `update`, `add`, `remove`, `empty`, `delete`, `union`, `intersection`, `difference`,
-`copy_to`, `set_permissions` and `transfer`. Assigning to an attribute changes only the local object. See
-[Libraries]({{< ref "guide/libraries" >}}).
-
-```python
-library = Library.get(name="Data-driven spectroscopy")
-library.add("2013PASP..125..306F")
-# -> 1
-library.update(description="The Cannon and the tools it uses")
-```
-
-### `not`, `and`, `or` and `in` raise an error
-
-Python cannot overload these keywords, so they never worked in queries, and in `ads` a mistake could
-fail silently. In scixplorer an expression has no truth value, so they raise a `TypeError` that says what
-to write instead:
-
-<!-- docs-test: raises TypeError -->
-```python
-not (Document.year == 2020)
-```
-
-Write `~` for not, `&` for and, `|` for or, and `.in_()` and `.not_in()` for membership. For "not one of
-these documents", write `Document.not_in(...)`:
-
-```python
-recent = Document.year >= 2015
-search.to_solr(recent & Document.not_in(["2015ApJ...808...16N"]))
-# -> year:[2015 TO *] AND -bibcode:"2015ApJ...808...16N"
-```
-
-### `.like()` no longer adds a wildcard
-
-In `ads`, `Document.title.like("JWST")` became the prefix search `title:JWST*`. In scixplorer the pattern
-is used as written. Add `*` yourself, or use `startswith()`:
-
-```python
-search.to_solr(Document.title.like("JWST"))
-# -> title:JWST
-search.to_solr(Document.title.like("JWST*"))
-# -> title:JWST*
-search.to_solr(Document.title.startswith("JWST"))
-# -> title:JWST*
-```
-
-### Slices are Python slices
-
-`Document.author[0]` is the first author and `Document.author[0:3]` the first three, as for a
-Python list. Check any slice carried over from `ads`, whose positions were converted differently.
-
-```python
-search.to_solr(Document.author[0:3] == "Ness, M")
-# -> pos(author:"Ness, M", 1, 3)
-```
-
-Negative and open-ended slices raise `QueryError`, because SciX cannot search by position from the end.
-
-### Field types changed
-
-Field values now have exactly the type the field declares, or `None`. Several fields changed type:
-
-| Field | In `ads` | In scixplorer |
-|---|---|---|
-| `id` | `int` | `str` of digits. Queries accept an `int`: `Document.id == 1406395` |
-| `volume` | `int` | `str`, because some volumes are not numbers (`conf` in `2020svos.conf...11E`) |
-| `cite_read_boost` | `int` | `float` |
-| `keyword`, `alternate_title`, `arxiv_class`, `bibgroup`, `data`, `grant`, `isbn`, `links_data`, `vizier` | `str` | a list of `str` |
-| `body`, `ack` | search-only | readable, but [deferred]({{< ref "guide/results#deferred-fields" >}}) |
-
-```python
-search.to_solr(Document.id == 1406395)
-# -> id:"1406395"
-paper = Document.get(id=1406395)
-paper.id
-# -> '1406395'
-paper.volume
-# -> '378'
-paper.keyword
-# -> ['Planets', 'Stars']
-```
-
-A value from SciX that cannot be converted becomes `None` with a `DataWarning`, instead of passing
-through with the wrong type. See [Results]({{< ref "guide/results#types-and-datawarning" >}}).
-
-### Large fields are deferred
-
-`Document.select()` with no fields fetches every field except `ack`, `body`, `caption`, `citation`,
-`credit`, `mention` and `reference`. Those can be very large (full text, or tens of thousands of
-bibcodes). Select them by name to fetch them; reading one you did not select loads it on demand.
-
-### Lazy loading is one request per page
-
-Reading a field you did not select still loads it, with a `LazyLoadWarning`. In `ads` that cost one
-request per field per document. In scixplorer one request loads the field for every document of the
-same page of results, so reading `doc.citation_count` in a loop over 200 documents sends one request, not
-200. See [Results]({{< ref "guide/results#lazy-loading" >}}).
-
-### Affiliation countries are spelled out
-
-`Affiliation.country` holds the country as the upstream data spells it, such as `"United States"`
-or `"United Kingdom"`. A condition such as `country == "USA"` matches nothing. The new field
-`country_code` holds the ISO 3166-1 code, which is the stable way to filter:
-
-```python
-Affiliation.get(id="A00951").country
-# -> United States
-Affiliation.get(id="A00951").country_code
-# -> US
-```
-
-### No local database and no `ads-setup`
-
-`ads` built a SQLite database of journals and affiliations with the `ads-setup` command. scixplorer
-reads that data from files packaged with it, held in memory. Two vocabularies, the Unified Astronomy
-Thesaurus and the planetary nomenclature gazetteer, are not packaged: download them once with
-`data.refresh()`. Nothing is downloaded unless you ask. See
-[Reference data]({{< ref "guide/reference-data" >}}).
-
-### One base exception
-
-Every exception the package raises derives from `exceptions.SciXError`. Errors from the API are
-`APIError`, with the subclasses `AuthenticationError` and `RateLimitExceeded`. See
-[Errors and limits]({{< ref "guide/errors-and-limits" >}}).
-
-```python
-issubclass(exceptions.RateLimitExceeded, exceptions.SciXError)
-# -> True
-```
-
-## What stayed the same
-
-- Searches start with `select()` on the document model (`Document.select()`) and use `where`,
-  `order_by` and `limit`.
-- `&`, `|` and `~` combine conditions, and each comparison needs its own parentheses.
-- `Document.journal`, `Document.affiliation` and the operators such as
-  `Document.citations()` and `Document.top_n()` work as before, except that an operator takes a
-  condition, not a document: `Document.citations(Document.bibcode == paper.bibcode)`.
-- `SearchQuery` still exists for Solr query strings you already have. It returns an ordinary query:
-
-```python
-query = SearchQuery(q='author:"Mayor, M" year:[1990 TO 2000]', fl="bibcode,title", rows=10)
+query = SearchQuery(
+    q='author:"Mayor, M" year:[1990 TO 2000]',
+    fl="bibcode,title",
+    sort="citation_count desc",
+    rows=10,
+)
 [paper.bibcode for paper in query]
+# -> ['1995Natur.378..355M', '2000ApJ...529L..45C']
+query.count()
+# -> 2
+```
+
+It takes `q`, `fl` (a list, or a comma-separated string), `sort`, `rows`, `start` and `fq`. Several of
+them behave differently:
+
+- **`rows` is the total.** In `ads`, `rows` was the size of each page and `max_pages` (1 by default)
+  the number of pages, so a search stopped at 50 documents unless you asked for more. In scixplorer,
+  `rows` is the most documents the query returns, and without it a query returns every match. Pages are
+  fetched as you iterate. There is no `max_pages`.
+- **`sort` needs a direction.** `ads` read `sort="citation_count"` as descending and accepted
+  `"citation_count+desc"`. scixplorer needs `"citation_count desc"`, and raises `QueryError` otherwise.
+  Without a sort, results are ordered by relevance.
+- **`fl` names must be real fields.** A misspelt name raises `QueryError` instead of being sent. Without
+  `fl`, every field is fetched except a few large ones (see below), where `ads` fetched six.
+- **There are no keyword arguments.** `ads.SearchQuery(author="Casey, A")` added `author:"Casey, A"` to
+  the query string. Write the condition in Python instead (next section), or add it to `q`.
+- **There is no `hl`, `cursorMark` or `token`.** Highlights are not supported yet. Paging is handled for
+  you. To search with another token, use a client: `SearchQuery(...).using(Client(token="..."))`.
+- **A query can be read more than once.** An `ads.SearchQuery` was an iterator that could be read once.
+  A scixplorer query can be iterated again, and once read to the end, its results are kept, so iterating
+  again, `count()` and `len()` send nothing.
+
+## Write the search in Python
+
+You do not have to write Solr query strings at all. The same search, written with Python expressions:
+
+```python
+query = (
+    Document
+    .select(
+        Document.bibcode,
+        Document.title,
+    )
+    .where((Document.author == "Mayor, M") & Document.year.between(1990, 2000))
+    .order_by(Document.citation_count.desc())
+    .limit(10)
+)
+[paper.bibcode for paper in query]
+# -> ['1995Natur.378..355M', '2000ApJ...529L..45C']
+search.to_solr(query)
+# -> author:"Mayor, M" AND year:[1990 TO 2000]
+```
+
+Conditions are checked as you write them, your editor completes the field names, and you can search by
+things a query string cannot easily express, such as an author's affiliation or country. Start with
+[Your first search]({{< ref "getting-started/first-search" >}}).
+
+## Read the results
+
+Results are `Document` objects instead of `ads` `Article` objects. Their fields have the same names, but
+they hold typed values instead of the raw JSON:
+
+```python
+paper = Document.get(bibcode="1995Natur.378..355M")
+paper.year
+# -> 1995
+paper.pubdate
+# -> datetime.date(1995, 11, 1)
+str(paper)
 # -> 1995Natur.378..355M
 ```
 
-- `export.bibtex(...)` and the other export formats are functions, as in `ads.services.export`. See
-  [Services]({{< ref "guide/services" >}}).
+| | In `ads` | In scixplorer |
+|---|---|---|
+| `year` | a string, `"1995"` | an `int`, `1995` |
+| `pubdate` | a string, `"1995-11-00"` | a `datetime.date` (an unknown day is the 1st) |
+| `id` | as SciX sent it | a string of digits |
+| dates and times such as `entry_date` | strings | timezone-aware `datetime`s |
+| `str(paper)` | `<Mayor, Michel et al. 1995, 1995Natur.378..355M>` | the bibcode |
+
+Code that compares `paper.year` with a string, such as `paper.year == "1995"`, is now always false.
+
+Reading a field you did not fetch still loads it, now with a `LazyLoadWarning`. In `ads` that sent one
+request per field per article. In scixplorer one request loads the field for every document on the same
+page of results. The large fields `ack`, `body`, `caption`, `citation`, `credit`, `mention` and
+`reference` are only fetched when you select them by name. See [Results]({{< ref "guide/results" >}}).
+
+`article.citation` and `article.reference` sent a search each. In scixplorer they are fields that hold
+bibcodes. To search the citing papers, use the `citations` operator:
+
+```python
+citing = (
+    Document
+    .select(Document.bibcode)
+    .where(Document.citations(Document.bibcode == "2013PASP..125..306F"))
+)
+[paper.bibcode for paper in citing]
+# -> ['2015ApJ...808...16N', '2016arXiv160303040C']
+```
+
+## Exports
+
+`ads.ExportQuery` and `article.bibtex` are replaced by one function per format, which takes bibcodes,
+documents and queries:
+
+```python
+print(export.bibtex("1995Natur.378..355M"))
+# -> @ARTICLE{1995Natur.378..355M,
+```
+
+The formats `ads` offered (`bibtex`, `bibtexabs`, `ads`, `endnote`, `aastex`, `ris`, `icarus`, `mnras`,
+`soph` and `votable`) all have a function of that name, and there are more. See
+[Services]({{< ref "guide/services" >}}).
+
+## Metrics
+
+scixplorer has no metrics service yet. Until it does, send the request that `ads.MetricsQuery` sent with
+the client, which adds your token, retries and error handling:
+
+<!-- docs-test: skip -->
+```python
+from scixplorer.client import Request
+
+request = Request("POST", "/metrics", json={"bibcodes": ["1995Natur.378..355M"]}, idempotent=True)
+metrics = get_default_client().send(request).data
+```
+
+## Rate limits and errors
+
+The client records the rate limits SciX reports, by service:
+
+```python
+get_default_client().rate_limits["search/query"]
+# -> RateLimit(limit=5000
+```
+
+Errors from the API raise `exceptions.APIError` (in `ads`, `APIResponseError`), with the subclasses
+`AuthenticationError` and `RateLimitExceeded`. Every exception scixplorer raises derives from
+`exceptions.SciXError`. See [Errors and limits]({{< ref "guide/errors-and-limits" >}}).
