@@ -30,6 +30,72 @@ That replaces `ads.SearchQuery(q='author:"Seager, S" year:[2000 TO 2005]', sort=
 rows=10)`. For `sort="citation_count asc"`, write `.order_by(Document.citation_count.asc())`. Leave out
 `order_by()` to sort by relevance, and leave out `limit()` to get every match.
 
+That gets existing code running, but treat it as a first step. scixplorer sends a raw query string as you
+wrote it and cannot check it, so a mistake in it is found by SciX, or not at all.
+
+## The recommended change
+
+Write the search itself in Python. This is the same search, with each part of the query string written
+as a condition on a field:
+
+```python
+query = (
+    Document
+    .select()
+    .where((Document.author == "Seager, S") & Document.year.between(2000, 2005))
+    .order_by(Document.citation_count.desc())
+    .limit(10)
+)
+[paper.bibcode for paper in query]
+# -> ['2003ApJ...585.1038S', '2000ApJ...537..916S']
+search.to_solr(query)
+# -> author:"Seager, S" AND year:[2000 TO 2005]
+```
+
+It sends SciX the same query, as `search.to_solr()` shows, and it gives you what a string cannot:
+
+- **Mistakes are caught as you write.** A misspelt field name is an error in your editor and in Python,
+  and a value of the wrong type, such as `Document.year == "2000"`, raises `QueryError` before anything
+  is sent.
+- **Your editor completes the field names**, and offers only the operations each field supports.
+- **Values are quoted and escaped for you.**
+- **You can search by things a query string cannot easily express**, such as several conditions on the
+  same author, an institution's country, or a journal's title. See [Usage]({{< ref "usage" >}}).
+
+Most query strings translate one part at a time:
+
+| In a query string | As an expression |
+|---|---|
+| `author:"Seager, S"` | `Document.author == "Seager, S"` |
+| `author:"^Seager, S"` | `Document.author[0] == "Seager, S"` |
+| `year:2005` | `Document.year == 2005` |
+| `year:[2000 TO 2005]` | `Document.year.between(2000, 2005)` |
+| `citation_count:[100 TO *]` | `Document.citation_count >= 100` |
+| `title:"dark matter"` | `Document.title == "dark matter"` |
+| `bibstem:(ApJ OR AJ)` | `Document.bibstem.in_(["ApJ", "AJ"])` |
+| `a AND b`, `a OR b`, `NOT a` | `a & b`, `a \| b`, `~a`, each condition in its own parentheses |
+| `citations(bibcode:2001ApJ...556..121K)` | `Document.citations(Document.bibcode == "2001ApJ...556..121K")` |
+
+[Expressions]({{< ref "reference/expressions" >}}) lists every kind of expression with the query it
+sends, and [Searching]({{< ref "usage/searching" >}}) explains them.
+
+Keep `Document.raw()` as a last resort, for Solr syntax that has no expression. It mixes with
+expressions, so a long query string can be translated a piece at a time, and only what is left inside
+`raw()` goes unchecked:
+
+```python
+partly_translated = (
+    Document
+    .select()
+    .where(
+        Document.raw('author:"Seager, S"'),
+        Document.year >= 2003,
+    )
+)
+search.to_solr(partly_translated)
+# -> (author:"Seager, S") AND year:[2003 TO *]
+```
+
 The rest of this page covers the other parameters and what behaves differently.
 
 ## At a glance
@@ -38,7 +104,7 @@ The rest of this page covers the other parameters and what behaves differently.
 |---|---|
 | `import ads` | `from scixplorer import Document` |
 | `ads.config.token = "..."` | `config.token = "..."` |
-| `ads.SearchQuery(q="...")` | `Document.select().where(Document.raw("..."))` |
+| `ads.SearchQuery(q="...")` | `Document.select().where(...)` with [expressions](#the-recommended-change), or `Document.raw("...")` to keep the string |
 | `fl=["bibcode", "title"]` | `.select(Document.bibcode, Document.title)` |
 | `fq="..."` | another condition in `.where(...)` |
 | `sort="citation_count desc"` | `.order_by(Document.citation_count.desc())` |
@@ -62,7 +128,7 @@ and `~/.scix/token`, which come before them. See [Token management]({{< ref "get
 One order changed. In `ads`, a token in the environment or in a file won over `ads.config.token`. In
 scixplorer, `config.token` comes first, so setting it in code always takes effect.
 
-## Search with a query string
+## The other parameters
 
 The other parameters of `ads.SearchQuery` are methods of the query too: `fl` becomes the fields in
 `select()`, and each `fq` becomes another condition in `where()`. This is the search above with
@@ -76,8 +142,8 @@ query = (
         Document.title,
     )
     .where(
-        Document.raw('author:"Seager, S"'),
-        Document.raw("year:[2000 TO 2005]"),
+        Document.author == "Seager, S",
+        Document.year.between(2000, 2005),
     )
     .order_by(Document.citation_count.desc())
     .limit(10)
@@ -86,12 +152,9 @@ query = (
 # -> ['2003ApJ...585.1038S', '2000ApJ...537..916S']
 query.count()
 # -> 2
-search.to_solr(query)
-# -> (author:"Seager, S") AND (year:[2000 TO 2005])
 ```
 
-The query string is sent as you wrote it, and SciX reports any error in it. A few things work differently
-from `ads.SearchQuery`:
+A few things work differently from `ads.SearchQuery`:
 
 - **`limit()` is the total.** In `ads`, `rows` was the size of each page and `max_pages` (1 by default)
   the number of pages, so a search stopped at 50 documents unless you asked for more. In scixplorer,
@@ -105,33 +168,6 @@ from `ads.SearchQuery`:
 - **A query can be read more than once.** An `ads.SearchQuery` was an iterator that could be read once.
   A scixplorer query can be iterated again, and once read to the end, its results are kept, so iterating
   again, `count()` and `len()` send nothing.
-
-## Write the search in Python
-
-You can also replace the query string itself with Python expressions. The same search:
-
-```python
-query = (
-    Document
-    .select(
-        Document.bibcode,
-        Document.title,
-    )
-    .where((Document.author == "Seager, S") & Document.year.between(2000, 2005))
-    .order_by(Document.citation_count.desc())
-    .limit(10)
-)
-[paper.bibcode for paper in query]
-# -> ['2003ApJ...585.1038S', '2000ApJ...537..916S']
-search.to_solr(query)
-# -> author:"Seager, S" AND year:[2000 TO 2005]
-```
-
-`Document.raw()` and expressions mix freely: `.where(Document.raw("..."), Document.year >= 2015)`.
-
-Conditions are checked as you write them, your editor completes the field names, and you can search by
-things a query string cannot easily express, such as an author's affiliation or country. Start with
-[Your first search]({{< ref "getting-started/first-search" >}}).
 
 ## Read the results
 
