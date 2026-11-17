@@ -235,7 +235,16 @@ everything it cites and everything that cites it, in seconds. It is easy to forg
 
 The index, the API, the curated affiliations and the links between papers are all their work. scixplorer
 only tries to make that work a little easier to reach from Python. If it helps your research, the credit
-belongs to them. Thank you ❤️
+belongs to them.
+
+The best place to give that credit is in your papers. If SciX helped your research, through scixplorer or
+any other way, please say so in your acknowledgements. It is how the team can show what their work makes
+possible. They suggest this wording:
+
+> This research has made use of SciX, a scientific literature search and discovery platform, funded by
+> NASA under Cooperative Agreement 80NSSC21M0056.
+
+Thank you ❤️
 
 </div>
 
