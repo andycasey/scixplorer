@@ -224,3 +224,14 @@ published is corrected with a new version, not a moved tag.
 No PyPI token is stored on GitHub. PyPI accepts the upload by
 [trusted publishing](https://docs.pypi.org/trusted-publishers/): the `scixplorer` project on PyPI lists
 this repository, the workflow `release.yml` and the environment `pypi` as a publisher.
+
+### The `sciexplorer` alias
+
+`sciexplorer` is a likely misspelling of `scixplorer`, so each release is also published under that
+name on [PyPI](https://pypi.org/project/sciexplorer/). The alias has no code of its own: it is a
+distribution of the same version whose only dependency is `scixplorer` at exactly that version, so
+`pip install sciexplorer` installs scixplorer. The package to import is still `scixplorer`.
+
+`release.yml` writes the alias project with `scripts/make_alias.py`, which takes the version from
+scixplorer, and publishes it after scixplorer itself. There is nothing to edit for a release. The
+`sciexplorer` project on PyPI lists the same trusted publisher as `scixplorer`.

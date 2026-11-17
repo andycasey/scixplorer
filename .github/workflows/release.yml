@@ -4,6 +4,10 @@
 # The tag must be "v" followed by the version in pyproject.toml. PyPI accepts the upload through
 # trusted publishing: the project on PyPI names this repository, this workflow file and the "pypi"
 # environment as a publisher, so no token is stored here.
+#
+# The same version is also published as "sciexplorer", a likely misspelling: a distribution with no
+# code that depends on this version of scixplorer (see scripts/make_alias.py). That project on PyPI
+# needs the same trusted publisher.
 name: Release
 
 on:
@@ -62,6 +66,17 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+      - name: Build the sciexplorer alias, which installs this version of scixplorer
+        run: |
+          uv run --locked python scripts/make_alias.py "$RUNNER_TEMP/sciexplorer"
+          uv build "$RUNNER_TEMP/sciexplorer" --out-dir dist-alias
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-alias
+          path: dist-alias/
+          if-no-files-found: error
+
   pypi:
     name: Publish to PyPI
     needs: [tests, build]
@@ -76,6 +91,25 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  # After scixplorer itself, which the alias depends on. A failure here does not hold up the release.
+  pypi-alias:
+    name: Publish the sciexplorer alias to PyPI
+    needs: [build, pypi]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/sciexplorer/${{ needs.build.outputs.version }}/
+    permissions:
+      # For trusted publishing.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist-alias
           path: dist/
 
       - uses: pypa/gh-action-pypi-publish@release/v1
