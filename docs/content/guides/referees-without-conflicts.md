@@ -107,10 +107,15 @@ The first search covered a few years. Before you write to anyone, ask SciX wheth
 paper with each candidate. Two conditions on `Document.author` mean both names are on the paper:
 
 ```python
-shared = {
-    name: Document.select().where((Document.author == me) & (Document.author == name)).count()
-    for name, _ in candidates
-}
+def papers_together(name):
+    query = (
+        Document
+        .select()
+        .where((Document.author == me) & (Document.author == name))
+    )
+    return query.count()
+
+shared = {name: papers_together(name) for name, _ in candidates}
 shared
 # -> {'Queloz, D': 0}
 ```
