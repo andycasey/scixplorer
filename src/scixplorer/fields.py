@@ -19,8 +19,8 @@ Matching. Each field class declares how ADS matches its values
 - ``"text"`` (:class:`TextField`, :class:`VirtualField`): tokenized; ``==``
   matches the phrase, and ADS also matches its synonyms and acronyms.
 - ``"name"`` (:class:`NameField`): personal names, ``"Last, First M"``; ``==``
-  also matches name variants, so ``author == "Murray, S"`` matches
-  ``"Murray, Stephen S."`` and ``"Murray, Sarah"``.
+  also matches name variants, so ``author == "Rubin, V"`` matches
+  ``"Rubin, Vera C."`` and ``"Rubin, Victoria"``.
 
 ``.exact(value)`` and ``.in_(values, exact=True)`` mean "match this value with
 no expansion" (Solr ``=field:``). On a keyword field that is the same as ``==``.
@@ -214,8 +214,8 @@ class TextExpr(FieldExpr):
         """Match ``value`` with ADS's default expansion for the field's kind.
 
         A text field matches the phrase and its synonyms; a name field also
-        matches name variants (``author == "Murray, S"`` matches
-        ``"Murray, Stephen S."`` and ``"Murray, Sarah"``); a string field
+        matches name variants (``author == "Rubin, V"`` matches
+        ``"Rubin, Vera C."`` and ``"Rubin, Victoria"``); a string field
         matches the whole value literally.
         """
         return super().__eq__(value)
@@ -227,8 +227,8 @@ class TextExpr(FieldExpr):
 
         A text field then matches the phrase without synonyms; a name field
         matches only that form of the name, ignoring case and the periods after
-        initials (``author.exact("Murray, S")`` matches ``"Murray, S."`` but not
-        ``"Murray, Stephen"``). On a string field this is the same as ``==``.
+        initials (``author.exact("Rubin, V")`` matches ``"Rubin, V."`` but not
+        ``"Rubin, Vera"``). On a string field this is the same as ``==``.
         """
         return self._wrap(Match(self.field, self._check(value), exact=True))
 
@@ -738,11 +738,11 @@ class NumericStringField(StringField[str]):
 class NameField(_StringLikeField[T]):
     """A personal name, ``"Last, First M"`` (author, editor, ...); match kind ``"name"``.
 
-    ``==`` matches name variants as ADS does: ``"Murray, S"`` matches
-    ``"Murray, Stephen S."`` and ``"Murray, Sarah"``, while ``"Murray, Stephen"``
-    matches ``"Murray, S. D."`` but not ``"Murray, Sarah"``. ``exact`` matches
+    ``==`` matches name variants as ADS does: ``"Rubin, V"`` matches
+    ``"Rubin, Vera C."`` and ``"Rubin, Victoria"``, while ``"Rubin, Vera"``
+    matches ``"Rubin, V. D."`` but not ``"Rubin, Victoria"``. ``exact`` matches
     only that form of the name, ignoring case and the periods after initials:
-    ``exact("Murray, S")`` matches ``"Murray, S."`` and nothing else above.
+    ``exact("Rubin, V")`` matches ``"Rubin, V."`` and nothing else above.
     """
 
     match_kind = "name"

@@ -52,7 +52,7 @@ __all__ = [
 BOOL_ERROR = (
     "{name} cannot be used as a truth value. Combine expressions with & (and), "
     "| (or) and ~ (not) instead of the keywords and/or/not, wrap each comparison "
-    "in parentheses, e.g. (Document.year == 2020) & (Document.author == 'Ness, M'), "
+    "in parentheses, e.g. (Document.year == 2020) & (Document.author == 'Kewley, L'), "
     "and use .in_(values) instead of the `in` operator."
 )
 

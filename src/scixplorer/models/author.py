@@ -6,7 +6,7 @@ arrays all describe author ``i``. ``Document.authors`` turns them into one
 :class:`Author` per author, and lets a search say several things about the
 *same* author::
 
-    Document.authors.any((Author.name == "Casey, A") & (Author.affiliation.country == "Australia"))
+    Document.authors.any((Author.name == "Kewley, L") & (Author.affiliation.country == "Australia"))
 """
 
 from __future__ import annotations

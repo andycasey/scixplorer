@@ -145,7 +145,7 @@ class Document(Model):
         papers = (
             Document
             .select(Document.title)
-            .where((Document.author[0] == "Casey, A") & Document.year.between(2015, 2020))
+            .where((Document.author[0] == "Kewley, L") & Document.year.between(2015, 2020))
             .order_by(Document.citation_count.desc())
             .limit(10)
         )
@@ -196,7 +196,7 @@ class Document(Model):
     ``.all(...)``, every author) is about the same author, and an index picks
     a position::
 
-        Document.authors.any((Author.name == "Casey, A") & (Author.affiliation.country == "Australia"))
+        Document.authors.any((Author.name == "Kewley, L") & (Author.affiliation.country == "Australia"))
         Document.authors[0].orcid == "0000-0002-1825-0097"
 
     A single condition means the same as its shorthand:
@@ -625,7 +625,7 @@ class Document(Model):
     def pos(cls, expr: Expr | str, start: int, end: int | None = None) -> Expr:
         """Documents where ``expr`` matches at a position (1-indexed, inclusive) of a multivalued field.
 
-        For authors prefer indexing: ``Document.author[0] == "Casey, A"`` (first
+        For authors prefer indexing: ``Document.author[0] == "Kewley, L"`` (first
         author) is ``pos(author == ..., 1)``, and ``Document.author[0:3]`` the first
         three. ``pos`` is for expressions written as Solr strings.
 

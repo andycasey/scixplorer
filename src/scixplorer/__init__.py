@@ -10,7 +10,7 @@ Search with Python expressions on the model classes::
             Document.bibcode,
             Document.title,
         )
-        .where((Document.author[0] == "Casey, A") & (Document.year >= 2020))
+        .where((Document.author[0] == "Kewley, L") & (Document.year >= 2020))
         .order_by(Document.citation_count.desc())
         .limit(10)
     )
@@ -19,7 +19,7 @@ Several conditions about the same author go inside one ``Document.authors.any(..
 
     from scixplorer import Author
 
-    Document.authors.any((Author.name == "Casey, A") & (Author.affiliation.country == "Australia"))
+    Document.authors.any((Author.name == "Kewley, L") & (Author.affiliation.country == "Australia"))
 """
 
 __version__ = "1.0.0.dev0"
