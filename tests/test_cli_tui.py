@@ -435,7 +435,10 @@ def on_a_terminal(made: Desk, keys: bytes, query: str = "Casey 2019") -> tuple[i
         thread.start()
         with os.fdopen(slave, "r", closefd=False) as stdin:
             status = run(made.browser, interpret(query), stdin=stdin, stdout=out)
-        restored = modes() == before
+        try:
+            restored = modes() == before
+        except termios.error:  # the terminal has gone away (Linux)
+            restored = False
     finally:
         done.set()
         thread.join()
@@ -466,6 +469,20 @@ def test_run_stops_when_the_terminal_goes_away() -> None:
     started = time.monotonic()
     status, _, _ = on_a_terminal(made, b"")
     assert status == 0 and time.monotonic() - started < 30
+
+
+def test_run_ends_quietly_if_the_terminal_cannot_be_restored(monkeypatch: pytest.MonkeyPatch) -> None:
+    termios = pytest.importorskip("termios")
+    original = termios.tcsetattr
+
+    def gone(descriptor: int, when: int, attributes: list[object]) -> None:
+        if when == termios.TCSADRAIN:  # the restore at the end; on Linux it fails once the terminal is closed
+            raise termios.error(5, "Input/output error")
+        original(descriptor, when, attributes)
+
+    monkeypatch.setattr(termios, "tcsetattr", gone)
+    status, text, _ = on_a_terminal(Desk(), b"q")
+    assert status == 0 and text.endswith("\x1b[?25h\x1b[?1049l")
 
 
 def test_the_command_only_browses_on_a_terminal() -> None:

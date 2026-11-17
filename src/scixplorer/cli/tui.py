@@ -600,5 +600,8 @@ def run(
         browser.on_busy = None
         stdout.write("\x1b[?25h\x1b[?1049l")
         stdout.flush()
-        termios.tcsetattr(descriptor, termios.TCSADRAIN, saved)
+        try:
+            termios.tcsetattr(descriptor, termios.TCSADRAIN, saved)
+        except termios.error:
+            pass  # the terminal went away: there is nothing left to put back
     return 0
