@@ -56,10 +56,17 @@ DOCS_TOKEN = "docs-example-token"
 # Sample records, keyed by Solr field name as the search API returns them.
 
 
+def _normalised(name: str) -> str:
+    """A name as SciX's ``author_norm`` writes it: ``"Lastname, F"``."""
+    last, _, given = name.partition(",")
+    return f"{last}, {given.strip()[:1]}" if given.strip() else last
+
+
 def _record(**fields: Any) -> dict[str, Any]:
     fields.setdefault("database", ["astronomy"])
     fields.setdefault("doctype", "article")
     fields["first_author"] = fields["author"][0]
+    fields["author_norm"] = [_normalised(name) for name in fields["author"]]
     fields["author_count"] = len(fields["author"])
     fields["bibstem"] = [fields["bibcode"][4:9].strip(".")]
     count = len(fields["author"])
