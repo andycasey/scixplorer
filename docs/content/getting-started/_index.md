@@ -23,9 +23,16 @@ pip install scixplorer
 
 ## 2. Set your API token
 
-Every request to SciX needs a personal API token. Sign in at [scixplorer.org](https://scixplorer.org),
-create a token at <https://scixplorer.org/user/settings/token>, and save it where the client looks for
-it:
+Every request to SciX needs a personal API token. If you have a NASA/ADS token, you already have one:
+SciX accepts it as it is.
+
+{{< callout type="warning" >}}
+**No token yet?** Sign in at [scixplorer.org](https://scixplorer.org) and create one at
+<https://scixplorer.org/user/settings/token>.
+{{< /callout >}}
+
+If you have used the `ads` package, there is nothing to do: scixplorer finds the token where `ads` did.
+Otherwise, put it on the first line of the file `~/.scix/token`:
 
 ```shell
 mkdir -p ~/.scix
@@ -33,16 +40,10 @@ echo "your-token" > ~/.scix/token
 chmod 600 ~/.scix/token
 ```
 
-The environment variable `SCIX_API_TOKEN` works too, and so does a token you already use with the `ads`
-package (`ADS_API_TOKEN`, `ADS_DEV_KEY`, `~/.ads/token` or `~/.ads/dev_key`). To set it in code:
+or in the environment variable `SCIX_API_TOKEN`. Treat the token like a password.
 
-```python
-from scixplorer import Document, config, search
-
-config.token = "your-token"
-```
-
-Treat the token like a password. scixplorer never shows it in a `repr` or an error message.
+[Token management]({{< ref "getting-started/token-management" >}}) lists every place the client looks,
+and which one wins.
 
 ## 3. Search
 
@@ -51,6 +52,8 @@ fields to fetch, `where()` which documents match, `order_by()` how to sort them,
 to return.
 
 ```python
+from scixplorer import Document, config, search
+
 query = (
     Document
     .select(
