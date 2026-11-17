@@ -1,10 +1,11 @@
 ---
 title: Contributing
 weight: 2
-description: Set up a development environment, run the tests and the type checker, compare the model with the Solr schema, and regenerate and build this documentation.
+description: Set up a development environment, run the tests and the type checker, measure test coverage, compare the model with the Solr schema, regenerate and build this documentation, and release a version.
 ---
 
-After this page you can run every check scixplorer's code must pass, and update and build this site.
+After this page you can run every check scixplorer's code must pass, update and build this site, and
+release a version.
 
 ## Set up
 
@@ -32,7 +33,6 @@ uv run python -W error -m pytest
 
 The tests against the real API are opt-in; see [Live tests]({{< ref "development/live-tests" >}}).
 
-## Type checking
 ### Coverage
 
 To see which lines and branches of `src/scixplorer` the tests run:
@@ -48,6 +48,7 @@ those are measured too; `coverage combine` merges the files. The report lists ea
 covered, with the lines the tests missed. `uv run coverage html` writes a line-by-line report to
 `htmlcov/`.
 
+## Type checking
 
 ```shell
 uv run mypy
@@ -169,3 +170,39 @@ uv run pytest tests/test_docs_examples.py
 ```
 
 A failure names the page, the block's line and the problem, and shows the block.
+
+## Continuous integration
+
+Three GitHub Actions workflows in `.github/workflows/` run on GitHub:
+
+| Workflow | Runs on | What it does |
+|---|---|---|
+| `tests.yml` | a push to `main`, a pull request | Runs the offline suite, with warnings as errors, on Python 3.10 to 3.14, then reports the coverage of the five runs combined. |
+| `docs.yml` | a push to `main`, a pull request | Runs the build test and builds the site. From `main` it also publishes the site to GitHub Pages, at <https://andycasey.github.io/scixplorer/>. |
+| `release.yml` | a pushed tag `v…` | Releases that version; see below. |
+
+The coverage table is on the summary page of each run of `tests.yml`, and the line-by-line report is the
+`coverage-html` artifact of that run. The live tests do not run on GitHub: they need an API token.
+
+## Release a version
+
+1. Set the version in `pyproject.toml`, in `__version__` in `src/scixplorer/__init__.py` and in the badge
+   on the site's home page (`docs/content/_index.md`), and run `uv lock`, which records it in `uv.lock`.
+   Commit, and push to `main`.
+2. Tag that commit with `v` and the version, and push the tag:
+
+   ```shell
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+The tag starts `release.yml`. It runs the tests, checks that the tag, `pyproject.toml` and `__version__`
+agree, and builds the source distribution and the wheel. It then publishes them to
+[PyPI](https://pypi.org/project/scixplorer/) and creates the GitHub release, with both files attached and
+notes listing the changes since the last release. A version with an `a`, `b`, `rc` or `.dev` part is
+marked as a pre-release on GitHub. PyPI never accepts the same version twice, so a release that has been
+published is corrected with a new version, not a moved tag.
+
+No PyPI token is stored on GitHub. PyPI accepts the upload by
+[trusted publishing](https://docs.pypi.org/trusted-publishers/): the `scixplorer` project on PyPI lists
+this repository, the workflow `release.yml` and the environment `pypi` as a publisher.
