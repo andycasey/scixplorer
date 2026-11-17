@@ -1,13 +1,28 @@
 ---
 title: scixplorer
 weight: 1
-description: A Python client for SciX (Science Explorer), the successor to NASA/ADS, with searches written as Python expressions.
+layout: hextra-home
+description: A typed Python client for SciX (Science Explorer), the successor to NASA/ADS, with searches written as Python expressions.
 ---
 
-scixplorer is a Python client for [SciX](https://scixplorer.org) (Science Explorer), the successor to the
-NASA Astrophysics Data System (ADS). You write searches as Python expressions on typed model classes, and
-scixplorer checks them as you write them, turns them into the Solr query that SciX expects, and gives you
-typed results.
+<div class="landing">
+
+<div class="landing-hero">
+<div class="landing-hero-text">
+
+{{< hextra/hero-badge link="#project-status" >}}Pre-release · 1.0.0.dev0{{< /hextra/hero-badge >}}
+
+{{< hextra/hero-headline >}}Search SciX with Python{{< /hextra/hero-headline >}}
+
+{{< hextra/hero-subtitle >}}A typed client for [SciX](https://scixplorer.org), the successor to NASA/ADS. Write searches as Python expressions: scixplorer checks them as you write them, sends the Solr query SciX expects, and gives back typed results.{{< /hextra/hero-subtitle >}}
+
+<div class="landing-buttons">
+{{< hextra/hero-button text="Get started" link="getting-started/install/" >}}
+{{< hextra/hero-button text="Coming from ads" link="getting-started/coming-from-ads/" >}}
+</div>
+
+</div>
+<div>
 
 ```python
 from scixplorer import *
@@ -26,7 +41,22 @@ papers = (
 # -> The Cannon: A data-driven approach to Stellar Label Determination from Spectra
 ```
 
-`papers.explain()` shows the request that this sends, without sending it:
+</div>
+</div>
+
+<div class="landing-row">
+<div class="content">
+
+### Queries are Python expressions
+
+Build a query from a model with `select`, `where`, `order_by` and `limit`, and combine conditions with
+`&`, `|` and `~`. Nothing is sent until you read the results, and `explain()` shows exactly what would be
+sent. Raw Solr syntax is there when you need it.
+
+[Your first search →]({{< ref "getting-started/first-search" >}})
+
+</div>
+<div>
 
 ```python
 print(papers.explain())
@@ -34,29 +64,23 @@ print(papers.explain())
 # -> sort = citation_count desc,id asc
 ```
 
-## Features
+</div>
+</div>
 
-{{< hextra/feature-grid cols="3" >}}
-  {{< hextra/feature-card icon="code" title="Python queries" link="getting-started/first-search/" subtitle="Build queries with `select`, `where`, `order_by` and `limit`, combine conditions with `&`, `|` and `~`, and see the exact request with `explain()`. Raw Solr is there when you need it." >}}
-  {{< hextra/feature-card icon="badge-check" title="Typed fields" link="guide/results/" subtitle="Every field is a typed attribute. Your editor completes field names and the operations each field allows, and values arrive as `int`, `date`, `list[str]` and so on." >}}
-  {{< hextra/feature-card icon="office-building" title="Affiliations" link="guide/affiliations/" subtitle="Search by institution or country with SciX's curated affiliations: 7382 institutions, with their hierarchy, packaged with scixplorer." >}}
-  {{< hextra/feature-card icon="user-group" title="Per-author search" link="guide/authors/" subtitle="Say several things about the same author (a name and an affiliation), about the first author, or about every author." >}}
-  {{< hextra/feature-card icon="newspaper" title="Journals" link="guide/journals/" subtitle="Search by journal title instead of looking up abbreviations: a condition on `Journal.title` becomes a search on the matching bibstems." >}}
-  {{< hextra/feature-card icon="globe-alt" title="Vocabularies" link="guide/vocabularies/" subtitle="Search and read the Unified Astronomy Thesaurus concepts and planetary features assigned to each document, including narrower concepts." >}}
-  {{< hextra/feature-card icon="share" title="Citations" link="guide/operators/" subtitle="Follow citations and references, and ask SciX for trending, useful, review and similar papers on a topic." >}}
-  {{< hextra/feature-card icon="lightning-bolt" title="Async" link="guide/async/" subtitle="Run any query from `asyncio` code with `async for`, `aall()` and `acount()`, and send several at once." >}}
-  {{< hextra/feature-card icon="collection" title="Libraries" link="guide/libraries/" subtitle="Create, change, share and combine your SciX libraries, and search within them." >}}
-  {{< hextra/feature-card icon="document-download" title="Exports" link="guide/services/" subtitle="Export BibTeX, AASTeX, RIS and the other SciX formats, find full text and data links, and get citation suggestions." >}}
-  {{< hextra/feature-card icon="shield-check" title="Robust" link="guide/errors-and-limits/" subtitle="Paging, retries, rate-limit tracking and long bibcode lists are handled for you, and every error derives from one exception class." >}}
-  {{< hextra/feature-card icon="switch-horizontal" title="From ads" link="getting-started/coming-from-ads/" subtitle="The same query shape as the `ads` package, with a list of every change that could alter a result." >}}
-{{< /hextra/feature-grid >}}
+<div class="landing-row">
+<div class="content">
 
-### Typed fields
+### Typed fields, with autocomplete
 
-Each field is a typed attribute of its model, so your editor completes `Document.` with the 101 document
-fields and offers only the operations a field supports. A type checker such as mypy or pyright flags
-`Document.year.like("19*")` or a misspelt field name before the code runs, and knows the type of every
-value you read:
+Every field is a typed attribute, so your editor completes `Document.` with all 101 document fields and
+offers only the operations each one supports. Type checkers such as mypy and pyright know the type of every
+value, and flag a misspelt field or `Document.year.like(...)` before the code runs. Values are checked as
+you build a condition: `Document.year == "2015"` raises `QueryError` at once.
+
+[Results and types →]({{< ref "guide/results" >}})
+
+</div>
+<div>
 
 ```python
 paper = Document.get(bibcode="1995Natur.378..355M")
@@ -66,19 +90,27 @@ paper.journal
 # -> <Journal: abbreviation='Natur'>
 ```
 
-Values are checked when you build a condition, not when SciX rejects the search:
-
 <!-- docs-test: raises QueryError -->
 ```python
 Document.year == "2015"
 ```
 
-This raises `QueryError` with the message `Document.year needs an int, not '2015'`.
+</div>
+</div>
 
-### Institutions and countries
+<div class="landing-row">
+<div class="content">
 
-SciX assigns curated identifiers to the institutions in authors' affiliations. scixplorer packages that
-data, so you can search by country or institution without looking up an identifier:
+### Search by institution and country
+
+SciX identifies the institutions in authors' affiliations. scixplorer packages that curated data (7382
+institutions, with their hierarchy), so you can search by country or institution without looking up an
+identifier, and with no request until the search itself.
+
+[Affiliations →]({{< ref "guide/affiliations" >}})
+
+</div>
+<div>
 
 ```python
 australian = (
@@ -90,10 +122,22 @@ australian = (
 # -> ['1998AJ....116.1009R']
 ```
 
+</div>
+</div>
+
+<div class="landing-row">
+<div class="content">
+
 ### Several conditions on the same author
 
-Everything inside one `Document.authors.any(...)` is about one author. This finds papers on which Hogg, D lists
-a German institution, not papers by Hogg, D with some co-author in Germany:
+Everything inside one `Document.authors.any(...)` is about one author. This finds papers on which Hogg, D
+lists a German institution, not papers by Hogg, D with some co-author in Germany. You can also ask about
+the first author, or about every author.
+
+[Authors →]({{< ref "guide/authors" >}})
+
+</div>
+<div>
 
 ```python
 hogg_in_germany = (
@@ -109,25 +153,21 @@ hogg_in_germany = (
 # -> ['2015ApJ...808...16N']
 ```
 
-### Citation networks
+</div>
+</div>
 
-Operators such as `citations`, `references`, `trending` and `similar` take a condition and return one, so
-they combine with everything else:
-
-```python
-emcee = Document.bibcode == "2013PASP..125..306F"
-citing = (
-    Document
-    .select(Document.bibcode)
-    .where(Document.citations(emcee))
-)
-[paper.bibcode for paper in citing]
-# -> ['2015ApJ...808...16N', '2016arXiv160303040C']
-```
+<div class="landing-row">
+<div class="content">
 
 ### Async
 
-Every way of running a query has an asynchronous form, so you can send several searches at once:
+Every way of running a query has an asynchronous form (`async for`, `aall()`, `acount()` and the rest),
+so you can send several searches at once from `asyncio` code.
+
+[Async →]({{< ref "guide/async" >}})
+
+</div>
+<div>
 
 ```python
 import asyncio
@@ -146,6 +186,27 @@ async def counts(years):
 asyncio.run(counts([1995, 1998, 2015]))
 # -> [1, 1, 1]
 ```
+
+</div>
+</div>
+
+<div class="landing-section-title">
+
+{{< hextra/hero-section >}}Also in scixplorer{{< /hextra/hero-section >}}
+
+</div>
+
+<div class="landing-more">
+
+{{< hextra/feature-grid cols="3" >}}
+  {{< hextra/feature-card icon="share" title="Citation networks" link="guide/operators/" subtitle="Citations, references, and trending, useful, review and similar papers." >}}
+  {{< hextra/feature-card icon="globe-alt" title="Journals and vocabularies" link="guide/vocabularies/" subtitle="Search by journal title, UAT concept or planetary feature." >}}
+  {{< hextra/feature-card icon="collection" title="Libraries and exports" link="guide/libraries/" subtitle="Manage your SciX libraries, and export BibTeX and other formats." >}}
+{{< /hextra/feature-grid >}}
+
+</div>
+
+<div class="landing-footer content">
 
 ## Install
 
@@ -183,3 +244,7 @@ scixplorer is pre-release software (version 1.0.0.dev0).
   the outputs are illustrative, not current SciX data.
 - The package is MIT-licensed. The reference data packaged with it is not: see
   [Reference data]({{< ref "guide/reference-data" >}}).
+
+</div>
+
+</div>

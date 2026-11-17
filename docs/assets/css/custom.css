@@ -1,0 +1,106 @@
+/* Layout for the landing page (docs/content/_index.md, layout hextra-home). */
+
+.landing {
+  width: 100%;
+  --landing-rule: rgb(127 127 127 / 0.2);
+  --landing-muted: rgb(107 114 128);
+}
+
+.dark .landing {
+  --landing-muted: rgb(156 163 175);
+}
+
+/* Hero: the pitch on the left, the example query on the right. */
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: center;
+  padding: 2rem 0 3.5rem;
+}
+
+.landing-hero-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.landing-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* hero-button has no secondary style: the second button is drawn outlined. */
+.landing-buttons a:nth-child(2) {
+  background: transparent !important;
+  color: inherit !important;
+  box-shadow: inset 0 0 0 1px var(--landing-rule);
+}
+
+.landing-buttons a:nth-child(2):hover {
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* Feature rows: an explanation beside its example. */
+.landing-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem 3rem;
+  padding: 2.5rem 0;
+  border-top: 1px solid var(--landing-rule);
+}
+
+.landing-row .content > :first-child {
+  margin-top: 0;
+}
+
+.landing-row .content h3 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+}
+
+.landing-section-title {
+  padding: 3rem 0 1.5rem;
+  border-top: 1px solid var(--landing-rule);
+}
+
+.landing-section-title p {
+  color: var(--landing-muted);
+  margin-top: 0.5rem;
+}
+
+.landing-more {
+  padding-bottom: 3rem;
+}
+
+/* Install, next steps and status: a single readable column. */
+.landing-footer {
+  max-width: 48rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--landing-rule);
+}
+
+.landing pre {
+  margin-bottom: 0;
+}
+
+.landing .hextra-code-block + .hextra-code-block,
+.landing .hextra-code-block + p,
+.landing p + .hextra-code-block {
+  margin-top: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .landing-hero {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 4rem;
+    padding: 3rem 0 4.5rem;
+  }
+
+  .landing-row {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    align-items: start;
+  }
+}
