@@ -9,9 +9,14 @@ release a version.
 
 ## Set up
 
-The project is managed with [uv](https://docs.astral.sh/uv/). From a checkout:
+The source is on GitHub at [andycasey/scixplorer](https://github.com/andycasey/scixplorer). Report a
+problem or propose a change in its [issues](https://github.com/andycasey/scixplorer/issues).
+
+The project is managed with [uv](https://docs.astral.sh/uv/). Clone the repository and install it:
 
 ```shell
+git clone https://github.com/andycasey/scixplorer.git
+cd scixplorer
 uv sync
 ```
 
