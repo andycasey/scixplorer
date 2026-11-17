@@ -159,11 +159,8 @@ Document.authors.name == "Kewley, L"
 
 Positions count from 0 and slices follow Python. Negative or open-ended positions raise `QueryError`.
 
-{{< callout type="warning" >}}
-Searching `aff` and `aff_id` by position relies on SciX accepting `pos()` on those fields, which has not yet
-been confirmed against the live API (see [Live tests]({{< ref "development/live-tests" >}})). Positions on
-other per-author fields, such as `email` and the ORCID lists, are checked by the client.
-{{< /callout >}}
+SciX searches `aff` and `aff_id` by position itself, as it does `author`. Positions on other per-author
+fields, such as `email` and the ORCID lists, are checked by the client.
 
 ## Shorthands
 

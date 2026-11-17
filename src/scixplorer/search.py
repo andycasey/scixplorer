@@ -92,7 +92,8 @@ MAX_PAGE_SIZE = 2000
 #: per-author condition on one of them at given positions
 #: (``Document.authors[0].aff == ...``) is sent as ``pos(aff:..., 1)``. A
 #: positional condition on any other field is sent without ``pos()`` and checked
-#: client-side. Read at planning time. To be confirmed against the live API.
+#: client-side. Read at planning time. The live tests confirm that ADS accepts
+#: ``pos()`` on these three.
 POSITIONAL_FIELDS = frozenset({"author", "aff", "aff_id"})
 
 QUERY_PATH = "/search/query"

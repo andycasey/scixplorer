@@ -123,8 +123,6 @@ query as a string, and work out journal titles, parent institutions and countrie
 
 - Only curated affiliations count. A paper whose authors' institutions SciX has not identified is missed
   by both searches; `Document.aff == "Caltech"` searches the affiliations as the papers wrote them.
-- The first-author search relies on SciX accepting `pos()` on `aff_id`, which is not yet confirmed against
-  the live API; see [Authors]({{< ref "usage/authors#by-position" >}}).
 - One condition may name at most 1000 institutions; see
   [Affiliations]({{< ref "usage/affiliations#limits" >}}). A university with its departments is far below
   that, but every institution of a large country is not.
