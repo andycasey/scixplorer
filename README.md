@@ -18,6 +18,11 @@ or, with pip, `pip install scixplorer`.
 Get an API token at <https://scixplorer.org/user/settings/token> and put it in the environment variable
 `SCIX_API_TOKEN`, or on the first line of `~/.scix/token`.
 
+> [!NOTE]
+> **Coming from ADS?** You don't need to change anything. scixplorer picks up your existing API key from
+> wherever the `ads` package read it: the environment variable `ADS_API_TOKEN` or `ADS_DEV_KEY`, or the
+> file `~/.ads/token` or `~/.ads/dev_key`.
+
 ## Example
 
 ```python
