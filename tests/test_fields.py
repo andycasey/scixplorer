@@ -336,7 +336,8 @@ def test_handles_have_no_truth_value_and_are_not_iterable():
         bool(Rec.public)
     with pytest.raises(TypeError, match="not iterable"):
         list(Rec.author)
-    with pytest.raises(TypeError, match="not iterable"):
+    # Python 3.14 words this "is not a container or iterable".
+    with pytest.raises(TypeError, match=r"not (a container or )?iterable"):
         "x" in Rec.author  # noqa: B015
     with pytest.raises(TypeError):
         2015 < Rec.year < 2020  # noqa: B015
