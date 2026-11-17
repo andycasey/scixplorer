@@ -112,8 +112,8 @@ query = (
 query.first()
 ```
 
-Queries that never need a request, such as searches of [journals]({{< ref "guide/journals" >}}) and
-[affiliations]({{< ref "guide/affiliations" >}}), work without a token.
+Queries that never need a request, such as searches of [journals]({{< ref "usage/journals" >}}) and
+[affiliations]({{< ref "usage/affiliations" >}}), work without a token.
 
 ## Your first search
 
@@ -134,11 +134,11 @@ so a change applies from then on.
 |---|---|---|
 | `api_url` | `"https://api.scixplorer.org/v1"` | The API's base URL. |
 | `timeout` | `30.0` | Seconds allowed for each HTTP request. |
-| `max_retries` | `3` | How many times a failed request is retried (see [Errors and limits]({{< ref "guide/errors-and-limits" >}})). |
+| `max_retries` | `3` | How many times a failed request is retried (see [Errors and limits]({{< ref "usage/errors-and-limits" >}})). |
 | `retry_backoff` | `1.0` | Seconds before the first retry; each later retry waits twice as long. |
 | `page_size` | `200` | Documents requested per search request (at most 2000 are used). |
-| `max_inline_bibcodes` | `50` | Larger bibcode sets are sent to `/search/bigquery` (see [Errors and limits]({{< ref "guide/errors-and-limits" >}})). |
-| `library_membership` | `"docs"` | How "document is in a library" is searched (see [Libraries]({{< ref "guide/libraries" >}})). |
-| `collection` | `None` | Limit open searches to a SciX collection (see [Collections]({{< ref "guide/collections" >}})). |
+| `max_inline_bibcodes` | `50` | Larger bibcode sets are sent to `/search/bigquery` (see [Errors and limits]({{< ref "usage/errors-and-limits" >}})). |
+| `library_membership` | `"docs"` | How "document is in a library" is searched (see [Libraries]({{< ref "usage/libraries" >}})). |
+| `collection` | `None` | Limit open searches to a SciX collection (see [Collections]({{< ref "usage/collections" >}})). |
 
 Next: [your first search]({{< ref "getting-started/first-search" >}}), step by step.

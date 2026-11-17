@@ -106,4 +106,4 @@ suggestions = citation_helper("2015ApJ...808...16N", "2016arXiv160303040C")
 
 The metrics service, myADS notifications and the other SciX services that are not listed above have no
 functions in scixplorer yet. Their responses would come straight from SciX, so a `Client` can send
-the request if you need one now (see [How it works]({{< ref "guide/how-it-works#sending-your-own-requests" >}})).
+the request if you need one now (see [How it works]({{< ref "usage/how-it-works#sending-your-own-requests" >}})).

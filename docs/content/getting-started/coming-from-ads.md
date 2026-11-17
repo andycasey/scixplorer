@@ -127,7 +127,7 @@ Code that compares `paper.year` with a string, such as `paper.year == "1995"`, i
 Reading a field you did not fetch still loads it, now with a `LazyLoadWarning`. In `ads` that sent one
 request per field per article. In scixplorer one request loads the field for every document on the same
 page of results. The large fields `ack`, `body`, `caption`, `citation`, `credit`, `mention` and
-`reference` are only fetched when you select them by name. See [Results]({{< ref "guide/results" >}}).
+`reference` are only fetched when you select them by name. See [Results]({{< ref "usage/results" >}}).
 
 `article.citation` and `article.reference` sent a search each. In scixplorer they are fields that hold
 bibcodes. To search the citing papers, use the `citations` operator:
@@ -154,7 +154,7 @@ print(export.bibtex("1995Natur.378..355M"))
 
 The formats `ads` offered (`bibtex`, `bibtexabs`, `ads`, `endnote`, `aastex`, `ris`, `icarus`, `mnras`,
 `soph` and `votable`) all have a function of that name, and there are more. See
-[Services]({{< ref "guide/services" >}}).
+[Services]({{< ref "usage/services" >}}).
 
 ## Metrics
 
@@ -180,4 +180,4 @@ get_default_client().rate_limits["search/query"]
 
 Errors from the API raise `exceptions.APIError` (in `ads`, `APIResponseError`), with the subclasses
 `AuthenticationError` and `RateLimitExceeded`. Every exception scixplorer raises derives from
-`exceptions.SciXError`. See [Errors and limits]({{< ref "guide/errors-and-limits" >}}).
+`exceptions.SciXError`. See [Errors and limits]({{< ref "usage/errors-and-limits" >}}).

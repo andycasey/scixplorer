@@ -77,7 +77,7 @@ offers only the operations each one supports. Type checkers such as mypy and pyr
 value, and flag a misspelt field or `Document.year.like(...)` before the code runs. Values are checked as
 you build a condition: `Document.year == "2015"` raises `QueryError` at once.
 
-[Results and types →]({{< ref "guide/results" >}})
+[Results and types →]({{< ref "usage/results" >}})
 
 </div>
 <div>
@@ -107,7 +107,7 @@ SciX identifies the institutions in authors' affiliations. scixplorer packages t
 institutions, with their hierarchy), so you can search by country or institution without looking up an
 identifier, and with no request until the search itself.
 
-[Affiliations →]({{< ref "guide/affiliations" >}})
+[Affiliations →]({{< ref "usage/affiliations" >}})
 
 </div>
 <div>
@@ -134,7 +134,7 @@ Everything inside one `Document.authors.any(...)` is about one author. This find
 lists a German institution, not papers by Hogg, D with some co-author in Germany. You can also ask about
 the first author, or about every author.
 
-[Authors →]({{< ref "guide/authors" >}})
+[Authors →]({{< ref "usage/authors" >}})
 
 </div>
 <div>
@@ -164,7 +164,7 @@ hogg_in_germany = (
 Every way of running a query has an asynchronous form (`async for`, `aall()`, `acount()` and the rest),
 so you can send several searches at once from `asyncio` code.
 
-[Async →]({{< ref "guide/async" >}})
+[Async →]({{< ref "usage/async" >}})
 
 </div>
 <div>
@@ -199,9 +199,9 @@ asyncio.run(counts([1995, 1998, 2015]))
 <div class="landing-more">
 
 {{< hextra/feature-grid cols="3" >}}
-  {{< hextra/feature-card icon="share" title="Citation networks" link="guide/operators/" subtitle="Citations, references, and trending, useful, review and similar papers." >}}
-  {{< hextra/feature-card icon="globe-alt" title="Journals and vocabularies" link="guide/vocabularies/" subtitle="Search by journal title, UAT concept or planetary feature." >}}
-  {{< hextra/feature-card icon="collection" title="Libraries and exports" link="guide/libraries/" subtitle="Manage your SciX libraries, and export BibTeX and other formats." >}}
+  {{< hextra/feature-card icon="share" title="Citation networks" link="usage/operators/" subtitle="Citations, references, and trending, useful, review and similar papers." >}}
+  {{< hextra/feature-card icon="globe-alt" title="Journals and vocabularies" link="usage/vocabularies/" subtitle="Search by journal title, UAT concept or planetary feature." >}}
+  {{< hextra/feature-card icon="collection" title="Libraries and exports" link="usage/libraries/" subtitle="Manage your SciX libraries, and export BibTeX and other formats." >}}
 {{< /hextra/feature-grid >}}
 
 </div>

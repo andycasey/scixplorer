@@ -37,8 +37,8 @@ menu:
     - name: Getting started
       pageRef: /getting-started
       weight: 1
-    - name: Guide
-      pageRef: /guide
+    - name: Usage
+      pageRef: /usage
       weight: 2
     - name: Reference
       pageRef: /reference

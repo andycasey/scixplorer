@@ -26,7 +26,7 @@ search.to_solr(Document.title == "dark matter halo")
 
 How `==` matches depends on the kind of field: a text field such as `title` matches the words as a
 phrase, a name field such as `author` also matches variants of the name, and a keyword field such as
-`bibstem` matches the whole value. [Matching]({{< ref "guide/matching" >}}) explains the rules and how
+`bibstem` matches the whole value. [Matching]({{< ref "usage/matching" >}}) explains the rules and how
 to turn the expansion off with `.exact()`.
 
 `!=` is "not equal":
@@ -101,7 +101,7 @@ search.to_solr(Document.doctype.not_in(["eprint", "abstract"]))
 ```
 
 To match specific documents, `Document.in_()` takes bibcodes, documents or a
-[library]({{< ref "guide/libraries" >}}); `Document.not_in()` excludes them:
+[library]({{< ref "usage/libraries" >}}); `Document.not_in()` excludes them:
 
 ```python
 search.to_solr(Document.in_(["2015ApJ...808...16N", "1995Natur.378..355M"]))
@@ -109,7 +109,7 @@ search.to_solr(Document.in_(["2015ApJ...808...16N", "1995Natur.378..355M"]))
 ```
 
 Sets of more than 50 bibcodes are sent differently; see
-[Errors and limits]({{< ref "guide/errors-and-limits#large-sets-of-bibcodes" >}}).
+[Errors and limits]({{< ref "usage/errors-and-limits#large-sets-of-bibcodes" >}}).
 
 ## Wildcards
 
@@ -245,8 +245,8 @@ search.to_solr(query)
 # -> bibstem:"ApJ"
 ```
 
-See [Journals]({{< ref "guide/journals" >}}), [Affiliations]({{< ref "guide/affiliations" >}}),
-[Authors]({{< ref "guide/authors" >}}) and [Vocabularies]({{< ref "guide/vocabularies" >}}). For citation
-networks and rankings, see [Operators]({{< ref "guide/operators" >}}). The
+See [Journals]({{< ref "usage/journals" >}}), [Affiliations]({{< ref "usage/affiliations" >}}),
+[Authors]({{< ref "usage/authors" >}}) and [Vocabularies]({{< ref "usage/vocabularies" >}}). For citation
+networks and rankings, see [Operators]({{< ref "usage/operators" >}}). The
 [expression cheat sheet]({{< ref "reference/expressions" >}}) lists many more expressions with the query
 each sends.

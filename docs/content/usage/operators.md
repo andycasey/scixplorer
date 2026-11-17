@@ -102,7 +102,7 @@ search.to_solr(Document.references(most_cited))
 ## Positions: `pos`
 
 Indexing a field restricts a condition to positions in it: `Document.author[0] == "Ness, M"`. See
-[Matching]({{< ref "guide/matching#positions" >}}). `Document.pos(expr, start, end=None)` does the same
+[Matching]({{< ref "usage/matching#positions" >}}). `Document.pos(expr, start, end=None)` does the same
 for a condition written as Solr syntax, or on another multi-valued field. Its positions count from 1 and
 `end` is included:
 
@@ -124,9 +124,9 @@ search.to_solr(Document.useful(Document.journal == "AJ"))
 ```
 
 A per-author condition that the client must check itself (see
-[Authors]({{< ref "guide/authors#where-conditions-are-checked" >}})) cannot go inside an operator, because
+[Authors]({{< ref "usage/authors#where-conditions-are-checked" >}})) cannot go inside an operator, because
 SciX evaluates the operator on its own. That raises `UnsupportedQueryError`, as does a set of more than 50
-bibcodes inside an operator (see [Errors and limits]({{< ref "guide/errors-and-limits#large-sets-of-bibcodes" >}})).
+bibcodes inside an operator (see [Errors and limits]({{< ref "usage/errors-and-limits#large-sets-of-bibcodes" >}})).
 
 Operators run on the server, so the client cannot check their results. The sample used for the examples on
 this site evaluates only `citations`, `references` and `topn`; the other examples here show the query

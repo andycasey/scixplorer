@@ -27,7 +27,7 @@ results = data.refresh("uat", "planetary_features")
 
 The downloads come from GitHub (about 1.5 MB and 0.9 MB) and never carry your API token. Until you have
 downloaded a vocabulary, anything that needs it raises `exceptions.DataNotAvailable`, whose message
-says what to run. See [Reference data]({{< ref "guide/reference-data" >}}) for where the files are kept and
+says what to run. See [Reference data]({{< ref "usage/reference-data" >}}) for where the files are kept and
 how to update them.
 
 You do not need the download to search by identifier: `Document.uat_concepts == 498` is sent as it is.
@@ -176,7 +176,7 @@ Written as two separate conditions, `(Document.planetary_features.target == "Mar
 (Document.planetary_features.name.exact("Copernicus"))`, it would also match a paper about Gale
 crater on Mars that mentions the lunar Copernicus. With the full gazetteer it is refused in any case: Mars
 alone has more than 1000 named features, more than one search request can carry (see
-[Limits]({{< ref "guide/vocabularies#limits" >}})). [Affiliations]({{< ref "guide/affiliations#several-conditions-on-one-affiliation" >}})
+[Limits]({{< ref "usage/vocabularies#limits" >}})). [Affiliations]({{< ref "usage/affiliations#several-conditions-on-one-affiliation" >}})
 shows the two forms side by side.
 
 ```python
@@ -195,7 +195,7 @@ query = (
 
 `.any()` works on every relation: `Document.uat_concepts`, `Document.journal`,
 `Document.affiliation`, and `Author.affiliation` inside
-[`Document.authors.any()`]({{< ref "guide/authors" >}}). There is no `.all()` on a relation: "every
+[`Document.authors.any()`]({{< ref "usage/authors" >}}). There is no `.all()` on a relation: "every
 related feature" cannot be searched, and `.all` raises an `AttributeError` that says so.
 
 A condition directly on `UATConcept` or `PlanetaryFeature` fields can also be used in a document
@@ -207,7 +207,7 @@ At most 1000 concepts or features may match one condition, because their identif
 search request; a larger match raises `UnsupportedQueryError`. The gazetteer is large: in the current
 export, Mars has 2064 named features, 1218 of them craters, so `target == "Mars"` on its own, or Martian
 craters as a whole, are refused. Narrow such a condition with a name, a feature type with fewer members, or
-an approval year. See [Errors and limits]({{< ref "guide/errors-and-limits#related-values" >}}).
+an approval year. See [Errors and limits]({{< ref "usage/errors-and-limits#related-values" >}}).
 
 ## Licences
 

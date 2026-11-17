@@ -59,7 +59,7 @@ search.to_solr((Document.bibcode == "2010GeoRL..3704201M") | (Document.year == 2
 # -> (bibcode:"2010GeoRL..3704201M" OR year:2020) AND database:"astronomy"
 ```
 
-Because `Document.get(bibcode=...)` and the requests that [lazy loading]({{< ref "guide/results#lazy-loading" >}})
+Because `Document.get(bibcode=...)` and the requests that [lazy loading]({{< ref "usage/results#lazy-loading" >}})
 sends name documents by identifier, they are never limited by the default collection.
 
 The setting applies only to document searches. Journals, affiliations, vocabularies and libraries are not
@@ -78,5 +78,5 @@ print(query.explain())
 ```
 
 The collection does not count as narrowing a search for the purpose of the
-[whole-index guard]({{< ref "guide/errors-and-limits#searches-that-would-download-the-whole-index" >}}):
+[whole-index guard]({{< ref "usage/errors-and-limits#searches-that-would-download-the-whole-index" >}}):
 a search that SciX would otherwise answer with every document is refused even with a collection set.

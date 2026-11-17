@@ -72,7 +72,7 @@ query = (
 | `position` | the author's index | 0 for the first author |
 | `aff` | `aff` | the affiliation as written in the paper |
 | `aff_id` | `aff_id` | a list: an author can have several curated affiliations |
-| `affiliation` | `aff_id` | a relation to [`Affiliation`]({{< ref "guide/affiliations" >}}) |
+| `affiliation` | `aff_id` | a relation to [`Affiliation`]({{< ref "usage/affiliations" >}}) |
 | `email` | `email` | |
 | `orcid_pub`, `orcid_user`, `orcid_other` | the three ORCID lists | from the publisher, from users with a public profile, from the ADS claiming interface |
 | `orcid` | the three ORCID lists | the first that is given; searched with the document's `orcid` field, which covers all three |
@@ -204,10 +204,10 @@ hogg.email is None
 
 SciX writes `-` for "no value" in the per-author lists; on an `Author` that becomes `None` (or an empty
 list for `aff_id`). Affiliation identifiers that are not in the packaged
-[affiliation data]({{< ref "guide/affiliations" >}}) are skipped in `affiliation`.
+[affiliation data]({{< ref "usage/affiliations" >}}) are skipped in `affiliation`.
 
 Reading `doc.authors` needs the fields it is built from (`author`, `aff`, `aff_id`, `email` and the ORCID
-lists). If you selected only some fields, the missing ones are [loaded]({{< ref "guide/results#lazy-loading" >}})
+lists). If you selected only some fields, the missing ones are [loaded]({{< ref "usage/results#lazy-loading" >}})
 in one request. `Author` objects exist only as part of a document; you cannot search for authors on
 their own.
 
@@ -251,7 +251,7 @@ A condition checked by the client has three consequences:
   document SciX returns for the weaker condition, so `limit()`, `offset()` and `count()` are applied
   client-side. Add other conditions to keep the number of documents SciX returns small.
 - Python compares names with the documented initial and full-name rule, and text by its words. It does not
-  know SciX's curated synonyms (see [Matching]({{< ref "guide/matching#matching-in-python" >}})).
+  know SciX's curated synonyms (see [Matching]({{< ref "usage/matching#matching-in-python" >}})).
 - It must be a top-level condition of the search: joined to the rest with `&`, optionally negated with `~`.
   Inside `|`, or inside an operator such as `Document.citations()`, it raises
   `UnsupportedQueryError`, which explains how to restructure the query.
@@ -270,4 +270,4 @@ query.count()
 ```
 
 Add a condition SciX can search, such as a year range, an author or a journal. See
-[Errors and limits]({{< ref "guide/errors-and-limits#searches-that-would-download-the-whole-index" >}}).
+[Errors and limits]({{< ref "usage/errors-and-limits#searches-that-would-download-the-whole-index" >}}).

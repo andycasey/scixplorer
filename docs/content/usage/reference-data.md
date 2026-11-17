@@ -14,10 +14,10 @@ four datasets:
 
 | Dataset | Used by | Packaged | Licence |
 |---|---|---|---|
-| `journals` | [`Journal`]({{< ref "guide/journals" >}}) | yes (a 2021 snapshot) | no licence stated (the ADS bibliographic code list) |
-| `affiliations` | [`Affiliation`]({{< ref "guide/affiliations" >}}) | yes | GPL-3.0 (adsabs/CanonicalAffiliations) |
-| `uat` | [`UATConcept`]({{< ref "guide/vocabularies" >}}) | no | CC BY-SA 3.0 (American Astronomical Society) |
-| `planetary_features` | [`PlanetaryFeature`]({{< ref "guide/vocabularies" >}}) | no | public domain (USGS Gazetteer of Planetary Nomenclature), via an MIT-licensed adsabs repository |
+| `journals` | [`Journal`]({{< ref "usage/journals" >}}) | yes (a 2021 snapshot) | no licence stated (the ADS bibliographic code list) |
+| `affiliations` | [`Affiliation`]({{< ref "usage/affiliations" >}}) | yes | GPL-3.0 (adsabs/CanonicalAffiliations) |
+| `uat` | [`UATConcept`]({{< ref "usage/vocabularies" >}}) | no | CC BY-SA 3.0 (American Astronomical Society) |
+| `planetary_features` | [`PlanetaryFeature`]({{< ref "usage/vocabularies" >}}) | no | public domain (USGS Gazetteer of Planetary Nomenclature), via an MIT-licensed adsabs repository |
 
 The packaged data files are not covered by scixplorer's MIT licence. `data.notices()` returns the
 notice that ships with them: where each file comes from, the commit it was taken from, and its licence.

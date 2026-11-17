@@ -51,7 +51,7 @@ Journal.lookup("NotAJournal") is None
 ```
 
 The packaged list is a snapshot of the ADS journal list taken in 2021. To replace it with the current
-list, run `data.refresh("journals")`; see [Reference data]({{< ref "guide/reference-data" >}}).
+list, run `data.refresh("journals")`; see [Reference data]({{< ref "usage/reference-data" >}}).
 
 ## The journal of a document
 
@@ -124,4 +124,4 @@ print(query.explain())
 ```
 
 At most 1000 journals may match one condition. See
-[Errors and limits]({{< ref "guide/errors-and-limits#related-values" >}}).
+[Errors and limits]({{< ref "usage/errors-and-limits#related-values" >}}).

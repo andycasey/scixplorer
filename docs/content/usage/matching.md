@@ -131,7 +131,7 @@ search.to_solr(Document.pos('author:"Ness, M"', 1))
 ## Matching in Python
 
 Some searches are partly checked by the client, on documents SciX returned (see
-[Authors]({{< ref "guide/authors#where-conditions-are-checked" >}})). Searches of journals, affiliations
+[Authors]({{< ref "usage/authors#where-conditions-are-checked" >}})). Searches of journals, affiliations
 and vocabularies are checked entirely in Python. Python follows the same rules as far as they are
 documented: text by its words as a phrase, ignoring case; names by the initial and full-name rule in the
 table above. It does not know SciX's curated synonyms, so in rare cases the two can differ.

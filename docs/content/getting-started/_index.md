@@ -117,4 +117,4 @@ field's type. Values are checked as you write a condition, so `Document.year == 
 | [Install and set your token]({{< ref "getting-started/install" >}}) | every place the token can go, using several tokens, and the other settings |
 | [Your first search]({{< ref "getting-started/first-search" >}}) | every way to run a query, what it sends, and how to read the documents it returns |
 | [Coming from ads]({{< ref "getting-started/coming-from-ads" >}}) | move code written for `ads.SearchQuery` |
-| [Guide]({{< ref "guide" >}}) | search by author, affiliation, journal and more, and use libraries, exports and async |
+| [Usage]({{< ref "usage" >}}) | search by author, affiliation, journal and more, and use libraries, exports and async |

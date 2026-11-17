@@ -56,10 +56,10 @@ Before a document search is compiled, a planner (`search.plan`) rewrites it, in 
 3. Library membership is left to SciX (`docs(library/<id>)`), or, with
    `config.library_membership = "bibcodes"`, replaced by the library's bibcodes.
 4. The tree is simplified. A condition that can never match ends the planning: no request is sent.
-   Then each [per-author condition]({{< ref "guide/authors#where-conditions-are-checked" >}}) is translated
+   Then each [per-author condition]({{< ref "usage/authors#where-conditions-are-checked" >}}) is translated
    into a condition on the document's per-author lists, exactly where possible; otherwise a necessary
    condition is sent and the real one is kept for the client to check on each result.
-5. The [default collection]({{< ref "guide/collections" >}}) is added to open searches.
+5. The [default collection]({{< ref "usage/collections" >}}) is added to open searches.
 6. Sets of more than 50 bibcodes are taken out of the query string: uploaded to `/search/bigquery`, or
    excluded from the results as they arrive. A search that would then leave SciX with nothing to narrow it
    is refused.
@@ -91,7 +91,7 @@ synchronously or asynchronously, so paging and result handling are written once 
 is why every query has both `all()` and `aall()`.
 
 The client adds your token, retries transient failures, records rate limits and turns error responses into
-exceptions (see [Errors and limits]({{< ref "guide/errors-and-limits" >}})).
+exceptions (see [Errors and limits]({{< ref "usage/errors-and-limits" >}})).
 
 ## Endpoints
 

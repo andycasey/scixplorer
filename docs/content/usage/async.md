@@ -66,7 +66,7 @@ asyncio.run(counts([1995, 1998, 2015]))
 # -> [1, 1, 1]
 ```
 
-Each search counts against your [rate limit]({{< ref "guide/errors-and-limits#rate-limits" >}}) as usual.
+Each search counts against your [rate limit]({{< ref "usage/errors-and-limits#rate-limits" >}}) as usual.
 
 ## What stays synchronous
 
@@ -75,10 +75,10 @@ event loop while they wait:
 
 | Synchronous only | What to do in async code |
 |---|---|
-| [Lazy loading]({{< ref "guide/results#lazy-loading" >}}) of a field that was not fetched (including `doc.authors` when its fields are missing) | select every field you will read |
-| [`Library`]({{< ref "guide/libraries" >}}) methods and properties (`create`, `add`, `update`, `bibcodes`, ...) | call them before or outside the event loop, or in a thread with `asyncio.to_thread` |
-| [Services]({{< ref "guide/services" >}}) (`export`, `resolver`, `vis`, `citation_helper`) | the same |
-| [`data.refresh()`]({{< ref "guide/reference-data" >}}) | the same |
+| [Lazy loading]({{< ref "usage/results#lazy-loading" >}}) of a field that was not fetched (including `doc.authors` when its fields are missing) | select every field you will read |
+| [`Library`]({{< ref "usage/libraries" >}}) methods and properties (`create`, `add`, `update`, `bibcodes`, ...) | call them before or outside the event loop, or in a thread with `asyncio.to_thread` |
+| [Services]({{< ref "usage/services" >}}) (`export`, `resolver`, `vis`, `citation_helper`) | the same |
+| [`data.refresh()`]({{< ref "usage/reference-data" >}}) | the same |
 
 Queries over libraries (`await Library.select().aall()`) run asynchronously like any query.
 Searching for documents in a library works asynchronously too, because SciX tests the

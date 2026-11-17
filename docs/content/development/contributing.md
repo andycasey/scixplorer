@@ -85,7 +85,7 @@ The first build downloads the theme (and the search library it bundles), and Hug
 output goes to `docs/public/`, which git ignores. `baseURL` in `docs/hugo.yaml` is `/`; a deployment must
 set the real one, for example with `--baseURL`.
 
-Link between pages with the `ref` shortcode, `[text]({{</* ref "guide/searching" */>}})`, so that a broken
+Link between pages with the `ref` shortcode, `[text]({{</* ref "usage/searching" */>}})`, so that a broken
 link fails the build. The build test runs this build into a temporary directory and checks the key pages;
 it is opt-in, because it needs Hugo and, the first time, the network:
 

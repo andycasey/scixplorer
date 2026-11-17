@@ -28,13 +28,13 @@ catch them all:
 | `APIError` | `SciXError` | SciX answered with an error, or with a response of an unexpected shape, or could not be reached |
 | `AuthenticationError` | `APIError` | there is no token, or SciX rejected it (HTTP 401 or 403) |
 | `RateLimitExceeded` | `APIError` | the rate limit for a service is used up (HTTP 429) |
-| `DataNotAvailable` | `SciXError` | a vocabulary has not been downloaded (see [Reference data]({{< ref "guide/reference-data" >}})) |
+| `DataNotAvailable` | `SciXError` | a vocabulary has not been downloaded (see [Reference data]({{< ref "usage/reference-data" >}})) |
 
 Two warnings, which are not errors:
 
 | Warning | Emitted when |
 |---|---|
-| `LazyLoadWarning` | a field that was not fetched is loaded on demand (see [Results]({{< ref "guide/results#lazy-loading" >}})) |
+| `LazyLoadWarning` | a field that was not fetched is loaded on demand (see [Results]({{< ref "usage/results#lazy-loading" >}})) |
 | `DataWarning` | a value from SciX could not be converted to its field's type and became `None`, or a cached data file could not be read |
 
 `APIError` has `message`, `status_code` (or `None` if no response arrived) and `response` (the parsed
@@ -83,7 +83,7 @@ except exceptions.RateLimitExceeded as error:
 ```
 
 Searches cost one request per page of results, so set a `limit()` when you need only the first few
-documents, and select the fields you need to avoid [lazy loading]({{< ref "guide/results#lazy-loading" >}}).
+documents, and select the fields you need to avoid [lazy loading]({{< ref "usage/results#lazy-loading" >}}).
 
 ## Retries
 
@@ -149,11 +149,11 @@ print(query.explain())
 
 When the client drops results itself, it also applies `offset()` and `limit()`, and `count()` pages through
 the results. If you need a large set inside a more complex condition, put the documents in a
-[library]({{< ref "guide/libraries" >}}) and use `Document.in_(library)`, which SciX evaluates itself.
+[library]({{< ref "usage/libraries" >}}) and use `Document.in_(library)`, which SciX evaluates itself.
 
 ### Conditions checked by the client
 
-Some [per-author conditions]({{< ref "guide/authors#where-conditions-are-checked" >}}) are checked by the
+Some [per-author conditions]({{< ref "usage/authors#where-conditions-are-checked" >}}) are checked by the
 client on the documents SciX returns. Like a negated large bibcode set, each must be a top-level condition
 (joined to the rest with `&`, optionally negated with `~`); inside `|`, a nested `~` or an operator they
 raise `UnsupportedQueryError` with an explanation of how to restructure the search.
@@ -182,7 +182,7 @@ year range (Document.year.between(2015, 2020)), an author (Document.author == "L
 (Document.journal == "ApJ").
 ```
 
-Add any condition SciX can search. The [default collection]({{< ref "guide/collections" >}}) does not count,
+Add any condition SciX can search. The [default collection]({{< ref "usage/collections" >}}) does not count,
 but a positive set of bibcodes uploaded to `/search/bigquery` does. Here an author narrows the search, and
 the excluded set is applied as results arrive:
 

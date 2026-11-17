@@ -36,7 +36,7 @@ and build on it: `recent = query.where(Document.year >= 2015)` leaves `query` as
 
 | Method | What it does |
 |---|---|
-| `select(*fields)` | Starts a query and says which fields to fetch. With no fields, every field except the large [deferred ones]({{< ref "guide/results#deferred-fields" >}}). |
+| `select(*fields)` | Starts a query and says which fields to fetch. With no fields, every field except the large [deferred ones]({{< ref "usage/results#deferred-fields" >}}). |
 | `where(*conditions)` | Adds conditions. Several conditions, or several calls, must all hold. |
 | `order_by(*keys)` | Sorts by fields: `Document.year.desc()`, `Document.year.asc()`, or a bare field (ascending). It replaces any earlier order. |
 | `limit(n)` | Returns at most `n` documents. `limit(None)` removes the limit. |
@@ -157,8 +157,8 @@ paper.journal
 # -> <Journal: abbreviation='Natur'>
 ```
 
-`paper.journal` is a [`Journal`]({{< ref "guide/journals" >}}) object. Documents also link to their authors'
-[affiliations]({{< ref "guide/affiliations" >}}) and to [vocabulary concepts]({{< ref "guide/vocabularies" >}}).
+`paper.journal` is a [`Journal`]({{< ref "usage/journals" >}}) object. Documents also link to their authors'
+[affiliations]({{< ref "usage/affiliations" >}}) and to [vocabulary concepts]({{< ref "usage/vocabularies" >}}).
 
 A document's `repr` names its identifier, and `str()` gives the identifier alone:
 
@@ -174,5 +174,5 @@ paper.to_dict()["bibcode"]
 # -> 1995Natur.378..355M
 ```
 
-[Results]({{< ref "guide/results" >}}) covers fields, types and loading in detail, and
-[Searching]({{< ref "guide/searching" >}}) covers everything you can put in `where()`.
+[Results]({{< ref "usage/results" >}}) covers fields, types and loading in detail, and
+[Searching]({{< ref "usage/searching" >}}) covers everything you can put in `where()`.

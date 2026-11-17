@@ -168,7 +168,7 @@ passed), and otherwise the default client. Libraries returned by a query do not 
 client.
 
 Whether a failed request is sent again depends on whether repeating it is safe (see
-[Errors and limits]({{< ref "guide/errors-and-limits#retries" >}})):
+[Errors and limits]({{< ref "usage/errors-and-limits#retries" >}})):
 
 | Request | Retried after a timeout or HTTP 502/503/504 |
 |---|---|
@@ -176,4 +176,4 @@ Whether a failed request is sent again depends on whether repeating it is safe (
 | `empty`, `set_permissions` | yes: repeating them changes nothing |
 | `create`, `add`, `remove`, `union`, `intersection`, `difference`, `copy_to`, `transfer` | only if the connection could not be made, because otherwise SciX may already have applied them |
 
-Library methods are synchronous; see [Async]({{< ref "guide/async" >}}).
+Library methods are synchronous; see [Async]({{< ref "usage/async" >}}).

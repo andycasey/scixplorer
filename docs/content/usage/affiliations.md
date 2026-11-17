@@ -142,7 +142,7 @@ search.to_solr(separate).count(" OR ") + 2
 ```
 
 `Document.affiliation` matches if *any* author has a matching affiliation. To tie an affiliation to
-a particular author (a name, or a position), use [`Document.authors`]({{< ref "guide/authors" >}}).
+a particular author (a name, or a position), use [`Document.authors`]({{< ref "usage/authors" >}}).
 
 Other ways to search affiliations, which the client passes to SciX as they are:
 
@@ -158,7 +158,7 @@ Other ways to search affiliations, which the client passes to SciX as they are:
 - One condition may match at most 1000 affiliations, because their identifiers must fit in one search
   request. A larger match raises `UnsupportedQueryError` when the search is planned; narrow the condition.
   For example, `country_code == "US"` matches 1773 institutions and is refused. See
-  [Errors and limits]({{< ref "guide/errors-and-limits#related-values" >}}).
+  [Errors and limits]({{< ref "usage/errors-and-limits#related-values" >}}).
 - The curated data is incomplete. Many affiliation strings in SciX have no curated identifier (`-` in
   `aff_id`), and some institutions have no country. A search by affiliation finds only documents whose
   affiliations SciX has identified.
@@ -180,11 +180,11 @@ sorted({affiliation.country_code for affiliation in utils.flatten(paper.affiliat
 ```
 
 `doc.authors[i].affiliation` gives the same per author, always as a tuple; see
-[Authors]({{< ref "guide/authors#read-the-authors-of-a-document" >}}).
+[Authors]({{< ref "usage/authors#read-the-authors-of-a-document" >}}).
 
 ## Data licence
 
 The affiliation data comes unmodified from the
 [adsabs/CanonicalAffiliations](https://github.com/adsabs/CanonicalAffiliations) repository and is licensed
 under the GPL-3.0, not under scixplorer's MIT licence. `data.notices()` returns the details. See
-[Reference data]({{< ref "guide/reference-data" >}}).
+[Reference data]({{< ref "usage/reference-data" >}}).

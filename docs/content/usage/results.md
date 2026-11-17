@@ -106,7 +106,7 @@ is never requested twice.
 
 Some things to know:
 
-- The extra request is synchronous, even inside [async code]({{< ref "guide/async" >}}). There, select the
+- The extra request is synchronous, even inside [async code]({{< ref "usage/async" >}}). There, select the
   fields you need.
 - A document is found again by its identifier (in practice its bibcode). A document with no identifier
   loads nothing; the field reads as `None`.
@@ -161,11 +161,11 @@ Documents link to other models. These are computed from the document's fields an
 
 | Attribute | Value | From |
 |---|---|---|
-| `doc.journal` | a [`Journal`]({{< ref "guide/journals" >}}), or `None` | the journal part of the bibcode |
-| `doc.affiliation` | one entry per author: `None`, an [`Affiliation`]({{< ref "guide/affiliations" >}}), or a tuple of them | `aff_id` |
-| `doc.authors` | a list of [`Author`]({{< ref "guide/authors" >}}) objects | the per-author fields |
-| `doc.uat_concepts` | a list of [`UATConcept`]({{< ref "guide/vocabularies" >}}) objects | `uat_id` |
-| `doc.planetary_features` | a list of [`PlanetaryFeature`]({{< ref "guide/vocabularies" >}}) objects | `planetary_feature_id` |
+| `doc.journal` | a [`Journal`]({{< ref "usage/journals" >}}), or `None` | the journal part of the bibcode |
+| `doc.affiliation` | one entry per author: `None`, an [`Affiliation`]({{< ref "usage/affiliations" >}}), or a tuple of them | `aff_id` |
+| `doc.authors` | a list of [`Author`]({{< ref "usage/authors" >}}) objects | the per-author fields |
+| `doc.uat_concepts` | a list of [`UATConcept`]({{< ref "usage/vocabularies" >}}) objects | `uat_id` |
+| `doc.planetary_features` | a list of [`PlanetaryFeature`]({{< ref "usage/vocabularies" >}}) objects | `planetary_feature_id` |
 
 `utils.flatten()` turns the per-author structure of `doc.affiliation` into a flat list:
 
