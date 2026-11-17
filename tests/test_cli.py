@@ -6,7 +6,6 @@ import io
 import json
 import subprocess
 import sys
-import tomllib
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -258,8 +257,8 @@ def test_refresh_data(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_the_scix_script_is_declared() -> None:
-    project = tomllib.loads((ROOT / "pyproject.toml").read_text("utf-8"))["project"]
-    assert project["scripts"] == {"scix": "scixplorer.cli:main"}
+    lines = (ROOT / "pyproject.toml").read_text("utf-8").splitlines()
+    assert lines[lines.index("[project.scripts]") + 1] == 'scix = "scixplorer.cli:main"'
 
 
 def test_python_m_scixplorer_runs_the_command() -> None:
