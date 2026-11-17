@@ -10,7 +10,7 @@ description: A typed Python client for SciX (Science Explorer), the successor to
 <div class="landing-hero">
 <div class="landing-hero-text">
 
-{{< hextra/hero-badge >}}Version 1.0.0{{< /hextra/hero-badge >}}
+{{< hextra/hero-badge >}}Version 1.0.1{{< /hextra/hero-badge >}}
 
 {{< hextra/hero-headline >}}Search SciX with Python{{< /hextra/hero-headline >}}
 
