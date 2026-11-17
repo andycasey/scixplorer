@@ -6,8 +6,9 @@
     scix exoplanets 2026       # a UAT concept and a year
     scix ApJ 608 119           # a journal, a volume and a page
 
-:func:`~scixplorer.cli.interpret.interpret` reads the words, and the results
-are printed.
+:func:`~scixplorer.cli.interpret.interpret` reads the words; in a terminal the
+results open in a browser you move through with the keyboard, and anywhere else
+(a pipe, or with ``--plain``) they are printed.
 """
 
 from __future__ import annotations
@@ -81,6 +82,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("-c", "--collection", metavar="NAME", help="only one collection, such as astronomy")
     parser.add_argument("-q", "--query", action="store_true", help="send the words as a Solr query, without reading them")
     parser.add_argument("-x", "--explain", action="store_true", help="show how the words are read, and send nothing")
+    parser.add_argument("-p", "--plain", action="store_true", help="print the results instead of browsing them")
     parser.add_argument("-o", "--open", action="store_true", help="open the first result in your web browser")
     parser.add_argument("-f", "--format", choices=FORMATS, default=None, metavar="FORMAT", help="print the results as: " + ", ".join(FORMATS))
     parser.add_argument("--bibtex", dest="format", action="store_const", const="bibtex", help="the same as --format bibtex")
@@ -177,7 +179,15 @@ def _run(
     if args.collection:
         config.collection = args.collection
     session = Session(client)
+    browse = (
+        not (args.plain or args.open or args.explain or args.format)
+        and _is_terminal(stdin)
+        and _is_terminal(stdout)
+        and _can_browse()
+    )
     if not any(word.strip() for word in args.words):
+        if browse:
+            return _browse(session, None, args.sort, stdin, stdout)
         parser.print_usage(stderr)
         print("scix: say what to search for, such as: scix Casey 2005", file=stderr)
         return 2
@@ -189,7 +199,26 @@ def _run(
         q = to_solr(session.query(interpretation, sort))
         print("\n".join(explanation(interpretation, q, sort, _style(stdout))), file=stdout)
         return 0
+    if browse:
+        return _browse(session, interpretation, args.sort, stdin, stdout)
     return _print(session, interpretation, sort, args, stdout, stderr)
+
+
+def _can_browse() -> bool:
+    try:
+        import termios  # noqa: F401
+    except ImportError:  # Windows
+        return False
+    return os.environ.get("TERM") != "dumb"
+
+
+def _browse(
+    session: Session, interpretation: Interpretation | None, sort: str | None, stdin: TextIO, stdout: TextIO
+) -> int:
+    from . import tui
+
+    browser = tui.Browser(session, sort=sort, style=Style("NO_COLOR" not in os.environ))
+    return tui.run(browser, interpretation, stdin=stdin, stdout=stdout)
 
 
 def _print(
