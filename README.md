@@ -1,5 +1,10 @@
 # scixplorer
 
+[![Documentation](https://github.com/andycasey/scixplorer/actions/workflows/docs.yml/badge.svg?branch=main)](https://andycasey.github.io/scixplorer/)
+[![Tests](https://github.com/andycasey/scixplorer/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/andycasey/scixplorer/actions/workflows/tests.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fandycasey.github.io%2Fscixplorer%2Fcoverage%2Fbadge.json)](https://andycasey.github.io/scixplorer/coverage/)
+[![PyPI](https://img.shields.io/pypi/v/scixplorer)](https://pypi.org/project/scixplorer/)
+
 A Python client for [SciX](https://scixplorer.org) (Science Explorer), the successor to the NASA
 Astrophysics Data System. You write searches as Python expressions; scixplorer checks them, sends the
 Solr query SciX expects, and returns typed results.
