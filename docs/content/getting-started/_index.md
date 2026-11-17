@@ -1,7 +1,7 @@
 ---
 title: Getting started
 weight: 1
-description: Install scixplorer, set your API token, and run your first search, all on one page.
+description: Install scixplorer, set your API token, run your first search, and choose a default collection, all on one page.
 ---
 
 This page takes you from nothing to a working search. The pages in this section go into each step in
@@ -109,6 +109,34 @@ paper.author
 Your editor completes the field names (`Document.` lists them all), and a type checker knows each
 field's type. Values are checked as you write a condition, so `Document.year == "2000"` raises
 `QueryError` straight away.
+
+## 5. Set a default collection
+
+SciX covers several disciplines, which it calls collections: `astronomy`, `physics`, `earthscience` and
+others. By default scixplorer searches all of them, so a search for a name or a common word can return
+papers from disciplines you did not have in mind. To keep your searches within one collection, set it
+once, before you search:
+
+```python
+config.collection = "astronomy"
+search.to_solr(recent_kewley)
+# -> author:"Kewley, L" AND year:[2005 TO *] AND database:"astronomy"
+```
+
+Give a list for several collections, such as `config.collection = ["astronomy", "physics"]`, and set it
+back to `None` to search them all.
+
+The collection is added only to open searches. A search that names its documents, by bibcode, DOI or
+library, is left alone, and so is one that names a collection itself:
+
+```python
+search.to_solr(Document.bibcode == "2015GeoRL..42..264E")
+# -> bibcode:"2015GeoRL..42..264E"
+search.to_solr(Document.database == "earthscience")
+# -> database:"earthscience"
+```
+
+[Collections]({{< ref "usage/collections" >}}) lists exactly when the setting applies.
 
 ## Next
 
