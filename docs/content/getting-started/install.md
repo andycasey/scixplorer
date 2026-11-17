@@ -29,6 +29,9 @@ If you use pip instead:
 pip install scixplorer
 ```
 
+Installing also gives you the command `scix`, which searches from the terminal:
+see [Command line]({{< ref "usage/command-line" >}}).
+
 ## Set your API token
 
 Every request to SciX needs a personal API token. If you have a NASA/ADS token, you already have one:

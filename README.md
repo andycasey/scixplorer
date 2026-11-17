@@ -81,6 +81,22 @@ papers = (
 )
 ```
 
+## From the terminal
+
+Installing scixplorer also installs the command `scix`, which reads plain words:
+
+```shell
+scix Casey 2005            # an author and a year
+scix exoplanets 2026       # a Unified Astronomy Thesaurus concept and a year
+scix ApJ 608 119           # a journal, a volume and a page
+scix Casey et al. 2019 ApJ --bibtex >> references.bib
+```
+
+In a terminal the results open in a browser you move through with the keyboard: read abstracts, follow
+citations and references, open the full text, copy BibTeX. `scix --explain <words>` shows how a search
+is read without sending it. See
+[the documentation](https://andycasey.github.io/scixplorer/usage/command-line/).
+
 ## Features
 
 - Searches as Python expressions on 101 typed document fields, checked when you write them.
@@ -95,3 +111,4 @@ papers = (
   suggestions.
 - Synchronous and `asyncio` use with the same queries; retries, rate-limit tracking, and paging handled
   for you.
+- A command, `scix`, that searches from the terminal in plain words.

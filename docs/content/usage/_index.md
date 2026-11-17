@@ -23,3 +23,4 @@ Each page covers one topic and starts with what you can do after reading it.
 | [Async]({{< ref "usage/async" >}}) | searching from asyncio code |
 | [Errors and limits]({{< ref "usage/errors-and-limits" >}}) | exceptions, rate limits, retries, limits on searches |
 | [How it works]({{< ref "usage/how-it-works" >}}) | from expression to request |
+| [Command line]({{< ref "usage/command-line" >}}) | the `scix` command: search from the terminal in plain words |

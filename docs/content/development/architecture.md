@@ -40,6 +40,7 @@ The only runtime dependency is `httpx`.
 | `services/` | `export`, `resolver`, `vis`, `citation_helper`: thin functions, one request each |
 | `data/` | the packaged data files and the functions that download, cache and load reference data |
 | `utils.py` | `parse_bibcode`, `to_bibcodes`, `flatten` |
+| `cli/` | the `scix` command: `interpret.py` reads plain words into conditions, `session.py` runs the searches, `output.py` formats documents, `tui.py` is the results browser |
 
 ## Expression nodes
 
@@ -208,6 +209,22 @@ actually yielded, so in-memory models work without a token.
 `Client.send` and `Client.asend` share everything except the network call and the sleep: `_prepare` builds
 the `httpx.Request` (token, `User-Agent`, body, timeout) and `_settle` interprets one attempt (retry,
 response, or exception) and records rate limits.
+
+## The command
+
+`scix` (`cli/__init__.py`, also `python -m scixplorer`) is built on the public API and adds no dependency.
+Importing `scixplorer` does not import it.
+
+- `interpret(words)` is pure: it reads the words against patterns, the journal list and the thesaurus
+  (if downloaded), and returns an `Interpretation` holding one `Reading` per piece of the search: what
+  was typed, what it was read as, and the condition. A reading may carry a wider condition (`loose`),
+  which `Session.find` uses once if the search matches nothing. The rules and their order are in the
+  module's docstring, and `tests/test_cli_interpret.py` has an example of each.
+- `Session` sends each search with a wrapper around the client that remembers `numFound`, so one
+  request gives a page of documents and their total.
+- `Browser` (in `tui.py`) holds the state of the screen. `key()` changes it and `render()` returns the
+  screen as lines of text, so tests drive it without a terminal; `run()` is the only code that puts a
+  terminal in raw mode, with the standard library alone (`termios`), so on Windows results are printed.
 
 ## Lazy loading
 
