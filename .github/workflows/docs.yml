@@ -1,7 +1,8 @@
 # Build the documentation site with Hugo, and publish it to GitHub Pages from main.
 #
 # A pull request only builds the site (a warning or a broken link fails the build); a push to main
-# also deploys it.
+# also deploys it. The test coverage report is published with the site, under coverage/, with the
+# figure the README's coverage badge shows.
 name: Docs
 
 on:
@@ -65,6 +66,19 @@ jobs:
             exit 1
           fi
 
+      # Coverage on this one Python version; the Tests workflow reports all the versions combined.
+      - name: Measure test coverage
+        run: |
+          uv run python -W error -m coverage run -m pytest
+          uv run coverage combine
+          uv run coverage html --directory "$RUNNER_TEMP/coverage"
+          total="$(uv run coverage report --format=total)"
+          if [ "$total" -ge 90 ]; then colour=brightgreen; elif [ "$total" -ge 75 ]; then colour=yellow; else colour=red; fi
+          # What the badge reads: https://shields.io/badges/endpoint-badge
+          printf '{"schemaVersion": 1, "label": "coverage", "message": "%s%%", "color": "%s"}\n' "$total" "$colour" \
+            > "$RUNNER_TEMP/coverage/badge.json"
+          cat "$RUNNER_TEMP/coverage/badge.json"
+
       - name: Look up the address of the Pages site
         id: pages
         uses: actions/configure-pages@v6
@@ -75,6 +89,9 @@ jobs:
         run: |
           hugo --source docs --gc --minify --panicOnWarning --printPathWarnings \
             --baseURL "${{ steps.pages.outputs.base_url }}/"
+
+      - name: Add the coverage report to the site
+        run: cp -R "$RUNNER_TEMP/coverage" docs/public/coverage
 
       - uses: actions/upload-pages-artifact@v5
         with:

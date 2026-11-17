@@ -185,12 +185,14 @@ Four GitHub Actions workflows in `.github/workflows/` run on GitHub:
 | Workflow | Runs on | What it does |
 |---|---|---|
 | `tests.yml` | a push to `main`, a pull request | Runs the offline suite, with warnings as errors, on Python 3.10 to 3.14, then reports the coverage of the five runs combined. |
-| `docs.yml` | a push to `main`, a pull request | Runs the build test and builds the site. From `main` it also publishes the site to GitHub Pages, at <https://andycasey.github.io/scixplorer/>. |
+| `docs.yml` | a push to `main`, a pull request | Runs the build test and builds the site. From `main` it also publishes the site to GitHub Pages, at <https://andycasey.github.io/scixplorer/>, with a coverage report. |
 | `live.yml` | every night, or on request | Runs the read-only [live tests]({{< ref "development/live-tests" >}}) against the real API. |
 | `release.yml` | a pushed tag `v…` | Releases that version; see below. |
 
 The coverage table is on the summary page of each run of `tests.yml`, and the line-by-line report is the
-`coverage-html` artifact of that run.
+`coverage-html` artifact of that run. The report for `main` is also published with the site, at
+<https://andycasey.github.io/scixplorer/coverage/>; it is measured on one Python version, and gives the
+figure on the coverage badge in the README.
 
 The live tests do not run with the others, because they need the network and an API token. `live.yml`
 runs them with the token in the repository secret `SCIX_API_TOKEN`, and never with `--live-write`. To
