@@ -22,7 +22,7 @@ Several conditions about the same author go inside one ``Document.authors.any(..
     Document.authors.any((Author.name == "Kewley, L") & (Author.affiliation.country == "Australia"))
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 # The version is defined before these imports because the client and scixplorer.data read it.
 from . import data, exceptions
