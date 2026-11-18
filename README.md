@@ -11,14 +11,20 @@ Solr query SciX expects, and returns typed results.
 
 ## Install
 
-scixplorer needs Python 3.10 or later; its only dependency is `httpx`. We recommend
+`scixplorer` needs Python 3.10 or later; its only dependency is `httpx`. We recommend
 [uv](https://docs.astral.sh/uv/):
 
 ```shell
 uv add scixplorer
 ```
 
-or, with pip, `pip install scixplorer`.
+or, with pip, `pip install scixplorer`. There is a variant of `scixplorer` that also comes with a
+[Model Context Protocol](https://modelcontextprotocol.io/) server so that agents can search SciX 
+more efficiently. If you want that version:
+
+```shell 
+uv add scixplorer[mcp]
+```
 
 Get an API token at <https://scixplorer.org/user/settings/token> and put it in the environment variable
 `SCIX_API_TOKEN`, or on the first line of `~/.scix/token`.
@@ -84,7 +90,7 @@ papers = (
 
 ## From the terminal
 
-Installing scixplorer also installs the command `scix`, which reads plain words:
+Installing `scixplorer` also installs the command `scix`, which reads plain words:
 
 ```shell
 scix Kewley 2008           # an author and a year
