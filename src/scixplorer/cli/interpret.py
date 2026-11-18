@@ -1,6 +1,6 @@
 """Read a search typed in plain words the way a person means it.
 
-:func:`interpret` turns ``Casey 2005``, ``exoplanets 2026`` or ``ApJ 608 119``
+:func:`interpret` turns ``Kewley 2008``, ``exoplanets 2026`` or ``ApJ 608 119``
 into conditions on :class:`~scixplorer.models.document.Document`. It makes no
 request: it reads the words against patterns (years, bibcodes, DOIs, arXiv and
 ORCID identifiers), the journal list and, once downloaded, the Unified Astronomy
@@ -587,7 +587,7 @@ class _Parser:
         if not token.quoted:
             return None
         text = token.text
-        first = text.startswith("^")  # "^Casey, A": the first author
+        first = text.startswith("^")  # "^Kewley, L": the first author
         text = text.lstrip("^").strip()
         if not text:
             return position + 1
@@ -793,7 +793,7 @@ class _Parser:
         start = self.tokens[position]
         if start.quoted or start.prefix is not None:
             return None
-        # Initials first: "A. R. Casey".
+        # Initials first: "L. J. Kewley".
         if _LEADING_INITIALS.fullmatch(start.text):
             initials, end = self._leading_initials(position)
             surname = self._surname(end)

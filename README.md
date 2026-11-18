@@ -86,10 +86,10 @@ papers = (
 Installing scixplorer also installs the command `scix`, which reads plain words:
 
 ```shell
-scix Casey 2005            # an author and a year
+scix Kewley 2008           # an author and a year
 scix exoplanets 2026       # a Unified Astronomy Thesaurus concept and a year
 scix ApJ 608 119           # a journal, a volume and a page
-scix Casey et al. 2019 ApJ --bibtex >> references.bib
+scix Kewley et al. 2019 ApJ --bibtex >> references.bib
 ```
 
 In a terminal the results open in a browser you move through with the keyboard: read abstracts, follow

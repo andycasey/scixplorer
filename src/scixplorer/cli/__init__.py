@@ -2,7 +2,7 @@
 
 ::
 
-    scix Casey 2005            # an author and a year
+    scix Kewley 2008           # an author and a year
     scix exoplanets 2026       # a UAT concept and a year
     scix ApJ 608 119           # a journal, a volume and a page
 
@@ -42,14 +42,14 @@ FORMATS = ("list", "bibcodes", "json", *EXPORT_FORMATS)
 
 _EPILOG = """\
 how words are read:
-  Casey 2005              an author and a year (capitalised words are surnames)
-  Casey et al. 2019       the first author; so is ^Casey
-  "Casey, A." 2015-2020   an author with initials, and a range of years
+  Kewley 2008             an author and a year (capitalised words are surnames)
+  Kewley et al. 2019      the first author; so is ^Kewley
+  "Kewley, L." 2015-2020  an author with initials, and a range of years
   exoplanets since 2020   a Unified Astronomy Thesaurus concept
   ApJ 608 119             a journal, a volume and a page
-  2019ApJ...880..125C     a bibcode; a DOI, arXiv or ORCID identifier works too
+  2019ApJ...880...16K     a bibcode; a DOI, arXiv or ORCID identifier works too
   "dark matter halo"      a phrase in the title, abstract or keywords
-  title:gaia a:Casey      a named field (any document field, or a: t: j: y:)
+  title:gaia a:Kewley     a named field (any document field, or a: t: j: y:)
   citations:<bibcode>     what cites it; also references: trending: reviews:
 
 Run `scix --explain <words>` to see how a search is read without sending it.
@@ -189,7 +189,7 @@ def _run(
         if browse:
             return _browse(session, None, args.sort, stdin, stdout)
         parser.print_usage(stderr)
-        print("scix: say what to search for, such as: scix Casey 2005", file=stderr)
+        print("scix: say what to search for, such as: scix Kewley 2008", file=stderr)
         return 2
     interpretation = _read(args)
     sort: str = args.sort or default_sort(interpretation)

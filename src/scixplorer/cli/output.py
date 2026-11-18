@@ -172,7 +172,7 @@ def _surname(author: str) -> str:
 
 
 def short_authors(document: Document) -> str:
-    """The authors as a citation names them: ``Casey``, ``Casey & Ji``, ``Casey et al.``."""
+    """The authors as a citation names them: ``Kewley``, ``Kewley & Ellison``, ``Kewley et al.``."""
     authors = document._data.get("author") or []
     if not authors:
         return ""

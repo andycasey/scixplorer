@@ -19,7 +19,7 @@ It uses the same [API token]({{< ref "getting-started/token-management" >}}) as 
 ## Type what you mean
 
 ```shell
-scix Casey 2005
+scix Kewley 2008
 scix exoplanets 2026
 scix ApJ 608 119
 ```
@@ -27,7 +27,7 @@ scix ApJ 608 119
 `scix` reads each word and says how it read it. The three searches above become:
 
 ```text
-author Casey · year 2005
+author Kewley · year 2008
 concept Exoplanets (UAT 498) · year 2026
 journal The Astrophysical Journal (ApJ) · volume 608 · page 119
 ```
@@ -35,16 +35,16 @@ journal The Astrophysical Journal (ApJ) · volume 608 · page 119
 `--explain` shows this, and the query that would be sent, without sending it:
 
 ```shell
-scix --explain Casey et al. 2019 ApJ exoplanets
+scix --explain Kewley et al. 2019 ApJ interstellar medium
 ```
 
 ```text
-Casey et al.  first author  Casey
-2019          year          2019
-ApJ           journal       The Astrophysical Journal (ApJ)
-exoplanets    concept       Exoplanets (UAT 498)
+Kewley et al.        first author  Kewley
+2019                 year          2019
+ApJ                  journal       The Astrophysical Journal (ApJ)
+interstellar medium  concept       Interstellar medium (UAT 847)
 
-query  first_author:"Casey" AND year:2019 AND bibstem:"ApJ" AND uat_id:498
+query  first_author:"Kewley" AND year:2019 AND bibstem:"ApJ" AND uat_id:847
 sort   most cited first
 ```
 
@@ -54,22 +54,22 @@ Each word is tried against these rules in order, and the first that fits wins:
 
 | You type | It is read as |
 |---|---|
-| `author:"Casey, A"`, `title:gaia`, `a:Casey`, `j:ApJ`, `y:2019` | a condition on that field: any [document field]({{< ref "reference/document-fields" >}}), or the short forms `a` (author), `fa` (first author), `t` (title), `kw` (keyword), `j` (journal), `y` (year), `vol`, `p` (page), `uat` |
-| `citations:2019ApJ...880..125C`, `trending:exoplanets` | an [operator]({{< ref "usage/operators" >}}) applied to the rest, which is read by these same rules: `citations`, `references`, `trending`, `useful`, `reviews`, `similar` |
-| `"dark matter halo"` | a phrase in the title, abstract or keywords; `"Casey, A."` in quotes is an author, and a journal's title in quotes is that journal |
-| `2019ApJ...880..125C`, `10.3847/1538-4357/ab1b3a`, `arXiv:2301.12345`, `0000-0002-1825-0097` | a bibcode, DOI, arXiv identifier or ORCID iD; a link to a SciX, ADS, DOI, arXiv or ORCID page works too |
+| `author:"Kewley, L"`, `title:gaia`, `a:Kewley`, `j:ApJ`, `y:2019` | a condition on that field: any [document field]({{< ref "reference/document-fields" >}}), or the short forms `a` (author), `fa` (first author), `t` (title), `kw` (keyword), `j` (journal), `y` (year), `vol`, `p` (page), `uat` |
+| `citations:2019ApJ...880...16K`, `trending:exoplanets` | an [operator]({{< ref "usage/operators" >}}) applied to the rest, which is read by these same rules: `citations`, `references`, `trending`, `useful`, `reviews`, `similar` |
+| `"dark matter halo"` | a phrase in the title, abstract or keywords; `"Kewley, L."` in quotes is an author, and a journal's title in quotes is that journal |
+| `2019ApJ...880...16K`, `10.3847/1538-4357/ab1b3a`, `arXiv:2301.12345`, `0000-0002-1825-0097` | a bibcode, DOI, arXiv identifier or ORCID iD; a link to a SciX, ADS, DOI, arXiv or ORCID page works too |
 | `2005`, `2005-2010`, `2015-`, `since 2020`, `before 2010` | a year or a range of years |
 | `ApJ`, `mnras`, `Nature`, `Astrophysical Journal` | a journal, by abbreviation or title; the numbers after it are its volume and page |
-| `Casey, A. R.`, `A. R. Casey`, `van der Marel` | an author with initials |
+| `Kewley, L. J.`, `L. J. Kewley`, `van der Marel` | an author with initials |
 | `exoplanets`, `hot jupiters`, `black hole` | the longest run of words that names a [UAT concept]({{< ref "usage/vocabularies" >}}), ignoring case and a plural ending |
-| `Casey` | a capitalised word is an author's surname |
-| `halos`, `casey` | any other word is searched in the title, abstract and keywords; a lower-case word that the thesaurus does not use may be a surname typed without its capital, so it matches an author or the text |
+| `Kewley` | a capitalised word is an author's surname |
+| `halos`, `kewley` | any other word is searched in the title, abstract and keywords; a lower-case word that the thesaurus does not use may be a surname typed without its capital, so it matches an author or the text |
 
 A few more things it understands:
 
-- `Casey et al. 2019` and `^Casey 2019` mean Casey is the first author.
+- `Kewley et al. 2019` and `^Kewley 2019` mean Kewley is the first author.
 - A reference pasted from a paper is read piece by piece:
-  `scix "Casey, A. R., Hawkins, K., Hogg, D. W. 2017, ApJ, 840, 59"`.
+  `scix "Kewley, L. J., Nicholls, D. C., Sutherland, R. S. 2019, ARA&A, 57, 511"`.
 - `refereed` limits the search to refereed documents, as does `--refereed`.
 - A search that already looks like Solr syntax (`AND`, `OR`, `[2000 TO 2010]`, a wildcard) is sent as it
   is. `--query` sends any words that way.
@@ -90,20 +90,21 @@ parentheses, such as `'A&A'`; `A+A` and `AA` also mean Astronomy and Astrophysic
 ## Browse the results
 
 In a terminal, the results open in a browser: a list, with the selected document's abstract below it.
-This is `scix "^Casey, A" 2019 ApJ`:
+This is `scix "^Kewley, L" 2019`:
 
 ```text
- first author Casey, A · year 2019 · journal The Astrophysical Journal (ApJ)            1/2
+ first author Kewley, L · year 2019                                                     1/3
  most cited first
-  2019 Casey et al.      Tidal Interactions between Binary Stars Can Drive L…     ApJ    108
-  2019 Casey et al.      A Data-driven Model of Nucleosynthesis with Chemica…     ApJ     17
+  2019 Kewley et al.     Understanding Galaxy Evolution Through Emission Lin…   ARA&A    642
+  2019 Kewley et al.     Theoretical ISM Pressure and Electron Density Diagn…     ApJ    130
+  2019 Kewley            Diversity and inclusion in Australian astronomy        NatAs      3
 ────────────────────────────────────────────────────────────────────────────────────────────
- Tidal Interactions between Binary Stars Can Drive Lithium Production in Low-mass Red
- Giants
- Casey, Andrew R.; Ho, Anna Y. Q.; Ness, Melissa; Hogg, David W.; Rix, Hans-Walter; Angelo…
- ApJ 880, 125 (2019) · 108 citations · refereed · 2019ApJ...880..125C
+ Understanding Galaxy Evolution Through Emission Lines
+ Kewley, Lisa J.; Nicholls, David C.; Sutherland, Ralph S.
+ ARA&A 57, 511 (2019) · 642 citations · refereed · 2019ARA&A..57..511K
 
- Theoretical models of stellar evolution predict that most of the lithium inside a star is…
+ We review the use of emission lines for understanding galaxy evolution, focusing on
+ excitation source, metallicity, ionization parameter, ISM pressure, and electron density.…
  ↑↓ move   ⏎ read   o open   f full text   b BibTeX   c cited by   r references   s sort…
 ```
 
@@ -147,7 +148,7 @@ Other formats print only the data on standard output, so they can be piped or sa
 read goes to standard error:
 
 ```shell
-scix Casey et al. 2019 ApJ --bibtex >> references.bib
+scix Kewley et al. 2019 ApJ --bibtex >> references.bib
 scix exoplanets 2026 -n 100 --bibcodes | sort
 scix "hot jupiters" since 2020 -s citations --json
 ```

@@ -407,7 +407,7 @@ class Browser:
     def _header(self, width: int) -> list[str]:
         style, view = self.style, self.view
         if view is None:
-            return [style.bold(" scix"), style.dim(fit(" Search SciX in plain words: Casey 2005 · exoplanets since 2020 · ApJ 608 119", width))]
+            return [style.bold(" scix"), style.dim(fit(" Search SciX in plain words: Kewley 2008 · exoplanets since 2020 · ApJ 608 119", width))]
         position = f"{view.selected + 1 if view.documents else 0}/{view.total} "
         read = fit(f" {view.interpretation}", width - len(position) - 1, pad=True)
         order = f" {SORTS[view.sort][2]}" if view.total > 1 else ""

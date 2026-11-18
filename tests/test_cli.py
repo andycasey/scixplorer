@@ -224,7 +224,7 @@ def test_notes_go_to_standard_error() -> None:
 def test_no_words_is_a_usage_error() -> None:
     status, out, err, api = run()
     assert status == 2 and out == "" and api.requests == []
-    assert "usage: scix" in err and "scix Casey 2005" in err
+    assert "usage: scix" in err and "scix Kewley 2008" in err
 
 
 def test_an_api_error_is_reported_without_a_traceback() -> None:
