@@ -130,8 +130,8 @@ australian = (
 
 ### Several conditions on the same author
 
-Everything inside one `Document.authors.any(...)` is about one author. This finds papers on which G. Kauffmann
-lists a German institution, not papers by G. Kauffmann with some co-author in Germany. You can also ask about
+Everything inside one `Document.authors.any(...)` is about one author. This finds papers on which J. Dalcanton
+lists the University of Washington, not papers by J. Dalcanton with some co-author there. You can also ask about
 the first author, or about every author.
 
 [Authors →]({{< ref "usage/authors" >}})
@@ -142,17 +142,18 @@ the first author, or about every author.
 ```python
 from scixplorer import Author
 
-kauffmann_in_germany = (
+dalcanton_at_uw = (
     Document
     .select(Document.bibcode)
     .where(
         Document.authors.any(
-            (Author.name == "Kauffmann, G") & (Author.affiliation.country_code == "DE")
+            (Author.name == "Dalcanton, J")
+            & Author.affiliation.canonical_name.startswith("University of Washington")
         )
     )
 )
-[paper.bibcode for paper in kauffmann_in_germany]
-# -> ['2006MNRAS.372..961K']
+[paper.bibcode for paper in dalcanton_at_uw]
+# -> ['2007ApJ...658..941D']
 ```
 
 </div>

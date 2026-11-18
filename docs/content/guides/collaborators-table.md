@@ -61,8 +61,8 @@ for paper in papers:
 
 len(table)
 # -> 4
-table["Kauffmann, G"]
-# -> ('Kauffmann, Guinevere', 'Max-Planck-Institute for Astrophysics, Garching', datetime.date(2006, 11, 1))
+table["Groves, B"]
+# -> ('Groves, Brent', 'Max-Planck-Institute for Astrophysics, Garching', datetime.date(2006, 11, 1))
 table["Heckman, T"]
 # -> ('Heckman, Tim', 'Department of Physics and Astronomy, Johns Hopkins University, Baltimore, MD 21218, USA', datetime.date(2006, 11, 1))
 ```

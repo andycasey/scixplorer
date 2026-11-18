@@ -121,7 +121,7 @@ def test_search_with_solr_sends_the_query_as_written(tools: Tools) -> None:
 def test_a_search_that_finds_nothing_is_widened_and_says_so(tools: Tools) -> None:
     # No author is called Metallicity, but titles hold the word.
     result = tools.search("Metallicity")
-    assert result["read_as"] == "author or text Metallicity" and result["total"] == 2
+    assert result["read_as"] == "author or text Metallicity" and result["total"] == 3
     assert result["note"] == "Nothing matched author Metallicity, so the search was widened."
     nothing = tools.search('"Kewley, L" 1850')
     assert nothing["total"] == 0 and nothing["documents"] == [] and "note" not in nothing

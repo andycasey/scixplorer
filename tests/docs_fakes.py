@@ -293,6 +293,25 @@ SAMPLE_DOCUMENTS: list[dict[str, Any]] = [
         read_count=25,
         entry_date="2015-01-28T00:00:00Z",
     ),
+    _record(
+        bibcode="2007ApJ...658..941D",
+        id="7900358",
+        title=["The Metallicity of Galaxy Disks: Infall versus Outflow"],
+        author=["Dalcanton, Julianne J."],
+        aff=["Department of Astronomy, University of Washington, Box 351580, Seattle, WA 98195, USA"],
+        aff_id=["A01222"],
+        year=2007,
+        pubdate="2007-04-00",
+        pub="The Astrophysical Journal",
+        volume="658",
+        page=["941"],
+        doi=["10.1086/508913"],
+        keyword=["galaxies: abundances", "galaxies: evolution", "galaxies: formation", "galaxies: ISM", "ISM: evolution"],
+        property=["ARTICLE", "REFEREED", "EPRINT_OPENACCESS"],
+        citation_count=500,
+        read_count=60,
+        entry_date="2007-03-20T00:00:00Z",
+    ),
 ]
 
 #: Libraries known to the fake: id -> metadata and bibcodes. The first is the caller's own.

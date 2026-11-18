@@ -108,10 +108,10 @@ Indices start at 0 and slices follow Python, so `[0:3]` is the first three:
 ```python
 search.to_solr(Document.author[0] == "Kewley, L")
 # -> pos(author:"Kewley, L", 1)
-search.to_solr(Document.author[0:3] == "Kauffmann, G")
-# -> pos(author:"Kauffmann, G", 1, 3)
-search.to_solr(Document.author[1].exact("Kauffmann, Guinevere"))
-# -> pos(=author:"Kauffmann, Guinevere", 2)
+search.to_solr(Document.author[0:3] == "Dalcanton, J")
+# -> pos(author:"Dalcanton, J", 1, 3)
+search.to_solr(Document.author[1].exact("Dalcanton, Julianne"))
+# -> pos(=author:"Dalcanton, Julianne", 2)
 ```
 
 SciX counts positions from 1, which is why the query says `1` for `[0]`. It cannot count from the end, so

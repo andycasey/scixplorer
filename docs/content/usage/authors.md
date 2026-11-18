@@ -50,7 +50,8 @@ careful = (
 # -> []
 ```
 
-The same search for G. Kauffmann finds the paper on which Kauffmann herself gave a German affiliation:
+The same kind of search for J. Dalcanton and the University of Washington finds the paper on which Dalcanton
+herself gave that affiliation:
 
 ```python
 query = (
@@ -58,12 +59,13 @@ query = (
     .select(Document.bibcode)
     .where(
         Document.authors.any(
-            (Author.name == "Kauffmann, G") & (Author.affiliation.country_code == "DE")
+            (Author.name == "Dalcanton, J")
+            & Author.affiliation.canonical_name.startswith("University of Washington")
         )
     )
 )
 [paper.bibcode for paper in query]
-# -> ['2006MNRAS.372..961K']
+# -> ['2007ApJ...658..941D']
 ```
 
 | `Author` field | From the document's | Notes |
@@ -233,12 +235,13 @@ query = (
     .select(Document.bibcode)
     .where(
         Document.authors.any(
-            (Author.name == "Kauffmann, G") & (Author.affiliation.abbreviation == "MPA Garching")
+            (Author.name == "Dalcanton, J")
+            & (Author.affiliation.canonical_name == "University of Washington, Department of Astronomy")
         )
     )
 )
 print(query.explain())
-# -> q = author:"Kauffmann, G" AND aff_id:"A01561"
+# -> q = author:"Dalcanton, J" AND aff_id:"A01222"
 # -> checked client-side on each returned document (conditions joined with & may be met by different authors)
 ```
 
@@ -261,7 +264,7 @@ document in the index for the client to check:
 query = (
     Document
     .select()
-    .where(~Document.authors.any((Author.name == "Kauffmann, G") & (Author.aff_id == "A01561")))
+    .where(~Document.authors.any((Author.name == "Dalcanton, J") & (Author.aff_id == "A01222")))
 )
 query.count()
 ```

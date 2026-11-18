@@ -53,9 +53,9 @@ Expressions use `from scixplorer import Affiliation, Author, Document, Journal, 
 | `Document.author.exact("Rubin, Vera")` | `=author:"Rubin, Vera"` | only that form |
 | `Document.first_author == "Kewley, L"` | `first_author:"Kewley, L"` |  |
 | `Document.author[0] == "Kewley, L"` | `pos(author:"Kewley, L", 1)` | first author |
-| `Document.author[1] == "Kauffmann, G"` | `pos(author:"Kauffmann, G", 2)` | second author |
-| `Document.author[0:3] == "Kauffmann, G"` | `pos(author:"Kauffmann, G", 1, 3)` | any of the first three |
-| `Document.author[1].exact("Kauffmann, Guinevere")` | `pos(=author:"Kauffmann, Guinevere", 2)` |  |
+| `Document.author[1] == "Dalcanton, J"` | `pos(author:"Dalcanton, J", 2)` | second author |
+| `Document.author[0:3] == "Dalcanton, J"` | `pos(author:"Dalcanton, J", 1, 3)` | any of the first three |
+| `Document.author[1].exact("Dalcanton, Julianne")` | `pos(=author:"Dalcanton, Julianne", 2)` |  |
 | `Document.author.like("Freedman, W*")` | `author:"Freedman, W*"` |  |
 | `Document.author.in_(["Freedman, W", "Kewley, L"], exact=True)` | `=author:"Freedman, W" OR =author:"Kewley, L"` |  |
 | `Document.orcid == "0000-0002-1825-0097"` | `orcid:"0000-0002-1825-0097"` | any of the three ORCID fields |
@@ -132,10 +132,10 @@ Expressions use `from scixplorer import Affiliation, Author, Document, Journal, 
 | `Document.authors[0].name == "Kewley, L"` | `pos(author:"Kewley, L", 1)` |  |
 | `Document.authors[0].affiliation.abbreviation == "IoA"` | `pos(aff_id:("A00319" OR "A13064"), 1)` |  |
 | `Document.authors[1].aff == "Max-Planck"` | `pos(aff:"Max-Planck", 2)` |  |
-| `Document.authors[0:3].any(Author.name == "Kauffmann, G")` | `pos(author:"Kauffmann, G", 1, 3)` |  |
-| `Document.authors.any((Author.name == "Kauffmann, G") \| (Author.name == "Kewley, L"))` | `author:"Kauffmann, G" OR author:"Kewley, L"` | an `\|` inside is exact |
+| `Document.authors[0:3].any(Author.name == "Dalcanton, J")` | `pos(author:"Dalcanton, J", 1, 3)` |  |
+| `Document.authors.any((Author.name == "Dalcanton, J") \| (Author.name == "Kewley, L"))` | `author:"Dalcanton, J" OR author:"Kewley, L"` | an `\|` inside is exact |
 | `Document.authors[0].any((Author.name == "Kewley, L") & (Author.aff_id == "A01561"))` | `pos(author:"Kewley, L", 1) AND pos(aff_id:"A01561", 1)` | one position: exact |
-| `Document.authors.any((Author.name == "Kauffmann, G") & (Author.aff_id == "A01561"))` | `author:"Kauffmann, G" AND aff_id:"A01561"` | necessary condition only; checked on each result |
+| `Document.authors.any((Author.name == "Dalcanton, J") & (Author.aff_id == "A01222"))` | `author:"Dalcanton, J" AND aff_id:"A01222"` | necessary condition only; checked on each result |
 | `Document.authors.all(Author.aff_id == "A01561") & (Document.year == 2015)` | `aff_id:"A01561" AND year:2015` | necessary condition only; checked on each result |
 | `Document.authors[0].email == "ness@example.org"` | `email:"ness@example.org"` | not searched by position; checked on each result |
 
@@ -158,6 +158,6 @@ Expressions use `from scixplorer import Affiliation, Author, Document, Journal, 
 | `Document.useful2(Document.abs == "dark energy")` | `useful2(abs:"dark energy")` |  |
 | `Document.trending("exoplanets")` | `trending(exoplanets)` | a string is raw Solr |
 | `Document.top_n(10, Document.year == 2020, order_by=Document.citation_count.desc())` | `topn(10, year:2020, citation_count desc)` |  |
-| `Document.top_n(5, Document.author == "Kauffmann, G")` | `topn(5, author:"Kauffmann, G")` | by relevance |
+| `Document.top_n(5, Document.author == "Dalcanton, J")` | `topn(5, author:"Dalcanton, J")` | by relevance |
 | `Document.pos('author:"Kewley, L"', 1)` | `pos(author:"Kewley, L", 1)` |  |
 | `Document.pos(Document.aff == "Heidelberg", 1, 2)` | `pos(aff:"Heidelberg", 1, 2)` |  |

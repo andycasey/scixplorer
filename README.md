@@ -42,7 +42,8 @@ papers = (
     )
     .where(
         Document.authors.any(
-            (Author.name == "Kauffmann, G") & (Author.affiliation.country_code == "DE")
+            (Author.name == "Dalcanton, J")
+            & Author.affiliation.canonical_name.startswith("University of Washington")
         )
         & Document.year.between(2000, 2010)
     )
@@ -53,11 +54,11 @@ for paper in papers:
     print(paper.year, paper.bibcode, paper.title[0])
 
 print(export.bibtex(papers))
-# -> @ARTICLE{2006MNRAS.372..961K
+# -> @ARTICLE{2007ApJ...658..941D
 ```
 
-This finds papers from 2000 to 2010 on which G. Kauffmann gave a German affiliation, and exports them as
-BibTeX. `papers.explain()` shows the request without sending it.
+This finds papers from 2000 to 2010 on which J. Dalcanton gave a University of Washington affiliation, and
+exports them as BibTeX. `papers.explain()` shows the request without sending it.
 
 Coming from the `ads` package? This is how a search changes
 ([more in the documentation](https://andycasey.github.io/scixplorer/getting-started/coming-from-ads/)):
