@@ -169,6 +169,7 @@ others. `--open` opens the first result in your web browser.
 | `-o`, `--open` | open the first result in your web browser |
 | `-f FORMAT`, `--format FORMAT` | print in another format; `--bibtex`, `--json` and `--bibcodes` are short for three of them |
 | `--refresh-data` | download the [reference data]({{< ref "usage/reference-data" >}}), then stop |
+| `--mcp` | run as an [MCP server]({{< ref "usage/mcp" >}}) for an AI assistant; `--read-only` leaves out the tools that change libraries |
 
 The exit status is 0 if documents were found, 1 if none matched, and 2 if the search could not be run.
 

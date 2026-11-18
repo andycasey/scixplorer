@@ -20,7 +20,8 @@ cd scixplorer
 uv sync
 ```
 
-This creates `.venv` with the package (editable) and the development dependencies, `pytest` and `mypy`.
+This creates `.venv` with the package (editable) and the development dependencies: `pytest`, `mypy`,
+`coverage`, and `mcp` for the [MCP server]({{< ref "usage/mcp" >}}) and its tests.
 
 ## Tests
 

@@ -19,7 +19,8 @@ SciX search is Apache Solr, not SQL, so scixplorer has no ORM. It has four parts
    descriptions and receive responses, so paging and merging are written once and driven synchronously or
    asynchronously.
 
-The only runtime dependency is `httpx`.
+The only runtime dependency is `httpx`. The MCP server also needs the `mcp` package, which is the optional
+extra `scixplorer[mcp]`.
 
 ## Modules
 
@@ -40,6 +41,7 @@ The only runtime dependency is `httpx`.
 | `services/` | `export`, `resolver`, `vis`, `citation_helper`, `metrics`: thin functions, one request each |
 | `data/` | the packaged data files and the functions that download, cache and load reference data |
 | `utils.py` | `parse_bibcode`, `to_bibcodes`, `flatten` |
+| `mcp_server.py` | the MCP server run by `scix --mcp`: `Tools`, `build`, `serve` |
 | `cli/` | the `scix` command: `interpret.py` reads plain words into conditions, `session.py` runs the searches, `output.py` formats documents, `tui.py` is the results browser |
 
 ## Expression nodes
@@ -225,6 +227,23 @@ Importing `scixplorer` does not import it.
 - `Browser` (in `tui.py`) holds the state of the screen. `key()` changes it and `render()` returns the
   screen as lines of text, so tests drive it without a terminal; `run()` is the only code that puts a
   terminal in raw mode, with the standard library alone (`termios`), so on Windows results are printed.
+
+## The MCP server
+
+`mcp_server.py` is the only module that imports `mcp` (version 2 or later) and `pydantic`, and nothing
+imports it except `scix --mcp`, so the package and the command work without them.
+
+- `Tools` holds the tools as ordinary methods that return dicts, so they are tested by calling them.
+  Each is built on what is already there: `interpret()` and `Session` for `search`, the in-memory models
+  for `resolve`, the services for `export` and `metrics`, and `Library` for the library tools. Every
+  request goes through the client the `Tools` were given.
+- A tool's description is its docstring, and each parameter's is in its annotation
+  (`Annotated[..., Field(description=...)]`); a test fails if one is missing.
+- Errors a caller can act on (`SciXError`, `ValueError`) are raised as `ToolError` with their message.
+  Anything else is a fault in the server, whose details the MCP library keeps from the assistant.
+- `build()` registers the tools on an `MCPServer`, with annotations saying which only read, which change
+  the user's account and which cannot be undone; `read_only=True` leaves the last two kinds out.
+  `serve()` runs it on standard input and output.
 
 ## Lazy loading
 

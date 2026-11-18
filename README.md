@@ -97,6 +97,19 @@ citations and references, open the full text, copy BibTeX. `scix --explain <word
 is read without sending it. See
 [the documentation](https://andycasey.github.io/scixplorer/usage/command-line/).
 
+## For AI assistants
+
+`scix --mcp` runs a [Model Context Protocol](https://modelcontextprotocol.io) server, so that an assistant
+such as Claude can search SciX in plain words, read documents, export references, compute citation metrics
+and manage your libraries:
+
+```shell
+claude mcp add scix -- uvx --from "scixplorer[mcp]" scix --mcp
+```
+
+Add `--read-only` to leave out the tools that change your libraries. See
+[the documentation](https://andycasey.github.io/scixplorer/usage/mcp/).
+
 ## Features
 
 - Searches as Python expressions on 101 typed document fields, checked when you write them.
@@ -111,4 +124,4 @@ is read without sending it. See
   suggestions; citation metrics.
 - Synchronous and `asyncio` use with the same queries; retries, rate-limit tracking, and paging handled
   for you.
-- A command, `scix`, that searches from the terminal in plain words.
+- A command, `scix`, that searches from the terminal in plain words, and an MCP server for AI assistants.
