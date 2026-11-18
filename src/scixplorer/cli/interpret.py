@@ -368,7 +368,7 @@ def _singular(text: str) -> str:
 _cache: dict[str, tuple[Any, Any]] = {}
 
 
-def _cached(name: str, rows: Sequence[Any], build: Callable[[Sequence[Any]], Any]) -> Any:
+def _cached(name: str, rows: Any, build: Callable[[Any], Any]) -> Any:
     """``build(rows)``, rebuilt only when the data behind ``rows`` has been reloaded."""
     held = _cache.get(name)
     if held is None or held[0] is not rows:
@@ -377,18 +377,15 @@ def _cached(name: str, rows: Sequence[Any], build: Callable[[Sequence[Any]], Any
 
 
 def _journals() -> _Journals:
-    from ..models import journal
-
-    journals: _Journals = _cached("journals", journal._load(), _Journals)
+    # The rows come from the model's own backend, so they are the ones its queries see.
+    journals: _Journals = _cached("journals", Journal._backend._loader(), _Journals)
     return journals
 
 
 def _thesaurus() -> _Thesaurus | None:
     """The thesaurus, or ``None`` until it has been downloaded."""
-    from ..models import uat
-
     try:
-        rows = uat._load()
+        rows = UATConcept._backend._loader()
     except DataNotAvailable:
         return None
     thesaurus: _Thesaurus = _cached("uat", rows, _Thesaurus)
