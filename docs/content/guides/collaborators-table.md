@@ -60,7 +60,7 @@ for paper in papers:
         table.setdefault(key, (author.name, organisation, paper.pubdate))
 
 len(table)
-# -> 4
+# -> 3
 table["Groves, B"]
 # -> ('Groves, Brent', 'Max-Planck-Institute for Astrophysics, Garching', datetime.date(2006, 11, 1))
 table["Heckman, T"]

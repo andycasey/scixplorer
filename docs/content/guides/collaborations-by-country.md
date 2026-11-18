@@ -65,10 +65,8 @@ for paper in papers:
 
 sorted(report)
 # -> ['Australia', 'Canada', 'Germany']
-len(report["Germany"])
-# -> 2
-report["Germany"]["Groves, B"]
-# -> ['2006MNRAS.372..961K']
+dict(report["Germany"])
+# -> {'Groves, B': ['2006MNRAS.372..961K']}
 dict(report["Canada"])
 # -> {'Ellison, S': ['2008ApJ...681.1183K']}
 ```

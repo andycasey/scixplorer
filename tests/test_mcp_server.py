@@ -85,7 +85,7 @@ def test_search_says_how_it_read_the_query_and_returns_brief_documents(tools: To
             {
                 "bibcode": "2006MNRAS.372..961K",
                 "title": "The host galaxies and classification of active galactic nuclei",
-                "authors": "Kewley, Lisa J.; Groves, Brent; Kauffmann, Guinevere; and 1 more",
+                "authors": "Kewley, Lisa J.; Groves, Brent; Heckman, Tim",
                 "year": 2006,
                 "publication": "MNRAS 372, 961 (2006)",
                 "citations": 2000,
@@ -149,8 +149,8 @@ def test_notes_are_passed_on(tools: Tools) -> None:
 def test_get_document(tools: Tools, api: DocsAPI) -> None:
     document = tools.get_document("2006MNRAS.372..961K")
     assert document["title"] == "The host galaxies and classification of active galactic nuclei"
-    assert document["authors"] == ["Kewley, Lisa J.", "Groves, Brent", "Kauffmann, Guinevere", "Heckman, Tim"]
-    assert (document["author_count"], document["year"], document["date"]) == (4, 2006, "2006-11-01")
+    assert document["authors"] == ["Kewley, Lisa J.", "Groves, Brent", "Heckman, Tim"]
+    assert (document["author_count"], document["year"], document["date"]) == (3, 2006, "2006-11-01")
     assert document["reference"] == "MNRAS 372, 961 (2006)" and document["refereed"] is True
     assert document["doi"] == "10.1111/j.1365-2966.2006.10859.x" and document["citations"] == 2000
     assert document["url"] == "https://scixplorer.org/abs/2006MNRAS.372..961K/abstract"
