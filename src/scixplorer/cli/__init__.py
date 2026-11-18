@@ -89,6 +89,8 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--json", dest="format", action="store_const", const="json", help="the same as --format json")
     parser.add_argument("--bibcodes", dest="format", action="store_const", const="bibcodes", help="the same as --format bibcodes")
     parser.add_argument("--refresh-data", action="store_true", help="download the journal list, affiliations, thesaurus and gazetteer, then stop")
+    parser.add_argument("--mcp", action="store_true", help="run as a Model Context Protocol server on standard input and output (needs scixplorer[mcp])")
+    parser.add_argument("--read-only", action="store_true", help="with --mcp: leave out the tools that create, change or delete libraries")
     parser.add_argument("--version", action="version", version=f"scix {__version__}")
     return parser
 
@@ -178,6 +180,10 @@ def _run(
         return _refresh(stdout)
     if args.collection:
         config.collection = args.collection
+    if args.mcp:
+        return _serve(client, args.read_only, stderr)
+    if args.read_only:
+        parser.error("--read-only goes with --mcp")
     session = Session(client)
     browse = (
         not (args.plain or args.open or args.explain or args.format)
@@ -202,6 +208,18 @@ def _run(
     if browse:
         return _browse(session, interpretation, args.sort, stdin, stdout)
     return _print(session, interpretation, sort, args, stdout, stderr)
+
+
+def _serve(client: Sender | None, read_only: bool, stderr: TextIO) -> int:
+    """Run the MCP server until its client disconnects."""
+    try:
+        from .. import mcp_server
+    except ImportError as error:
+        print(f"scix: --mcp needs the mcp package, version 2 or later: install scixplorer[mcp] ({error})", file=stderr)
+        return 2
+    served: Any = client
+    mcp_server.serve(served, read_only=read_only)
+    return 0
 
 
 def _can_browse() -> bool:

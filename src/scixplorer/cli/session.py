@@ -88,6 +88,20 @@ class Session:
         found = self._sender.found
         return documents, max(found if found is not None else 0, offset + len(documents))
 
+    def bibcodes(self, interpretation: Interpretation, sort: str, *, limit: int | None) -> tuple[list[str], int]:
+        """The bibcodes of the first ``limit`` documents, and the number that match in all.
+
+        Nothing but the bibcodes is fetched, so this is the way to hand many
+        documents to a service.
+        """
+        self._sender.found = None
+        query = self.query(interpretation, sort)
+        fetched = Document.select(Document.bibcode).where(*([query.expr] if query.expr is not None else []))
+        documents = fetched.order_by(*query.order).limit(limit).using(self._sender).all()
+        found = self._sender.found
+        bibcodes = [document.bibcode for document in documents if document.bibcode]
+        return bibcodes, max(found if found is not None else 0, len(documents))
+
     def find(self, interpretation: Interpretation, sort: str, *, limit: int | None) -> Found:
         """Search, and if nothing matches, search again with the wider reading if there is one."""
         documents, total = self.fetch(interpretation, sort, limit=limit)

@@ -18,6 +18,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
 ]
 
+[project.optional-dependencies]
+# The Model Context Protocol server, `scix --mcp`.
+mcp = ["mcp>=2"]
+
 [project.scripts]
 scix = "scixplorer.cli:main"
 
@@ -31,6 +35,7 @@ dev = [
     "pytest>=8",
     "mypy>=1.11",
     "coverage>=7.10",
+    "mcp>=2",
 ]
 
 [tool.hatch.build.targets.wheel]
