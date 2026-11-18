@@ -1,12 +1,12 @@
 ---
 title: Services
 weight: 12
-description: Export citations in BibTeX and other formats, find full text and data links, get network data for visualisations, and get citation suggestions.
+description: Export citations in BibTeX and other formats, find full text and data links, get network data for visualisations, get citation suggestions, and compute citation metrics.
 ---
 
 After this page you can export references for your documents in any format SciX offers, list the
-external resources of a document, get the data behind SciX's author and paper networks, and ask for papers
-your set of papers probably should cite.
+external resources of a document, get the data behind SciX's author and paper networks, ask for papers
+your set of papers probably should cite, and get the citation metrics of a set of papers.
 
 Each service is a function that sends one request. They take documents in the same forms everywhere: any
 mix of bibcodes, `Document` objects, `Library` objects (their bibcodes), and lists or queries of
@@ -15,7 +15,7 @@ these. Each also takes `client=` to use a particular `Client`.
 ## Export
 
 ```python
-from scixplorer import Document, Library, citation_helper, export, resolver, vis
+from scixplorer import Document, Library, citation_helper, export, metrics, resolver, vis
 
 print(export.bibtex("2006MNRAS.372..961K", "2001ApJ...556..121K"))
 # -> @ARTICLE{2006MNRAS.372..961K,
@@ -102,8 +102,43 @@ suggestions = citation_helper("2006MNRAS.372..961K", "2008ApJ...681.1183K")
 # -> ['2001ApJ...556..121K']
 ```
 
+## Metrics
+
+`metrics(*documents)` returns the statistics of SciX's
+[Metrics page](https://ui.adsabs.harvard.edu/help/actions/analyze) for the given documents taken together,
+as SciX sends them:
+
+```python
+statistics = metrics("2006MNRAS.372..961K", "2008ApJ...681.1183K")
+statistics["basic stats"]["number of papers"]
+# -> 2
+statistics["indicators"]["h"]
+# -> 2
+```
+
+| Key | Holds |
+|---|---|
+| `"basic stats"` | the number of papers, and how often they are read and downloaded |
+| `"citation stats"` | the number of citations and of citing papers, with averages and medians |
+| `"indicators"` | `h`, `g`, `i10`, `i100`, `m`, `tori`, `riq` and `read10` |
+| `"histograms"` | publications, reads, downloads and citations per year |
+| `"time series"` | the indicators per year |
+| `"skipped bibcodes"` | the bibcodes SciX has no data for |
+
+The first three also come for the refereed documents alone, under `"basic stats refereed"`,
+`"citation stats refereed"` and `"indicators refereed"`. `types=` asks for only some of the statistics,
+which is quicker: one or several of `"basic"`, `"citations"`, `"indicators"`, `"histograms"` and
+`"timeseries"`.
+
+```python
+metrics(Library.get(name="Emission-line galaxies"), types="indicators")["indicators"]["h"]
+# -> 2
+```
+
+If SciX has data for none of the documents, `metrics()` raises `exceptions.APIError`.
+
 ## Not covered
 
-The metrics service, myADS notifications and the other SciX services that are not listed above have no
+myADS notifications and the other SciX services that are not listed above have no
 functions in scixplorer yet. Their responses would come straight from SciX, so a `Client` can send
 the request if you need one now (see [How it works]({{< ref "usage/how-it-works#sending-your-own-requests" >}})).

@@ -108,7 +108,7 @@ is read without sending it. See
 - Citation and reference networks and SciX's second-order operators (`trending`, `useful`, `reviews`,
   `similar`, `top_n`).
 - Export in BibTeX and every other format SciX offers; resolver links; network data; citation
-  suggestions.
+  suggestions; citation metrics.
 - Synchronous and `asyncio` use with the same queries; retries, rate-limit tracking, and paging handled
   for you.
 - A command, `scix`, that searches from the terminal in plain words.

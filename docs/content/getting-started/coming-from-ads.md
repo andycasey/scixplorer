@@ -13,7 +13,7 @@ Keep the query string you already have. Put it in `Document.raw()`, and write th
 number of rows as methods of the query:
 
 ```python
-from scixplorer import Document, export, get_default_client, search
+from scixplorer import Document, export, get_default_client, metrics, search
 
 query = (
     Document
@@ -115,7 +115,7 @@ The rest of this page covers the other parameters and what behaves differently.
 | `ads.search.Article` | `Document` |
 | `article.bibtex` | `export.bibtex(paper)` |
 | `ads.ExportQuery(bibcodes, format="aastex").execute()` | `export.aastex(bibcodes)` |
-| `ads.MetricsQuery(bibcodes).execute()` | no equivalent yet: [send the request yourself](#metrics) |
+| `ads.MetricsQuery(bibcodes).execute()` | `metrics(bibcodes)` |
 | `ads.RateLimits.getRateLimits("SearchQuery").to_dict()` | `get_default_client().rate_limits["search/query"]` |
 | `ads.exceptions.APIResponseError` | `exceptions.APIError` |
 
@@ -228,16 +228,16 @@ The formats `ads` offered (`bibtex`, `bibtexabs`, `ads`, `endnote`, `aastex`, `r
 
 ## Metrics
 
-scixplorer has no metrics service yet. Until it does, send the request that `ads.MetricsQuery` sent with
-the client, which adds your token, retries and error handling:
+`metrics()` returns what `ads.MetricsQuery(...).execute()` did: the statistics as SciX sends them. It
+takes bibcodes, documents or libraries:
 
-<!-- docs-test: skip -->
 ```python
-from scixplorer.client import Request
-
-request = Request("POST", "/metrics", json={"bibcodes": ["2000ApJ...537..916S"]}, idempotent=True)
-metrics = get_default_client().send(request).data
+statistics = metrics(["2000ApJ...537..916S"])
+statistics["basic stats"]["number of papers"]
+# -> 1
 ```
+
+See [Services]({{< ref "usage/services#metrics" >}}) for the statistics it holds.
 
 ## Rate limits and errors
 

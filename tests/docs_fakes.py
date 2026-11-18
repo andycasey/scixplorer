@@ -782,6 +782,8 @@ class DocsAPI:
             return _json(200, {"data": {"root": {"name": [], "children": []}, "bibcode_dict": {b: {} for b in body["bibcodes"]}}})
         if path == "/citation_helper":
             return self._citation_helper(body["bibcodes"])
+        if path == "/metrics":
+            return self._metrics(body["bibcodes"], body.get("types"))
         raise UnsupportedByFake(f"{request.method} {path}")
 
     # Search.
@@ -949,6 +951,29 @@ class DocsAPI:
             if score:
                 suggestions.append({"bibcode": row["bibcode"], "score": score, "title": row["title"][0], "author": row["first_author"]})
         return _json(200, suggestions[:10])
+
+
+    def _metrics(self, bibcodes: list[str], types: list[str] | None) -> httpx.Response:
+        """A few of the statistics SciX computes, from the sample's citation counts."""
+        rows = [row for row in self.docs if row["bibcode"] in bibcodes]
+        if not rows:
+            return _json(200, {"Error": "Unable to get results!", "Error Info": "No data available to generate metrics"})
+        counts = sorted((row.get("citation_count", 0) for row in rows), reverse=True)
+        sections = {
+            "basic": ("basic stats", {"number of papers": len(rows)}),
+            "citations": ("citation stats", {"total number of citations": sum(counts)}),
+            "indicators": ("indicators", {"h": sum(1 for rank, count in enumerate(counts, 1) if count >= rank)}),
+            "histograms": ("histograms", {}),
+            "timeseries": ("time series", {}),
+        }
+        found = {row["bibcode"] for row in rows}
+        result: dict[str, Any] = {"skipped bibcodes": [bibcode for bibcode in bibcodes if bibcode not in found]}
+        for name in types or list(sections):
+            key, value = sections[name]
+            result[key] = value
+            if name in ("basic", "citations", "indicators"):
+                result[f"{key} refereed"] = value
+        return _json(200, result)
 
 
 def _journals_page() -> str:

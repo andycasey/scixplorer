@@ -18,5 +18,5 @@ are shown without type annotations.
 | [Client and Config]({{< ref "reference/api/client" >}}) | `Client`, `Config`, `config`, requests and responses |
 | [Exceptions]({{< ref "reference/api/exceptions" >}}) | every exception and warning |
 | [Data]({{< ref "reference/api/data" >}}) | `data`: reference data |
-| [Services]({{< ref "reference/api/services" >}}) | `export`, `resolver`, `vis`, `citation_helper` |
+| [Services]({{< ref "reference/api/services" >}}) | `export`, `resolver`, `vis`, `citation_helper`, `metrics` |
 | [Utilities]({{< ref "reference/api/utils" >}}) | `utils` |

@@ -37,7 +37,7 @@ The only runtime dependency is `httpx`.
 | `client.py` | `Request`, `Response`, `RateLimit`, `Client` and the default client |
 | `search.py` | the planner (`plan`, `to_solr`) and `SearchBackend` |
 | `models/` | `Document`, `Author`, `Journal`, `Affiliation`, `Library`, `UATConcept`, `PlanetaryFeature` |
-| `services/` | `export`, `resolver`, `vis`, `citation_helper`: thin functions, one request each |
+| `services/` | `export`, `resolver`, `vis`, `citation_helper`, `metrics`: thin functions, one request each |
 | `data/` | the packaged data files and the functions that download, cache and load reference data |
 | `utils.py` | `parse_bibcode`, `to_bibcodes`, `flatten` |
 | `cli/` | the `scix` command: `interpret.py` reads plain words into conditions, `session.py` runs the searches, `output.py` formats documents, `tui.py` is the results browser |

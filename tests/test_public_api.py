@@ -30,6 +30,7 @@ def test_models_services_and_helpers_are_reachable():
     assert scixplorer.Library.documents is not None
     assert callable(scixplorer.export.bibtex)
     assert callable(scixplorer.citation_helper)
+    assert callable(scixplorer.metrics) and scixplorer.services.metrics is scixplorer.metrics
     assert scixplorer.days_ago(7).text == "NOW-7DAYS"
     assert issubclass(scixplorer.exceptions.RateLimitExceeded, scixplorer.exceptions.APIError)
 

@@ -734,7 +734,7 @@ are shown without type annotations.
 | [Client and Config]({{< ref "reference/api/client" >}}) | `Client`, `Config`, `config`, requests and responses |
 | [Exceptions]({{< ref "reference/api/exceptions" >}}) | every exception and warning |
 | [Data]({{< ref "reference/api/data" >}}) | `data`: reference data |
-| [Services]({{< ref "reference/api/services" >}}) | `export`, `resolver`, `vis`, `citation_helper` |
+| [Services]({{< ref "reference/api/services" >}}) | `export`, `resolver`, `vis`, `citation_helper`, `metrics` |
 | [Utilities]({{< ref "reference/api/utils" >}}) | `utils` |
 """
     return page("API", 4, "The public classes and functions of scixplorer, from their signatures and docstrings.", body)
@@ -857,6 +857,7 @@ def services_api() -> str:
 
     # The package exports the function under the module's name, so import the module itself.
     citation_helper = importlib.import_module("scixplorer.services.citation_helper")
+    metrics = importlib.import_module("scixplorer.services.metrics")
 
     parts = ["## scixplorer.services.export\n\n" + markdown(export.__doc__)]
     for name in export.__all__:
@@ -873,7 +874,10 @@ def services_api() -> str:
     parts += [function_entry(vis, name, level=3) for name in ("author_network", "paper_network")]
     parts.append("## scixplorer.services.citation_helper\n\n" + markdown(citation_helper.__doc__))
     parts.append(function_entry(citation_helper, "citation_helper", level=3))
-    return page("Services", 6, "Export, resolver, visualisation networks and the citation helper.", "\n\n".join(parts))
+    parts.append("## scixplorer.services.metrics\n\n" + markdown(metrics.__doc__))
+    parts.append(function_entry(metrics, "metrics", level=3))
+    parts.append(constant_entry(metrics, "METRIC_TYPES", "The accepted values of `types`."))
+    return page("Services", 6, "Export, resolver, visualisation networks, the citation helper and metrics.", "\n\n".join(parts))
 
 
 def utils_api() -> str:

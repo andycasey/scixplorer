@@ -19,7 +19,7 @@ Each page covers one topic and starts with what you can do after reading it.
 | [Operators]({{< ref "usage/operators" >}}) | citations, references, trending, top_n and the rest |
 | [Collections]({{< ref "usage/collections" >}}) | limiting searches to a discipline |
 | [Reference data]({{< ref "usage/reference-data" >}}) | the local data, downloads and licences |
-| [Services]({{< ref "usage/services" >}}) | export, resolver, networks, citation helper |
+| [Services]({{< ref "usage/services" >}}) | export, resolver, networks, citation helper, metrics |
 | [Async]({{< ref "usage/async" >}}) | searching from asyncio code |
 | [Errors and limits]({{< ref "usage/errors-and-limits" >}}) | exceptions, rate limits, retries, limits on searches |
 | [How it works]({{< ref "usage/how-it-works" >}}) | from expression to request |
