@@ -78,9 +78,9 @@ What to search for, in plain words or with named fields; every part must match. 
 Capitalised words are author surnames (Kewley; "Kewley, L. J." with initials; ^Kewley or \
 "Kewley et al." for the first author). Four-digit numbers are years (2019, 2015-2020, "since 2020"). \
 A journal abbreviation or title is that journal, and numbers after it are volume and page \
-(ApJ 880 16). The name of a Unified Astronomy Thesaurus concept is that topic (exoplanets, \
-"hot jupiters"). A bibcode, DOI, arXiv id or ORCID iD is that identifier. Quoted phrases and other \
-words are searched in title, abstract and keywords. \
+(ApJ 880 16). The name of a Unified Astronomy Thesaurus concept, written without quotes, is that \
+topic (exoplanets, hot jupiters). A bibcode, DOI, arXiv id or ORCID iD is that identifier. A phrase \
+in quotes, and any other word, is searched as text in title, abstract and keywords. \
 To be exact, name the field: author:"Kewley, L" first_author: title: abs: year:2015-2020 \
 journal:ApJ uat:<name or number> inst:"Harvard U" aff_id: orcid: doi: property:refereed \
 doctype:article database:astronomy, or any other SciX field. \
